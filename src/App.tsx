@@ -10,7 +10,6 @@ function App() {
   //ユーザの状態を取得する
   const user = useAppSelector((state) => state.user.user);
 
-  console.log("app");
 
   //型をしっかりチェックするuseAppDispatchを使う
   const dispatch = useAppDispatch();

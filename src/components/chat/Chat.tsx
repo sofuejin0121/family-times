@@ -25,7 +25,6 @@ const Chat = () => {
   const user = useAppSelector((state) => state.user.user);
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
-
   const sendMessage = async (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
@@ -49,6 +48,7 @@ const Chat = () => {
       setInputText("");
     }
   };
+
   return (
     <div className="content">
       <div className="chat">
