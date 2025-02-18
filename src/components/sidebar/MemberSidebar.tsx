@@ -5,7 +5,6 @@ import useGetId from "../../hooks/useGetId";
 const MemberSidebar = () => {
   const { documents: users } = useUsers();
   const {documents: getUserIds} = useGetId()
-  console.log({documents: getUserIds})
   const uniqueIds = Array.from(new Set(getUserIds.map((doc) => doc.user.uid )))
   return (
     <div className="memberList">
