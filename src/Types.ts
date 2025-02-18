@@ -15,3 +15,4 @@ export interface InitialServerState {
     serverId: string | null;
     serverName: string | null;
 }
+

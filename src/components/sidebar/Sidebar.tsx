@@ -64,7 +64,7 @@ const Sidebar = () => {
           <div className="sidebarChannelsHeader">
             <div className="sidebarHeader">
               <ExpandMoreIcon />
-              <h3>プログラミングチャンネル</h3>
+              <h3>テキストチャンネル</h3>
             </div>
             <AddIcon className="sidebarAddIcon" onClick={() => addChannel()} />
           </div>

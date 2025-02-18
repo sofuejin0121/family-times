@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import useMessage from "../../hooks/useMessage";
+import MemberSidebar from "../sidebar/MemberSidebar";
 
 const Chat = () => {
   const [inputText, setInputText] = useState<string>("");
@@ -25,8 +26,8 @@ const Chat = () => {
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
 
-  const sendMessage= async (
-    e:React.MouseEvent<HTMLButtonElement, MouseEvent>
+  const sendMessage = async (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
 
@@ -49,48 +50,53 @@ const Chat = () => {
     }
   };
   return (
-    <div className="chat">
-      {/* chatHeader */}
-      <ChatHeader channelName={channelName} />
-      {/* chatMessage */}
-      <div className="chatMessage">
-        {messages.map((message, index) => (
-          <ChatMessage
-            key={index}
-            message={message.message}
-            timestamp={message.timestamp}
-            user={message.user}
-          />
-        ))}
-      </div>
-      {/* chatInput */}
-      <div className="chatInput">
-        <AddCircleOutlineIcon />
-        <form>
-          <input
-            type="text"
-            placeholder={
-              channelName
-                ? `${channelName}へメッセージを送信`
-                : "メッセージを送信"
-            }
-            onChange={(e) => setInputText(e.target.value)}
-            value={inputText}
-          />
-          <button
-            type="submit"
-            className="chatInputButton"
-            onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) =>
-              sendMessage(e)
-            }
-          ></button>
-        </form>
-
-        <div className="chatInputIcons">
-          <CardGiftcardIcon />
-          <GifIcon />
-          <SentimentSatisfiedAltIcon />
+    <div className="content">
+      <div className="chat">
+        {/* chatHeader */}
+        <ChatHeader channelName={channelName} />
+        {/* chatMessage */}
+        <div className="chatMessage">
+          {messages.map((message, index) => (
+            <ChatMessage
+              key={index}
+              message={message.message}
+              timestamp={message.timestamp}
+              user={message.user}
+            />
+          ))}
         </div>
+        {/* chatInput */}
+        <div className="chatInput">
+          <AddCircleOutlineIcon />
+          <form>
+            <input
+              type="text"
+              placeholder={
+                channelName
+                  ? `${channelName}へメッセージを送信`
+                  : "メッセージを送信"
+              }
+              onChange={(e) => setInputText(e.target.value)}
+              value={inputText}
+            />
+            <button
+              type="submit"
+              className="chatInputButton"
+              onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) =>
+                sendMessage(e)
+              }
+            ></button>
+          </form>
+
+          <div className="chatInputIcons">
+            <CardGiftcardIcon />
+            <GifIcon />
+            <SentimentSatisfiedAltIcon />
+          </div>
+        </div>
+      </div>
+      <div className="memberList">
+        <MemberSidebar/>
       </div>
     </div>
   );
