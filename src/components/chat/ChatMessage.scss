@@ -1,18 +1,49 @@
 .message {
     display: flex;
-    align-items: center;
     padding: 15px;
     color: white;
+    gap: 15px;
 
-    .messaegeInfo {
-        padding: 20px 20px 20px 10px;
-
-        
+    .avatarContainer {
+        flex-shrink: 0;  
     }
 
-    .messageTimestamp {
-        color: #7b7c85;
-        margin-left: 20px;
-        font-size: 16px;
+    .messaegeInfo {
+        flex: 1;  
+        padding: 10px;
+        overflow: hidden;  
+
+        h4 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+
+            .messageTimestamp {
+                color: #7b7c85;
+                font-size: 16px;
+                font-weight: normal;
+            }
+        }
+
+        p {
+            margin-bottom: 10px;
+            word-break: break-word;  
+        }
+
+        .MuiSvgIcon-root {
+            color: grey;
+        }
+
+        .imageMessage {
+            width: 50%; 
+            margin-top: 10px;
+
+            img {
+                width: 100%;  
+                height: auto;  
+                border-radius: 4px;  
+            }
+        }
     }
 }

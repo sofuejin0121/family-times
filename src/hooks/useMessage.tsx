@@ -9,6 +9,9 @@ import {
 import { db } from "../firebase";
 import { useAppSelector } from "../app/hooks";
 interface Messages {
+  id: string;
+  photoId: string;
+  photoURL: string;
   timestamp: Timestamp;
   message: string;
   user: {
@@ -25,32 +28,34 @@ const useMessage = () => {
   const serverId = useAppSelector((state) => state.server.serverId);
 
   useEffect(() => {
-    if(serverId !== null ) {
+    if (serverId !== null) {
       const collectionRef = collection(
         db,
         "servers",
         serverId,
         "channels",
         String(channelId),
-        "messages",
+        "messages"
       );
       const collectionRefOrderBy = query(
         collectionRef,
         orderBy("timestamp", "asc")
       );
-      
-          onSnapshot(collectionRefOrderBy, (snapshot) => {
-            const results: Messages[] = [];
-            snapshot.docs.forEach((doc) => {
-              results.push({
-                timestamp: doc.data().timestamp,
-                message: doc.data().message,
-                user: doc.data().user,
-              });
-            });
-            setSubDocuments(results);
-          });
 
+      onSnapshot(collectionRefOrderBy, (snapshot) => {
+        const results: Messages[] = [];
+        snapshot.docs.forEach((doc) => {
+          results.push({
+            id: doc.data().id,
+            timestamp: doc.data().timestamp,
+            message: doc.data().message,
+            user: doc.data().user,
+            photoId: doc.data().photoId,
+            photoURL: doc.data().photoURL,
+          });
+        });
+        setSubDocuments(results);
+      });
     }
   }, [channelId, serverId]);
 

@@ -6,7 +6,7 @@ import GifIcon from "@mui/icons-material/Gif";
 import SentimentSatisfiedAltIcon from "@mui/icons-material/SentimentSatisfiedAlt";
 import ChatMessage from "./ChatMessage";
 import { useAppSelector } from "../../app/hooks";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -14,41 +14,84 @@ import {
   DocumentData,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../../firebase";
+import { db, storage } from "../../firebase";
 import useMessage from "../../hooks/useMessage";
 import MemberSidebar from "../sidebar/MemberSidebar";
-
+import { ref, uploadBytes } from "firebase/storage";
+import { v4 as uuid4 } from "uuid";
 const Chat = () => {
   const [inputText, setInputText] = useState<string>("");
   const channelId = useAppSelector((state) => state.channel.channelId);
   const channelName = useAppSelector((state) => state.channel.channelName);
   const user = useAppSelector((state) => state.user.user);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
-  const sendMessage = async (
-    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-  ) => {
-    e.preventDefault();
+  const sendMessage = useCallback(
+    async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+      e.preventDefault();
 
-    if (serverId !== null) {
-      //channelsコレクションの中にあるmessagesコレクションの中にメッセージ情報を入れる
-      const collectionRef: CollectionReference<DocumentData> = collection(
-        db,
-        "servers",
-        serverId,
-        "channels",
-        String(channelId),
-        "messages"
-      );
-      await addDoc(collectionRef, {
-        message: inputText,
-        timestamp: serverTimestamp(),
-        user: user,
-      });
-      setInputText("");
-    }
+      if (serverId !== null) {
+        //channelsコレクションの中にあるmessagesコレクションの中にメッセージ情報を入れる
+        const collectionRef: CollectionReference<DocumentData> = collection(
+          db,
+          "servers",
+          serverId,
+          "channels",
+          String(channelId),
+          "messages"
+        );
+        await addDoc(collectionRef, {
+          photoId: null,
+          message: inputText,
+          timestamp: serverTimestamp(),
+          user: user,
+        });
+        setInputText("");
+      }
+    },
+    [channelId, inputText, serverId, user]
+  );
+
+  const handleButtonClick = () => {
+    fileInputRef.current?.click();
   };
 
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        const file = e.target.files[0];
+        const photoId = uuid4();
+        const FileRef = ref(storage, photoId + file.name);
+        await uploadBytes(FileRef, file).then(() => {});
+
+        if (serverId !== null && channelId !== null) {
+          await addDoc(
+            collection(
+              db,
+              "servers",
+              serverId,
+              "channels",
+              String(channelId),
+              "messages"
+            ),
+            {
+              message: null,
+              timestamp: serverTimestamp(),
+              user: user,
+              photoId: photoId + file.name,
+            }
+          );
+        }
+      }
+
+      // console.log(FileRef)
+      // console.log("FileRef.name",FileRef.name )
+      // console.log("FileRef.name",FileRef.fullPath )
+    },
+    [channelId, serverId, user]
+  );
+  console.log(messages)
   return (
     <div className="content">
       <div className="chat">
@@ -58,16 +101,27 @@ const Chat = () => {
         <div className="chatMessage">
           {messages.map((message, index) => (
             <ChatMessage
+              id={message.id}
               key={index}
               message={message.message}
               timestamp={message.timestamp}
               user={message.user}
+              photoId={message.photoId}
+              photoURL={message.photoURL}
             />
           ))}
         </div>
         {/* chatInput */}
         <div className="chatInput">
-          <AddCircleOutlineIcon />
+          <input
+            type="file"
+            style={{ display: "none" }}
+            ref={fileInputRef}
+            onChange={handleFileChange}
+          />
+          <button onClick={handleButtonClick} className="addButton">
+            <AddCircleOutlineIcon />
+          </button>
           <form>
             <input
               type="text"
@@ -96,7 +150,7 @@ const Chat = () => {
         </div>
       </div>
       <div className="memberList">
-        <MemberSidebar/>
+        <MemberSidebar />
       </div>
     </div>
   );
