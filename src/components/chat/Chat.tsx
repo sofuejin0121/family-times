@@ -21,6 +21,7 @@ import { ref, uploadBytes } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 const Chat = () => {
   const [inputText, setInputText] = useState<string>("");
+  const [searchMessage, setSearchMessage] = useState<string>("");
   const channelId = useAppSelector((state) => state.channel.channelId);
   const channelName = useAppSelector((state) => state.channel.channelName);
   const user = useAppSelector((state) => state.user.user);
@@ -84,22 +85,30 @@ const Chat = () => {
           );
         }
       }
-
-      // console.log(FileRef)
-      // console.log("FileRef.name",FileRef.name )
-      // console.log("FileRef.name",FileRef.fullPath )
     },
     [channelId, serverId, user]
   );
-  console.log(messages)
+
+  const filterMessages = messages.filter((message) => {
+    if (searchMessage !== "") {
+      return message.message
+        ?.toLowerCase()
+        .includes(searchMessage.toLowerCase());
+    } else {
+      return true;
+    }
+  });
   return (
     <div className="content">
       <div className="chat">
         {/* chatHeader */}
-        <ChatHeader channelName={channelName} />
+        <ChatHeader
+          channelName={channelName}
+          onSearchMessage={setSearchMessage}
+        />
         {/* chatMessage */}
         <div className="chatMessage">
-          {messages.map((message, index) => (
+          {filterMessages.map((message, index) => (
             <ChatMessage
               id={message.id}
               key={index}

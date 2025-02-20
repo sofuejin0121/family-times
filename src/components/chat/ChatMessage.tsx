@@ -50,7 +50,7 @@ const ChatMessage = (props: Props) => {
   return (
     <div className="message">
       <div className="avatarContainer">
-        <Avatar src={user?.photo} />
+        <Avatar src={user.photo} />
       </div>
       <div className="messaegeInfo">
         <h4>
