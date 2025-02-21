@@ -11,11 +11,14 @@ interface Server {
   id: string;
   docData: DocumentData;
 }
+//サーバー一覧を取得するカスタムフック
 const useServer = () => {
+  //サーバー情報を格納するstate
   const [documents, setDocuments] = useState<Server[]>([]);
 
-  const collectionRef: Query<DocumentData> = useMemo(() =>
-    query(collection(db, "servers")), []
+  const collectionRef: Query<DocumentData> = useMemo(
+    () => query(collection(db, "servers")),
+    []
   );
   useEffect(() => {
     onSnapshot(collectionRef, (querySnapshot) => {

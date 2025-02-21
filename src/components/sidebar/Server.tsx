@@ -1,9 +1,10 @@
 import { useAppDispatch } from "../../app/hooks";
-import {setServerInfo} from "../../features/serverSlice";
-import "./Server.scss"
+import { setServerInfo } from "../../features/serverSlice";
+import "./Server.scss";
 type Props = {
   id: string;
   name: string;
+  onClick?: () => void;
 };
 const Server = (props: Props) => {
   const { id, name } = props;

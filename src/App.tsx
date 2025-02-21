@@ -1,23 +1,20 @@
+// App.tsx
 import { useEffect } from "react";
 import "./App.scss";
 import { useAppDispatch, useAppSelector } from "./app/hooks";
-import Chat from "./components/chat/Chat";
 import Login from "./components/login/Login";
-import Sidebar from "./components/sidebar/Sidebar";
 import { auth } from "./firebase";
 import { login, logout } from "./features/userSlice";
+import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { InvitePage } from "./pages/InvitePage";
+
 function App() {
-  //ユーザの状態を取得する
   const user = useAppSelector((state) => state.user.user);
-
-
-  //型をしっかりチェックするuseAppDispatchを使う
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    auth.onAuthStateChanged((loginUser) => {
+    const unsubscribe = auth.onAuthStateChanged((loginUser) => {
       if (loginUser) {
-        //reducerにdispatchで通知を送る→stateが更新される
         dispatch(
           login({
             uid: loginUser.uid,
@@ -30,22 +27,26 @@ function App() {
         dispatch(logout());
       }
     });
+
+    return () => unsubscribe();
   }, [dispatch]);
+
+  if (!user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<Login />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
   return (
-    <div className="App">
-      {/* ユーザー情報がなければログイン画面へ */}
-      {user ? (
-        <>
-          <Sidebar />
-          <Chat />
-          {/* <MemberSidebar /> */}
-        </>
-      ) : (
-        <>
-          <Login />
-        </>
-      )}
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="*" element={<InvitePage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -12,6 +12,7 @@ import Server from "./Server";
 import useServer from "../../hooks/useServer";
 import { useCallback } from "react";
 import useChannel from "../../hooks/useChannel";
+import { CreateInvite } from "../createInvite/CreateInvite";
 const Sidebar = () => {
   // const serverName = useAppSelector((state) => state.server.serverName)
   const user = useAppSelector((state) => state.user.user);
@@ -22,13 +23,19 @@ const Sidebar = () => {
   const addServer = useCallback(async () => {
     const serverName: string | null = prompt("新しいサーバー作成");
 
-    if (serverName) {
+    if (serverName && user) {
       await addDoc(collection(db, "servers"), {
         serverName: serverName,
-        user: user?.uid,
+        createdBy: user.uid,
+        members: {
+          [user.uid]: {
+            role: "admin",
+            joinedAt: new Date(),
+          }
+        }
       });
     }
-  }, [user?.uid]);
+  }, [user]);
 
   const addChannel = useCallback(async () => {
     const channelName: string | null = prompt("新しいチャンネル作成");
@@ -46,7 +53,7 @@ const Sidebar = () => {
       {/* sidebarLeft */}
       <div className="sidebarLeft">
         {servers.map((server) => (
-          <Server id={server.id} name={server.docData.serverName} />
+          <Server key={server.id} id={server.id} name={server.docData.serverName} />
         ))}
         <div className="serverAddIcon" onClick={() => addServer()}>
           <AddIcon />
@@ -57,6 +64,7 @@ const Sidebar = () => {
         <div className="sidebarTop">
           <h3>Family-Times</h3>
           <ExpandMoreIcon />
+          {serverId && <CreateInvite />}
         </div>
 
         {/* sidebarChannel */}
