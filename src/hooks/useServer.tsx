@@ -5,8 +5,10 @@ import {
   onSnapshot,
   Query,
   query,
+  where,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { useAppSelector } from "../app/hooks";
 interface Server {
   id: string;
   docData: DocumentData;
@@ -15,12 +17,18 @@ interface Server {
 const useServer = () => {
   //サーバー情報を格納するstate
   const [documents, setDocuments] = useState<Server[]>([]);
-
-  const collectionRef: Query<DocumentData> = useMemo(
-    () => query(collection(db, "servers")),
-    []
-  );
+  const user = useAppSelector((state) => state.user.user);
+  const collectionRef: Query<DocumentData> | null = useMemo(() => {
+    if (user !== null) {
+      return query(
+        collection(db, "servers"),
+        where(`members.${user.uid}`, "!=", null)
+      );
+    }
+    return null;
+  }, [user]);
   useEffect(() => {
+    if (collectionRef === null) return;
     onSnapshot(collectionRef, (querySnapshot) => {
       const serverResults: Server[] = [];
       querySnapshot.docs.forEach((doc) =>
