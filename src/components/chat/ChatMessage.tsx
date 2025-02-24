@@ -20,7 +20,7 @@ type Props = {
   };
 };
 const ChatMessage = (props: Props) => {
-  const { message, timestamp, user, photoId, id } = props;
+  const { message, timestamp, user, photoId,id } = props;
   const [fileURL, setFileURL] = useState<string>()
   const channelId = useAppSelector((state) => state.channel.channelId);
   const serverId = useAppSelector((state) => state.server.serverId);
@@ -32,7 +32,7 @@ const ChatMessage = (props: Props) => {
     fetchURL()
   }, [photoId])
   const deleteMessage = async () => {
-    if (serverId !== null && channelId !== null) {
+    if (serverId !== null && channelId !== null && id !== null) {
       await deleteDoc(
         doc(
           db,
@@ -41,10 +41,9 @@ const ChatMessage = (props: Props) => {
           "channels",
           String(channelId),
           "messages",
-          id
+          props.id
         )
       );
-      alert();
     }
   };
   return (

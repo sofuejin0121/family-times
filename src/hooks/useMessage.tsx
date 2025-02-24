@@ -46,7 +46,7 @@ const useMessage = () => {
         const results: Messages[] = [];
         snapshot.docs.forEach((doc) => {
           results.push({
-            id: doc.data().id,
+            id: doc.id,
             timestamp: doc.data().timestamp,
             message: doc.data().message,
             user: doc.data().user,
