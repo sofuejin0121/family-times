@@ -1,12 +1,15 @@
 import "./MemberSidebar.scss";
 import useUsers from "../../hooks/useUsers";
-import useGetId from "../../hooks/useGetId";
-
+import useServer from "../../hooks/useServer";
+import { useAppSelector } from "../../app/hooks";
 const MemberSidebar = () => {
   const { documents: users } = useUsers();
-  const { documents: getUserIds } = useGetId();
-  const uniqueIds = Array.from(new Set(getUserIds.map((doc) => doc.user.uid)));
-
+  const serverId = useAppSelector((state) => state.server.serverId);
+  const { documents: servers } = useServer();
+  // 現在選択しているサーバーのドキュメントを取得する
+  const server = servers.find((server) => server.id === serverId);
+  // 取得した単一のserver docからObject.keysを使って、membersオブジェクトのkeyの配列を取得する（これがuniqueIds）
+  const uniqueIds = Object.keys(server?.docData.members || {});
   return (
     <div className="memberList">
       <div className="memberListHeader">

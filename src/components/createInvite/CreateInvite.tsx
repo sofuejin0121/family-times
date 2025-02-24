@@ -50,7 +50,7 @@ export const CreateInvite = () => {
     try {
       const code = await createServerInvite(serverId, user.uid);
       const params = new URLSearchParams();
-      params.append('invite', code);
+      params.append("invite", code);
       const inviteUrl = `${window.location.origin}/invite?${params.toString()}`;
 
       setInviteCode(inviteUrl);
@@ -153,7 +153,7 @@ export const CreateInvite = () => {
               </Typography>
             </>
           )}
-          <Box sx={{mt: 3, display: "flex", justifyContent: "flex-end"}}>
+          <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
             <Button onClick={handleClose}>閉じる</Button>
           </Box>
         </Box>
