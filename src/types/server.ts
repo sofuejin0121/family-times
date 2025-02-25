@@ -2,6 +2,7 @@ import { Timestamp } from "firebase/firestore";
 
 interface Server {
   name: string;
+  imageUrl: string;
   members: {
     [userId: string]: {
       role: "admin" | "member";

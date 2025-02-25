@@ -4,10 +4,11 @@ import "./Server.scss";
 type Props = {
   id: string;
   name: string;
+  imageUrl: string;
   onClick?: () => void;
 };
 const Server = (props: Props) => {
-  const { id, name } = props;
+  const { id, name, imageUrl } = props;
   const dispatch = useAppDispatch();
 
   return (
@@ -22,7 +23,11 @@ const Server = (props: Props) => {
         )
       }
     >
-      <h3>{name}</h3>
+      {imageUrl ? (
+        <img src={imageUrl} alt={name} />
+      ) : (
+        <h3>{name}</h3>
+      )}
     </div>
   );
 };
