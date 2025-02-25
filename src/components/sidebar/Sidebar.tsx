@@ -10,32 +10,17 @@ import { useAppSelector } from "../../app/hooks";
 import { addDoc, collection } from "firebase/firestore";
 import Server from "./Server";
 import useServer from "../../hooks/useServer";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import useChannel from "../../hooks/useChannel";
 import { CreateInvite } from "../createInvite/CreateInvite";
+import { CreateServer } from "./CreateServer";
 const Sidebar = () => {
   // const serverName = useAppSelector((state) => state.server.serverName)
   const user = useAppSelector((state) => state.user.user);
   const serverId = useAppSelector((state) => state.server.serverId);
   const { documents: channels } = useChannel();
   const { documents: servers } = useServer();
-
-  const addServer = useCallback(async () => {
-    const serverName: string | null = prompt("新しいサーバー作成");
-
-    if (serverName && user) {
-      await addDoc(collection(db, "servers"), {
-        serverName: serverName,
-        createdBy: user.uid,
-        members: {
-          [user.uid]: {
-            role: "admin",
-            joinedAt: new Date(),
-          }
-        }
-      });
-    }
-  }, [user]);
+  const [isCreateServerOpen, setIsCreateServerOpen] = useState(false);
 
   const addChannel = useCallback(async () => {
     const channelName: string | null = prompt("新しいチャンネル作成");
@@ -53,9 +38,14 @@ const Sidebar = () => {
       {/* sidebarLeft */}
       <div className="sidebarLeft">
         {servers.map((server) => (
-          <Server key={server.id} id={server.id} name={server.docData.serverName} />
+          <Server
+            key={server.id}
+            id={server.id}
+            name={server.docData.name}
+            imageUrl={server.docData.imageUrl}
+          />
         ))}
-        <div className="serverAddIcon" onClick={() => addServer()}>
+        <div className="serverAddIcon" onClick={() => setIsCreateServerOpen(true)}>
           <AddIcon />
         </div>
       </div>
@@ -76,6 +66,10 @@ const Sidebar = () => {
             </div>
             <AddIcon className="sidebarAddIcon" onClick={() => addChannel()} />
           </div>
+          <CreateServer
+            isOpen={isCreateServerOpen}
+            onClose={() => setIsCreateServerOpen(false)}
+          />
           <div className="sidebarChannelList">
             {channels.map((channel) => (
               <SidebarChannel

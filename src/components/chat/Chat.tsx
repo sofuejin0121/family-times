@@ -26,6 +26,7 @@ const Chat = () => {
   const channelName = useAppSelector((state) => state.channel.channelName);
   const user = useAppSelector((state) => state.user.user);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  //カスタムフックを使用してメッセージデータを取得
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
   const sendMessage = useCallback(
@@ -117,6 +118,7 @@ const Chat = () => {
               user={message.user}
               photoId={message.photoId}
               photoURL={message.photoURL}
+              reactions={message.reactions}
             />
           ))}
         </div>

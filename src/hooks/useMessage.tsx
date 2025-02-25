@@ -8,6 +8,12 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAppSelector } from "../app/hooks";
+
+interface Reaction {
+  emoji: string;
+  users: string[]; //リアクションしたユーザーのuid配列
+}
+
 interface Messages {
   id: string;
   photoId: string;
@@ -19,6 +25,9 @@ interface Messages {
     photo: string;
     email: string;
     displayName: string;
+  };
+  reactions: {
+    [key: string]: Reaction; //絵文字をkeyとしたリアクションデータ
   };
 }
 
@@ -52,6 +61,7 @@ const useMessage = () => {
             user: doc.data().user,
             photoId: doc.data().photoId,
             photoURL: doc.data().photoURL,
+            reactions: doc.data().reactions || {},
           });
         });
         setSubDocuments(results);
