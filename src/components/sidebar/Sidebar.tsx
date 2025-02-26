@@ -5,7 +5,7 @@ import SidebarChannel from "./SidebarChannel";
 import MicIcon from "@mui/icons-material/Mic";
 import HeadphonesIcon from "@mui/icons-material/Headphones";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { auth, db } from "../../firebase";
+import { db } from "../../firebase";
 import { useAppSelector } from "../../app/hooks";
 import { addDoc, collection } from "firebase/firestore";
 import Server from "./Server";
@@ -14,6 +14,7 @@ import { useCallback, useState } from "react";
 import useChannel from "../../hooks/useChannel";
 import { CreateInvite } from "../createInvite/CreateInvite";
 import { CreateServer } from "./CreateServer";
+import UserEdit from "./UserEdit";
 const Sidebar = () => {
   // const serverName = useAppSelector((state) => state.server.serverName)
   const user = useAppSelector((state) => state.user.user);
@@ -21,6 +22,7 @@ const Sidebar = () => {
   const { documents: channels } = useChannel();
   const { documents: servers } = useServer();
   const [isCreateServerOpen, setIsCreateServerOpen] = useState(false);
+  const [isUserEditOpen, setIsUserEditOpen] = useState(false);
 
   const addChannel = useCallback(async () => {
     const channelName: string | null = prompt("新しいチャンネル作成");
@@ -45,7 +47,10 @@ const Sidebar = () => {
             imageUrl={server.docData.imageUrl}
           />
         ))}
-        <div className="serverAddIcon" onClick={() => setIsCreateServerOpen(true)}>
+        <div
+          className="serverAddIcon"
+          onClick={() => setIsCreateServerOpen(true)}
+        >
           <AddIcon />
         </div>
       </div>
@@ -81,7 +86,7 @@ const Sidebar = () => {
           </div>
           <div className="sidebarFooter">
             <div className="sidebarAccount">
-              <img src={user?.photo} alt="" onClick={() => auth.signOut()} />
+              <img src={user?.photo} alt="" onClick={() => setIsUserEditOpen(true)} />
               <div className="accoutName">
                 <h4>{user?.displayName}</h4>
                 <span>#{user?.uid.substring(0, 4)}</span>
@@ -93,6 +98,10 @@ const Sidebar = () => {
               <SettingsIcon />
             </div>
           </div>
+          <UserEdit
+            isOpen={isUserEditOpen}
+            onClose={() => setIsUserEditOpen(false)}
+          />
         </div>
       </div>
     </div>
