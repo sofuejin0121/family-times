@@ -38,7 +38,7 @@ const Sidebar = () => {
   return (
     <div className="sidebar">
       {/* sidebarLeft */}
-      <div className="sidebarLeft">
+      <div className="sidebarLeft  flex flex-col items-center space-y-2 p-3 w-[72px]">
         {servers.map((server) => (
           <Server
             key={server.id}
@@ -86,16 +86,15 @@ const Sidebar = () => {
           </div>
           <div className="sidebarFooter">
             <div className="sidebarAccount">
-              <img src={user?.photo} alt="" onClick={() => setIsUserEditOpen(true)} />
+              <img
+                src={user?.photo}
+                alt=""
+                onClick={() => setIsUserEditOpen(true)}
+              />
               <div className="accoutName">
                 <h4>{user?.displayName}</h4>
                 <span>#{user?.uid.substring(0, 4)}</span>
               </div>
-            </div>
-            <div className="sidebarVoice">
-              <MicIcon />
-              <HeadphonesIcon />
-              <SettingsIcon />
             </div>
           </div>
           <UserEdit

@@ -1,9 +1,6 @@
 import "./Chat.scss";
 import ChatHeader from "./ChatHeader";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-import CardGiftcardIcon from "@mui/icons-material/CardGiftcard";
-import GifIcon from "@mui/icons-material/Gif";
-import SentimentSatisfiedAltIcon from "@mui/icons-material/SentimentSatisfiedAlt";
 import ChatMessage from "./ChatMessage";
 import { useAppSelector } from "../../app/hooks";
 import { useCallback, useRef, useState } from "react";
@@ -152,12 +149,6 @@ const Chat = () => {
               }
             ></button>
           </form>
-
-          <div className="chatInputIcons">
-            <CardGiftcardIcon />
-            <GifIcon />
-            <SentimentSatisfiedAltIcon />
-          </div>
         </div>
       </div>
       <div className="memberList">
