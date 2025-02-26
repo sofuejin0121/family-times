@@ -194,11 +194,11 @@ const ChatMessage = (props: Props) => {
   return (
     <div className="message">
       <div className="avatarContainer">
-        <Avatar src={user?.photo} />
+        <Avatar src={props.user.photo} />
       </div>
       <div className="messageInfo">
         <h4>
-          {user?.displayName}
+          {props.user.displayName}
           <span className="messageTimestamp">
             {new Date(timestamp?.toDate()).toLocaleString()}
           </span>
