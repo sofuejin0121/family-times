@@ -1,4 +1,3 @@
-import "./Chat.scss";
 import ChatHeader from "./ChatHeader";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ChatMessage from "./ChatMessage";
@@ -16,6 +15,7 @@ import useMessage from "../../hooks/useMessage";
 import MemberSidebar from "../sidebar/MemberSidebar";
 import { ref, uploadBytes } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
+import { Input } from "../ui/input";
 const Chat = () => {
   const [inputText, setInputText] = useState<string>("");
   const [searchMessage, setSearchMessage] = useState<string>("");
@@ -97,15 +97,21 @@ const Chat = () => {
     }
   });
   return (
-    <div className="content">
-      <div className="chat">
+    <div className="flex w-full h-full">
+      <div className="flex flex-col flex-grow h-screen">
         {/* chatHeader */}
         <ChatHeader
           channelName={channelName}
           onSearchMessage={setSearchMessage}
         />
         {/* chatMessage */}
-        <div className="chatMessage">
+        <div
+          className="h-[calc(100vh-120px)] overflow-y-scroll px-4 
+          scrollbar scrollbar-w-2 
+          scrollbar-track-[#2f3136] scrollbar-track-rounded-md
+          scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
+          hover:scrollbar-thumb-[#2f3136]"
+        >
           {filterMessages.map((message, index) => (
             <ChatMessage
               id={message.id}
@@ -120,18 +126,21 @@ const Chat = () => {
           ))}
         </div>
         {/* chatInput */}
-        <div className="chatInput">
-          <input
+        <div className="flex items-center justify-between p-2.5  rounded-lg mx-4 mb-6 text-[#dcddde]">
+          <Input
             type="file"
-            style={{ display: "none" }}
+            className="hidden"
             ref={fileInputRef}
             onChange={handleFileChange}
           />
-          <button onClick={handleButtonClick} className="addButton">
-            <AddCircleOutlineIcon />
+          <button
+            onClick={handleButtonClick}
+            className="bg-transparent border-none text-[#b9bbbe] px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-[#dcddde]"
+          >
+            <AddCircleOutlineIcon className="text-2xl" />
           </button>
-          <form>
-            <input
+          <form className="flex-grow">
+            <Input
               type="text"
               placeholder={
                 channelName
@@ -143,7 +152,7 @@ const Chat = () => {
             />
             <button
               type="submit"
-              className="chatInputButton"
+              className="hidden"
               onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) =>
                 sendMessage(e)
               }
@@ -151,8 +160,8 @@ const Chat = () => {
           </form>
         </div>
       </div>
-      <div className="memberList">
-        <MemberSidebar key={channelId}/>
+      <div className="w-60 bg-[#2f3136] h-screen">
+        <MemberSidebar key={channelId} />
       </div>
     </div>
   );

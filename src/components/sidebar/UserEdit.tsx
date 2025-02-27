@@ -88,15 +88,11 @@ const UserEdit = (props: UserEditProps) => {
     }
   };
 
-  //ログアウト処理
-  const handleLogout = async () => {
-    auth.signOut();
-    onClose();
-  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#36393f] text-white border-none sm:max-w-[425px]">
+      <DialogContent className="bg-white text-black border border-gray-200 sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>ユーザー情報の編集</DialogTitle>
         </DialogHeader>
@@ -144,32 +140,26 @@ const UserEdit = (props: UserEditProps) => {
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
               required
-              className="bg-[#202225] border-[#40444b] hover:border-[#5d6269] focus:border-[#5865f2] text-white"
+              className="bg-white border border-gray-300 text-black"
             />
           </div>
 
           <DialogFooter className="flex justify-between mt-4 gap-2">
             <Button
-              variant="secondary"
+              variant="default"
               type="submit"
-              className="cursor-pointer"
+              className="cursor-pointer text-white"
             >
               保存
             </Button>
             <Button
               variant="link"
               onClick={onClose}
-              className="text-white hover:text-white cursor-pointer"
+              className="text-gray-700 hover:text-gray-900 cursor-pointer"
             >
               キャンセル
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleLogout}
-              className="cursor-pointer"
-            >
-              ログアウト
-            </Button>
+
           </DialogFooter>
         </form>
       </DialogContent>

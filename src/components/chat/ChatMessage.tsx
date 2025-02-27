@@ -1,4 +1,3 @@
-import "./ChatMessage.scss";
 import {
   deleteDoc,
   doc,
@@ -177,38 +176,38 @@ const ChatMessage = (props: Props) => {
   }, []);
 
   return (
-    <div className="message">
-      <div className="avatarContainer">
+    <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white">
+      <div className="flex-shrink-0">
         <Avatar>
           <AvatarImage src={props.user.photo}/>
         </Avatar>
       </div>
-      <div className="messageInfo">
-        <h4>
+      <div className="flex-1 p-2.5 overflow-hidden">
+        <h4 className="flex items-center gap-2.5 mb-2">
           {props.user.displayName}
-          <span className="messageTimestamp">
+          <span className="text-[#7b7c85] text-base font-normal">
             {new Date(timestamp?.toDate()).toLocaleString()}
           </span>
         </h4>
-        <div className="messageContent">
-          <div className="messageText">
-            <p>{props.message}</p>
+        <div className="relative">
+          <div className="flex items-center gap-2 relative">
+            <p className="m-0">{props.message}</p>
             {props.user.uid === user?.uid && (
-              <div className="messageActions">
+              <div className="flex gap-1 opacity-0 invisible transition-all duration-200 ease-in-out group-hover:opacity-100 group-hover:visible">
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
                     <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                       <EditIcon fontSize="small" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="bg-white text-black border border-gray-200">
                     <DialogHeader>
                       <DialogTitle>メッセージを編集</DialogTitle>
                     </DialogHeader>
                     <Input
                       value={editedMessage}
                       onChange={(e) => setEditedMessage(e.target.value)}
-                      className="editInput"
+                      className="p-2 border border-[#dcddde] rounded text-sm w-full focus:outline-none focus:border-[#7983f5] bg-white"
                       autoFocus
                     />
                     <DialogFooter>
@@ -227,11 +226,11 @@ const ChatMessage = (props: Props) => {
 
                 <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                   <DialogTrigger asChild>
-                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 hover:text-[#ed4245] hover:bg-opacity-10">
                       <DeleteIcon fontSize="small" />
                     </button>
                   </DialogTrigger>
-                  <DialogContent>
+                  <DialogContent className="bg-white text-black border border-gray-200">
                     <DialogHeader>
                       <DialogTitle>メッセージを削除しますか？</DialogTitle>
                       <DialogDescription>
@@ -251,30 +250,30 @@ const ChatMessage = (props: Props) => {
               </div>
             )}
           </div>
-          <div className="reactions">
+          <div className="flex flex-wrap gap-1 mt-1">
             {/* オブジェクトのエントリー(キーと値のペア)を配列に変換してマップ */}
             {Object.entries(props.reactions || {}).map(([emoji, reaction]) => (
               <button
                 key={emoji}
                 onClick={() => addReaction(emoji)}
-                className={`reactionButton ${
-                  reaction.users.includes(user?.uid || "") ? "active" : ""
+                className={`flex items-center gap-1 p-1 px-2 rounded-lg bg-[#f2f3f5] border border-transparent cursor-pointer transition-all duration-200 ease-in-out text-sm hover:bg-[#e3e5e8] ${
+                  reaction.users.includes(user?.uid || "") ? "bg-[#e7e9fd] border-[#7983f5]" : ""
                 }`}
               >
-                <span className="reactionEmoji">{emoji}</span>
-                <span className="reactionCount">({reaction.users.length})</span>
+                <span className="text-base">{emoji}</span>
+                <span className="text-xs text-[#4f545c] min-w-3 text-center">({reaction.users.length})</span>
               </button>
             ))}
           </div>
-          <div className="reactionControls">
+          <div className="relative inline-block ml-1">
             <button
-              className="addReactionButton"
+              className="p-1 text-gray-700 cursor-pointer border-none bg-transparent rounded opacity-80 transition-all duration-200 ease-in-out hover:text-black hover:bg-gray-200"
               onClick={() => setShowEmojiPicker(!showEmojiPicker)}
             >
               <SentimentSatisfiedAltIcon />
             </button>
             {showEmojiPicker && (
-              <div className="emojiPicker" ref={emojiPickerRef}>
+              <div className="rounded-2xl bg-[#f2f3f5] border border-transparent" ref={emojiPickerRef}>
                 <EmojiPicker
                   onEmojiClick={(emoji) => {
                     addReaction(emoji.emoji);
@@ -285,9 +284,9 @@ const ChatMessage = (props: Props) => {
             )}
           </div>
         </div>
-        <div className="imageMessage">
+        <div className="w-1/2 mt-2.5">
           {/* fileURLが存在する場合のみ画像を表示 */}
-          {fileURL && <img src={fileURL} alt="" className="images" />}
+          {fileURL && <img src={fileURL} alt="" className="w-full h-auto rounded" />}
         </div>
       </div>
     </div>

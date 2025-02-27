@@ -85,7 +85,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-[#36393f] text-white border-none">
+      <DialogContent className="bg-white text-black border border-gray-200">
         <DialogHeader>
           <DialogTitle>サーバーを作成</DialogTitle>
         </DialogHeader>
@@ -103,7 +103,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
                   className="w-24 h-24 rounded-full object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-[#202225] flex items-center justify-center text-[#dcddde] cursor-pointer">
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer">
                   <span>画像を選択</span>
                 </div>
               )}
@@ -125,7 +125,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
               onChange={(e) => setServerName(e.target.value)}
               placeholder="サーバー名"
               required
-              className="bg-[#202225] border-none text-[#dcddde]"
+              className="bg-white border border-gray-300 text-black"
             />
           </div>
           
@@ -143,7 +143,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
               variant="link"
               onClick={onClose}
               disabled={isLoading}
-              className="text-white border-none cursor-pointer"
+              className="text-gray-700 border-none cursor-pointer"
             >
               キャンセル
             </Button>
