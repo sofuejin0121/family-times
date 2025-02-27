@@ -196,7 +196,7 @@ const ChatMessage = (props: Props) => {
               <div className="flex gap-1 opacity-0 invisible transition-all duration-200 ease-in-out group-hover:opacity-100 group-hover:visible">
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
-                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                    <button className="inline-fle cursor-pointer items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
                       <EditIcon fontSize="small" />
                     </button>
                   </DialogTrigger>
@@ -229,7 +229,7 @@ const ChatMessage = (props: Props) => {
                   onOpenChange={setDeleteDialogOpen}
                 >
                   <DialogTrigger asChild>
-                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 hover:text-[#ed4245] hover:bg-opacity-10">
+                    <button className="inline-flex items-center cursor-pointer justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 hover:text-[#ed4245] hover:bg-opacity-10">
                       <DeleteIcon fontSize="small" />
                     </button>
                   </DialogTrigger>

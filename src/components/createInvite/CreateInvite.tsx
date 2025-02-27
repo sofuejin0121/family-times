@@ -83,7 +83,7 @@ export const CreateInvite = () => {
               size="icon"
               onClick={handleOpen}
               disabled={isLoading}
-              className="text-black"
+              className="text-black cursor-pointer"
             >
               <UserPlus className="h-5 w-5" />
             </Button>
