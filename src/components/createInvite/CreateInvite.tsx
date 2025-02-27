@@ -77,7 +77,7 @@ export const CreateInvite = () => {
     <div>
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
+          <TooltipTrigger>
             <Button
               variant="ghost"
               size="icon"
@@ -120,23 +120,15 @@ export const CreateInvite = () => {
                       className="font-mono text-sm"
                     />
                   </div>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={handleCopyCode}
-                          className="flex-shrink-0"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>URLをコピー</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={handleCopyCode}
+                    className="flex-shrink-0"
+                    title="URLをコピー"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">
