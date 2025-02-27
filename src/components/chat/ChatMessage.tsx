@@ -63,12 +63,12 @@ const ChatMessage = (props: Props) => {
   useEffect(() => {
     const fetchURL = async () => {
       // photoIdが存在し、空でない場合のみURLを取得
-      if (photoId && photoId.trim() !== '') {
+      if (photoId && photoId.trim() !== "") {
         try {
           const photoURL = await getDownloadURL(ref(storage, photoId));
           setFileURL(photoURL);
         } catch (error) {
-          console.log('画像URLの取得に失敗しました:', error);
+          console.log("画像URLの取得に失敗しました:", error);
         }
       }
     };
@@ -84,11 +84,11 @@ const ChatMessage = (props: Props) => {
             "servers",
             serverId,
             "channels",
-          String(channelId),
-          "messages",
-          props.id
-        )
-      );
+            String(channelId),
+            "messages",
+            props.id
+          )
+        );
         setDeleteDialogOpen(false);
       } catch (error) {
         console.log("メッセージの削除に失敗しました:", error);
@@ -178,8 +178,8 @@ const ChatMessage = (props: Props) => {
   return (
     <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white">
       <div className="flex-shrink-0">
-        <Avatar>
-          <AvatarImage src={props.user.photo}/>
+        <Avatar className="w-11 h-11">
+          <AvatarImage src={props.user.photo}  className="object-cover "/>
         </Avatar>
       </div>
       <div className="flex-1 p-2.5 overflow-hidden">
@@ -224,7 +224,10 @@ const ChatMessage = (props: Props) => {
                   </DialogContent>
                 </Dialog>
 
-                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                <Dialog
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                >
                   <DialogTrigger asChild>
                     <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 hover:text-[#ed4245] hover:bg-opacity-10">
                       <DeleteIcon fontSize="small" />
@@ -241,7 +244,10 @@ const ChatMessage = (props: Props) => {
                       <Button variant="default" onClick={deleteMessage}>
                         削除する
                       </Button>
-                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteDialogOpen(false)}
+                      >
                         戻る
                       </Button>
                     </DialogFooter>
@@ -257,11 +263,15 @@ const ChatMessage = (props: Props) => {
                 key={emoji}
                 onClick={() => addReaction(emoji)}
                 className={`flex items-center gap-1 p-1 px-2 rounded-lg bg-[#f2f3f5] border border-transparent cursor-pointer transition-all duration-200 ease-in-out text-sm hover:bg-[#e3e5e8] ${
-                  reaction.users.includes(user?.uid || "") ? "bg-[#e7e9fd] border-[#7983f5]" : ""
+                  reaction.users.includes(user?.uid || "")
+                    ? "bg-[#e7e9fd] border-[#7983f5]"
+                    : ""
                 }`}
               >
                 <span className="text-base">{emoji}</span>
-                <span className="text-xs text-[#4f545c] min-w-3 text-center">({reaction.users.length})</span>
+                <span className="text-xs text-[#4f545c] min-w-3 text-center">
+                  ({reaction.users.length})
+                </span>
               </button>
             ))}
           </div>
@@ -273,7 +283,10 @@ const ChatMessage = (props: Props) => {
               <SentimentSatisfiedAltIcon />
             </button>
             {showEmojiPicker && (
-              <div className="rounded-2xl bg-[#f2f3f5] border border-transparent" ref={emojiPickerRef}>
+              <div
+                className="rounded-2xl bg-[#f2f3f5] border border-transparent"
+                ref={emojiPickerRef}
+              >
                 <EmojiPicker
                   onEmojiClick={(emoji) => {
                     addReaction(emoji.emoji);
@@ -286,7 +299,9 @@ const ChatMessage = (props: Props) => {
         </div>
         <div className="w-1/2 mt-2.5">
           {/* fileURLが存在する場合のみ画像を表示 */}
-          {fileURL && <img src={fileURL} alt="" className="w-full h-auto rounded" />}
+          {fileURL && (
+            <img src={fileURL} alt="" className="w-full h-auto rounded" />
+          )}
         </div>
       </div>
     </div>

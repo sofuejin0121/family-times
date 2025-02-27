@@ -83,12 +83,12 @@ export const CreateInvite = () => {
               size="icon"
               onClick={handleOpen}
               disabled={isLoading}
-              className="text-white"
+              className="text-black"
             >
               <UserPlus className="h-5 w-5" />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent side="top">
             <p>メンバーを招待</p>
           </TooltipContent>
         </Tooltip>

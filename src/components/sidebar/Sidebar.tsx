@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
+import { Avatar, AvatarImage } from "../ui/avatar";
 const Sidebar = () => {
   // const serverName = useAppSelector((state) => state.server.serverName)
   const user = useAppSelector((state) => state.user.user);
@@ -113,21 +113,13 @@ const Sidebar = () => {
           </div>
           <div className="absolute bottom-0 flex items-center justify-between w-[93%] pb-[10px] border-t border-gray-300 pt-[10px] -ml-[3px] bg-white">
             <div className="flex items-center">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <img
-                      src={user?.photo}
-                      alt=""
-                      className="w-[60px] rounded-full cursor-pointer"
-                      onClick={() => setIsUserEditOpen(true)}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>ユーザー情報の編集</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <Avatar className="w-11 h-11">
+                <AvatarImage
+                  src={user?.photo}
+                  className="object-cover cursor-pointer"
+                  onClick={() => setIsUserEditOpen(true)}
+                />
+              </Avatar>
               <div className="flex items-center justify-between w-full">
                 <div className="ml-[5px] space-y-1">
                   <h4 className="text-black font-medium">

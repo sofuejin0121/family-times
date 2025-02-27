@@ -2,7 +2,7 @@ import ChatHeader from "./ChatHeader";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
 import ChatMessage from "./ChatMessage";
 import { useAppSelector } from "../../app/hooks";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   addDoc,
   collection,
@@ -13,7 +13,7 @@ import {
 import { db, storage } from "../../firebase";
 import useMessage from "../../hooks/useMessage";
 import MemberSidebar from "../sidebar/MemberSidebar";
-import { ref, uploadBytes } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
 const Chat = () => {
@@ -52,35 +52,47 @@ const Chat = () => {
     [channelId, inputText, serverId, user]
   );
 
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files) {
+      console.log("ファイルが選択されました", e.target.files);
+      if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0];
-        const photoId = uuid4();
-        const FileRef = ref(storage, photoId + file.name);
-        await uploadBytes(FileRef, file).then(() => {});
+        try {
+          const photoId = uuid4();
+          const fileName = photoId + file.name;
+          const FileRef = ref(storage, fileName);
 
-        if (serverId !== null && channelId !== null) {
-          await addDoc(
-            collection(
-              db,
-              "servers",
-              serverId,
-              "channels",
-              String(channelId),
-              "messages"
-            ),
-            {
-              message: null,
-              timestamp: serverTimestamp(),
-              user: user,
-              photoId: photoId + file.name,
-            }
+          // アップロード処理
+          const uploadTask = await uploadBytes(FileRef, file);
+          const downloadURL = await getDownloadURL(FileRef);
+          console.log(
+            "ファイルがアップロードされました",
+            uploadTask,
+            downloadURL
           );
+
+          // アップロードが成功したらFirestoreにメッセージを追加
+          if (serverId !== null && channelId !== null) {
+            await addDoc(
+              collection(
+                db,
+                "servers",
+                serverId,
+                "channels",
+                String(channelId),
+                "messages"
+              ),
+              {
+                message: null,
+                timestamp: serverTimestamp(),
+                user: user,
+                photoId: fileName,
+              }
+            );
+            console.log("メッセージが追加されました");
+          }
+        } catch (error) {
+          console.error("ファイルアップロードエラー:", error);
         }
       }
     },
@@ -96,6 +108,14 @@ const Chat = () => {
       return true;
     }
   });
+
+  useEffect(() => {
+    console.log(
+      "fileInputRef初期化:",
+      fileInputRef.current ? "存在します" : "nullです"
+    );
+  }, []);
+
   return (
     <div className="flex w-full h-full">
       <div className="flex flex-col flex-grow h-screen">
@@ -126,19 +146,21 @@ const Chat = () => {
           ))}
         </div>
         {/* chatInput */}
-        <div className="flex items-center justify-between p-2.5  rounded-lg mx-4 mb-6 text-[#dcddde]">
-          <Input
+        <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4 mb-6 text-gray-700">
+          <input
             type="file"
             className="hidden"
+            id="file-input"
             ref={fileInputRef}
             onChange={handleFileChange}
+            accept="image/*"
           />
-          <button
-            onClick={handleButtonClick}
-            className="bg-transparent border-none text-[#b9bbbe] px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-[#dcddde]"
+          <label
+            htmlFor="file-input"
+            className="bg-transparent border-none text-gray-500 px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-gray-700"
           >
             <AddCircleOutlineIcon className="text-2xl" />
-          </button>
+          </label>
           <form className="flex-grow">
             <Input
               type="text"
@@ -149,6 +171,7 @@ const Chat = () => {
               }
               onChange={(e) => setInputText(e.target.value)}
               value={inputText}
+              className="bg-white text-black border border-gray-300"
             />
             <button
               type="submit"

@@ -1,6 +1,7 @@
 import useUsers from "../../hooks/useUsers";
 import useServer from "../../hooks/useServer";
 import { useAppSelector } from "../../app/hooks";
+import { Avatar, AvatarImage } from "../ui/avatar";
 const MemberSidebar = () => {
   const { documents: users } = useUsers();
   const serverId = useAppSelector((state) => state.server.serverId);
@@ -20,7 +21,9 @@ const MemberSidebar = () => {
           .filter((user) => uniqueIds.includes(user.uid))
           .map((user) => (
             <div className="flex items-center p-[10px_15px]" key={user.uid}>
-              <img src={user.photoURL} className="w-[50px] mr-[10px]" />
+              <Avatar className="w-11 h-11">
+                <AvatarImage src={user.photoURL} className="object-cover" />
+              </Avatar>
               <div className="flex items-center gap-[5px]">
                 <h4 className="text-black">{user.displayName}</h4>
               </div>
