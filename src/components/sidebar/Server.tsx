@@ -6,6 +6,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import useChannel from "../../hooks/useChannel";
+import { setChannelInfo } from "../../features/channelSlice";
 
 type Props = {
   id: string;
@@ -17,6 +19,26 @@ type Props = {
 const Server = (props: Props) => {
   const { id, name, imageUrl } = props;
   const dispatch = useAppDispatch();
+  const { documents: channels } = useChannel();
+
+  const handleServerClick = () => {
+    dispatch(
+      setServerInfo({
+        serverId: id,
+        serverName: name,
+      })
+    );
+    //そのサーバーにチャンネルが存在する場合
+    if (channels.length > 0) {
+      //最初のチャンネル(channels[0])を選択状態にする
+      dispatch(
+        setChannelInfo({
+          channelId: channels[0].id,
+          channelName: channels[0].channel.channelName,
+        })
+      );
+    }
+  };
 
   return (
     <TooltipProvider>
@@ -24,14 +46,7 @@ const Server = (props: Props) => {
         <TooltipTrigger>
           <div
             className="group w-12 h-12 rounded-[24px] mb-2 relative bg-zinc-700 cursor-pointer transition-all duration-200 ease-in-out hover:rounded-[16px] hover:bg-indigo-500 hover:scale-105"
-            onClick={() =>
-              dispatch(
-                setServerInfo({
-                  serverId: id,
-                  serverName: name,
-                })
-              )
-            }
+            onClick={handleServerClick}
           >
             {imageUrl ? (
               <img

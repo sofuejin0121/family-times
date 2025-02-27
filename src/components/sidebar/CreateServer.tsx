@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useAppSelector } from "../../app/hooks";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../firebase";
-import { Box, Button, Modal, Typography } from "@mui/material";
+import { Box, Button, Modal, Typography, CircularProgress } from "@mui/material";
 import { styled } from "@mui/material/styles";
 
 // モーダルのスタイル
@@ -69,6 +69,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
   const [serverName, setServerName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const user = useAppSelector((state) => state.user.user);
   //ファイルが選択された時に実行される関数
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,32 +92,20 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    //フォームのデフォルトの送信を防止
-    //ページがリロードされるのを防ぐ
-    e.preventDefault(); 
+    e.preventDefault();
     if (!serverName || !user) return;
 
-    try {
-      //アップロードした画像のURLを保存する変数
-      let imageUrl = "";
-      //画像ファイルが選択されている場合、Firebase Storageにアップロード
-      if (selectedFile) {
-        const storage = getStorage(); //Firebase Storageの参照
-        //ストレージのパスを生成(ユニークな名前にするために、タイムスタンプを追加)
-        const storageRef = ref(
-          storage,
-          //保存する画像の名前とパスを設定
-          // 例: "servers/1234567890_image.jpg"
+    setIsLoading(true);
 
-          `servers/${Date.now()}_${selectedFile?.name}`
-        );
-        //画像をアップロード
+    try {
+      let imageUrl = "";
+      if (selectedFile) {
+        const storage = getStorage();
+        const storageRef = ref(storage, `servers/${Date.now()}_${selectedFile?.name}`);
         const snapshot = await uploadBytes(storageRef, selectedFile);
-        //アップロードした画像のURLを保存
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
-      //Firestoreにサーバー情報保存
       await addDoc(collection(db, "servers"), {
         name: serverName,
         imageUrl,
@@ -127,13 +116,15 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
           },
         },
       });
-      //フォームのリセット
+
       setServerName("");
       setSelectedFile(null);
       setPreviewUrl(null);
       onClose();
     } catch (error) {
       console.log("サーバー作成に失敗しました:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
   //モーダルが非表示の場合何も表示しない
@@ -170,6 +161,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
           <ButtonGroup>
             <Button
               onClick={onClose}
+              disabled={isLoading}
               sx={{
                 backgroundColor: "#4f545c",
                 color: "white",
@@ -182,6 +174,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
             </Button>
             <Button
               type="submit"
+              disabled={isLoading || !serverName}
               sx={{
                 backgroundColor: "#7289da",
                 color: "white",
@@ -190,7 +183,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
                 },
               }}
             >
-              作成
+              {isLoading ? <CircularProgress size={24} color="inherit" /> : "作成"}
             </Button>
           </ButtonGroup>
         </Box>
