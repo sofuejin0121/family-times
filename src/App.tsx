@@ -7,6 +7,7 @@ import { auth } from "./firebase";
 import { login, logout } from "./features/userSlice";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { InvitePage } from "./pages/InvitePage";
+import { Toaster } from "@/components/ui/sonner";
 
 function App() {
   const user = useAppSelector((state) => state.user.user);
@@ -37,6 +38,7 @@ function App() {
         <Routes>
           <Route path="*" element={<Login />} />
         </Routes>
+        <Toaster />
       </BrowserRouter>
     );
   }
@@ -46,6 +48,7 @@ function App() {
       <Routes>
         <Route path="*" element={<InvitePage />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

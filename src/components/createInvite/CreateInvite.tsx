@@ -2,40 +2,30 @@ import { useCallback, useState } from "react";
 import { useAppSelector } from "../../app/hooks";
 import { auth } from "../../firebase";
 import { createServerInvite } from "../../utils/generateInvite";
-import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import { UserPlus, Copy } from "lucide-react";
 import {
-  Box,
-  Button,
-  IconButton,
-  Modal,
-  Paper,
-  Snackbar,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
   Tooltip,
-  Typography,
-  Link,
-} from "@mui/material";
-
-const style = {
-  position: "absolute" as const,
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  borderRadius: 2,
-  boxShadow: 24,
-  p: 4,
-};
-
-import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import React from "react";
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 export const CreateInvite = () => {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showCopySuccess, setShowCopySuccess] = useState(false);
   const serverId = useAppSelector((state) => state.server.serverId);
 
   const handleOpen = useCallback(async () => {
@@ -60,6 +50,10 @@ export const CreateInvite = () => {
       setError("招待コードの作成に失敗しました");
       setOpen(true);
       console.error(err);
+      
+      toast.error("招待コードの作成に失敗しました", {
+        duration: 3000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -73,98 +67,91 @@ export const CreateInvite = () => {
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(inviteCode);
-    setShowCopySuccess(true);
+    
+    toast.success("招待URLをコピーしました", {
+      duration: 2000,
+    });
   };
 
   return (
     <div>
-      <Tooltip title="メンバーを招待" placement="bottom">
-        <IconButton onClick={handleOpen} disabled={isLoading}>
-          <PersonAddIcon />
-        </IconButton>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleOpen}
+              disabled={isLoading}
+              className="text-white"
+            >
+              <UserPlus className="h-5 w-5" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>メンバーを招待</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
 
-      <Modal
-        open={open}
-        onClose={handleClose}
-        aria-labelledby="invite-modal-title"
-      >
-        <Box sx={style}>
-          <Typography
-            id="invite-modal-title"
-            variant="h6"
-            component="h2"
-            sx={{ mb: 3 }}
-          >
-            サーバーへ招待
-          </Typography>
-
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>サーバーへ招待</DialogTitle>
+          </DialogHeader>
+          
           {error ? (
-            <Typography color="error">{error}</Typography>
+            <p className="text-destructive">{error}</p>
           ) : (
             <>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
                   以下の招待URLをクリックまたは共有してメンバーを招待できます
-                </Typography>
-
-                <Paper
-                  variant="outlined"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    p: 1,
-                    backgroundColor: "background.default",
-                  }}
-                >
-                  <Link
-                    href={inviteCode}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    sx={{
-                      flex: 1,
-                      fontFamily: "monospace",
-                      fontSize: "1rem",
-                      p: 1,
-                      wordBreak: "break-all",
-                      color: "primary.main",
-                      textDecoration: "none",
-                      "&:hover": {
-                        textDecoration: "underline",
-                      },
-                    }}
-                  >
-                    {inviteCode}
-                  </Link>
-                  <Tooltip title="URLをコピー">
-                    <IconButton
-                      onClick={handleCopyCode}
-                      size="small"
-                      sx={{ mx: 1 }}
-                    >
-                      <ContentCopyIcon fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                </Paper>
-              </Box>
-
-              <Typography variant="caption" color="text.secondary">
+                </p>
+                <div className="flex items-center space-x-2">
+                  <div className="grid flex-1 gap-2">
+                    <Label htmlFor="invite-link" className="sr-only">
+                      招待リンク
+                    </Label>
+                    <Input
+                      id="invite-link"
+                      readOnly
+                      value={inviteCode}
+                      className="font-mono text-sm"
+                    />
+                  </div>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          onClick={handleCopyCode}
+                          className="flex-shrink-0"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>URLをコピー</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
                 この招待URLは24時間有効です
-              </Typography>
+              </p>
             </>
           )}
-          <Box sx={{ mt: 3, display: "flex", justifyContent: "flex-end" }}>
-            <Button onClick={handleClose}>閉じる</Button>
-          </Box>
-        </Box>
-      </Modal>
-
-      <Snackbar
-        open={showCopySuccess}
-        autoHideDuration={2000}
-        onClose={() => setShowCopySuccess(false)}
-        message="招待URLをコピーしました"
-      />
+          
+          <DialogFooter className="sm:justify-end">
+            <Button variant="secondary" onClick={handleClose}>
+              閉じる
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

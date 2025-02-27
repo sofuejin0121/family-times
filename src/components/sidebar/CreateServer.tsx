@@ -3,63 +3,18 @@ import { useState } from "react";
 import { useAppSelector } from "../../app/hooks";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../firebase";
-import { Box, Button, Modal, Typography, CircularProgress } from "@mui/material";
-import { styled } from "@mui/material/styles";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
-// モーダルのスタイル
-const style = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "#36393f", // Discordライクな背景色
-  border: "none",
-  borderRadius: "5px",
-  boxShadow: 24,
-  p: 4,
-  color: "white",
-} as const;
-
-// スタイル付きのコンポーネント
-const ImageUploadLabel = styled("label")({
-  display: "block",
-  cursor: "pointer",
-  marginBottom: "1rem",
-  "& img": {
-    width: "100px",
-    height: "100px",
-    borderRadius: "50%",
-    objectFit: "cover",
-  },
-});
-
-const UploadPlaceholder = styled("div")({
-  width: "100px",
-  height: "100px",
-  borderRadius: "50%",
-  backgroundColor: "#202225",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#dcddde",
-});
-
-const StyledInput = styled("input")({
-  width: "100%",
-  padding: "10px",
-  marginBottom: "1rem",
-  backgroundColor: "#202225",
-  border: "none",
-  borderRadius: "3px",
-  color: "#dcddde",
-});
-
-const ButtonGroup = styled("div")({
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "10px",
-});
 interface CreateServerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -127,67 +82,74 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
       setIsLoading(false);
     }
   };
-  //モーダルが非表示の場合何も表示しない
-  if (!isOpen) return null;
 
   return (
-    <Modal open={isOpen} onClose={onClose}>
-      <Box sx={style}>
-        <Typography>サーバーを作成</Typography>
-        <Box component="form" onSubmit={handleSubmit}>
-          <ImageUploadLabel>
-            {previewUrl ? (
-              <img src={previewUrl} alt="プレビュー" />
-            ) : (
-              <UploadPlaceholder>
-                <span>画像を選択</span>
-              </UploadPlaceholder>
-            )}
-            <input
-              type="file"
-              accept="image/*" //画像ファイルのみ許可
-              onChange={handleFileSelect}
-              hidden
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-[#36393f] text-white border-none">
+        <DialogHeader>
+          <DialogTitle>サーバーを作成</DialogTitle>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex justify-center">
+            <Label 
+              htmlFor="server-image" 
+              className="cursor-pointer block"
+            >
+              {previewUrl ? (
+                <img 
+                  src={previewUrl} 
+                  alt="プレビュー" 
+                  className="w-24 h-24 rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-[#202225] flex items-center justify-center text-[#dcddde] cursor-pointer">
+                  <span>画像を選択</span>
+                </div>
+              )}
+              <input
+                id="server-image"
+                type="file"
+                accept="image/*"
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+            </Label>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="server-name">サーバー名</Label>
+            <Input
+              id="server-name"
+              value={serverName}
+              onChange={(e) => setServerName(e.target.value)}
+              placeholder="サーバー名"
+              required
+              className="bg-[#202225] border-none text-[#dcddde]"
             />
-          </ImageUploadLabel>
-
-          <StyledInput
-            type="text"
-            value={serverName}
-            onChange={(e) => setServerName(e.target.value)}
-            placeholder="サーバー名"
-            required
-          />
-          <ButtonGroup>
+          </div>
+          
+          <DialogFooter className="flex justify-end gap-2 mt-4">
             <Button
+              variant="default"
+              type="submit"
+              disabled={isLoading || !serverName}
+              className="text-white cursor-pointer"
+            >
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "作成"}
+            </Button>
+            <Button
+              type="button"
+              variant="link"
               onClick={onClose}
               disabled={isLoading}
-              sx={{
-                backgroundColor: "#4f545c",
-                color: "white",
-                "&:hover": {
-                  backgroundColor: "#36939f",
-                },
-              }}
+              className="text-white border-none cursor-pointer"
             >
               キャンセル
             </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !serverName}
-              sx={{
-                backgroundColor: "#7289da",
-                color: "white",
-                "&:hover": {
-                  backgroundColor: "#677bc4",
-                },
-              }}
-            >
-              {isLoading ? <CircularProgress size={24} color="inherit" /> : "作成"}
-            </Button>
-          </ButtonGroup>
-        </Box>
-      </Box>
-    </Modal>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };

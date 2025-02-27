@@ -152,7 +152,7 @@ const Chat = () => {
         </div>
       </div>
       <div className="memberList">
-        <MemberSidebar />
+        <MemberSidebar key={channelId}/>
       </div>
     </div>
   );

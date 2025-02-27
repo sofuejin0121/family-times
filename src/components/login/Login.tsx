@@ -1,8 +1,8 @@
-import "./Login.scss";
-import { Button } from "@mui/material";
 import { auth, db, provider } from "../../firebase";
 import { signInWithPopup } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
+
 const Login = () => {
   const signIn = async() => {
     const credential = await signInWithPopup(auth, provider).catch((err) => {
@@ -20,12 +20,18 @@ const Login = () => {
   };
 
   return (
-    <div className="login">
+    <div className="flex flex-col justify-center items-center w-full h-screen gap-[30px]">
       <div className="loginLogo">
-        <img src="./discordIcon.png" alt="" />
+        <img src="./discordIcon.png" alt="" className="object-cover h-[150px]" />
       </div>
 
-      <Button onClick={signIn}>ログイン</Button>
+      <Button 
+        variant="default" 
+        className="w-[200px]  text-[#eff2f5] font-extrabold cursor-pointer" 
+        onClick={signIn}
+      >
+        ログイン
+      </Button>
     </div>
   );
 };

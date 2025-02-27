@@ -1,5 +1,4 @@
 import "./ChatMessage.scss";
-import { Avatar } from "@mui/material";
 import {
   deleteDoc,
   doc,
@@ -12,27 +11,21 @@ import { db, storage } from "../../firebase";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { getDownloadURL, ref } from "firebase/storage";
 import { useEffect, useRef, useState } from "react";
-import Box from "@mui/material/Box";
-import Modal from "@mui/material/Modal";
-import Fade from "@mui/material/Fade";
-import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
 import EmojiPicker from "emoji-picker-react";
 import SentimentSatisfiedAltIcon from "@mui/icons-material/SentimentSatisfiedAlt";
 import EditIcon from "@mui/icons-material/Edit";
-
-const style = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 400,
-  bgcolor: "background.paper",
-  border: "2px solid #000",
-  boxShadow: 24,
-  p: 4,
-};
-
+import { Button } from "../ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Input } from "../ui/input";
+import { Avatar, AvatarImage } from "../ui/avatar";
 type Props = {
   timestamp: Timestamp;
   message: string;
@@ -56,7 +49,8 @@ type Props = {
 const ChatMessage = (props: Props) => {
   const { timestamp, photoId, id } = props;
   const [fileURL, setFileURL] = useState<string>();
-  const [openModal, setOpenModal] = useState<boolean>(false);
+  const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const channelId = useAppSelector((state) => state.channel.channelId);
   const serverId = useAppSelector((state) => state.server.serverId);
   //絵文字ピッカーの表示/非表示を管理
@@ -64,41 +58,43 @@ const ChatMessage = (props: Props) => {
   //絵文字ピッカーのDOM要素への参照を作成
   //useRef コンポーネントのレンダリング間で値を保持するため
   const emojiPickerRef = useRef<HTMLDivElement>(null);
-  const [isEditing, setIsEditing] = useState(false);
   const [editedMessage, setEditedMessage] = useState(props.message);
   const user = useAppSelector((state) => state.user.user);
 
   useEffect(() => {
     const fetchURL = async () => {
-      const photoURL = await getDownloadURL(ref(storage, photoId));
-      setFileURL(photoURL);
+      // photoIdが存在し、空でない場合のみURLを取得
+      if (photoId && photoId.trim() !== '') {
+        try {
+          const photoURL = await getDownloadURL(ref(storage, photoId));
+          setFileURL(photoURL);
+        } catch (error) {
+          console.log('画像URLの取得に失敗しました:', error);
+        }
+      }
     };
     fetchURL();
   }, [photoId]);
 
   const deleteMessage = async () => {
     if (serverId !== null && channelId !== null && id !== null) {
-      await deleteDoc(
-        doc(
-          db,
-          "servers",
-          serverId,
-          "channels",
+      try {
+        await deleteDoc(
+          doc(
+            db,
+            "servers",
+            serverId,
+            "channels",
           String(channelId),
           "messages",
           props.id
         )
       );
-      handleCloseModal();
+        setDeleteDialogOpen(false);
+      } catch (error) {
+        console.log("メッセージの削除に失敗しました:", error);
+      }
     }
-  };
-
-  const handleOpenModal = () => {
-    setOpenModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setOpenModal(false);
   };
 
   const addReaction = async (emoji: string) => {
@@ -155,7 +151,7 @@ const ChatMessage = (props: Props) => {
           message: editedMessage,
           isEdited: true,
         });
-        setIsEditing(false);
+        setEditDialogOpen(false);
       } catch (error) {
         console.log("メッセージの更新に失敗しました:", error);
       }
@@ -179,22 +175,13 @@ const ChatMessage = (props: Props) => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  const modalStyle = {
-    position: "absolute",
-    top: "50%",
-    left: "50%",
-    transform: "translate(-50%, -50%)",
-    width: 400,
-    bgcolor: "background.paper",
-    borderRadius: "8px",
-    boxShadow: 24,
-    p: 4,
-  };
 
   return (
     <div className="message">
       <div className="avatarContainer">
-        <Avatar src={props.user.photo} />
+        <Avatar>
+          <AvatarImage src={props.user.photo}/>
+        </Avatar>
       </div>
       <div className="messageInfo">
         <h4>
@@ -208,15 +195,59 @@ const ChatMessage = (props: Props) => {
             <p>{props.message}</p>
             {props.user.uid === user?.uid && (
               <div className="messageActions">
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="editButton"
-                >
-                  <EditIcon fontSize="small" />
-                </button>
-                <button onClick={handleOpenModal} className="deleteButton">
-                  <DeleteIcon fontSize="small" />
-                </button>
+                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                      <EditIcon fontSize="small" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>メッセージを編集</DialogTitle>
+                    </DialogHeader>
+                    <Input
+                      value={editedMessage}
+                      onChange={(e) => setEditedMessage(e.target.value)}
+                      className="editInput"
+                      autoFocus
+                    />
+                    <DialogFooter>
+                      <Button variant="default" onClick={handleEdit}>
+                        保存
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setEditDialogOpen(false)}
+                      >
+                        キャンセル
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
+                      <DeleteIcon fontSize="small" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>メッセージを削除しますか？</DialogTitle>
+                      <DialogDescription>
+                        この操作は元に戻すことはできません。
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button variant="default" onClick={deleteMessage}>
+                        削除する
+                      </Button>
+                      <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+                        戻る
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
           </div>
@@ -254,82 +285,11 @@ const ChatMessage = (props: Props) => {
             )}
           </div>
         </div>
-        <Modal open={openModal} onClose={handleCloseModal}>
-          <Fade in={openModal}>
-            <Box sx={style}>
-              <Typography
-                id="transition-modal-title"
-                variant="h6"
-                component="h2"
-              >
-                メッセージを削除しますか？
-              </Typography>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  mt: 2,
-                }}
-              >
-                <Button
-                  onClick={deleteMessage}
-                  variant="outlined"
-                  color="error"
-                >
-                  削除する
-                </Button>
-                <Button
-                  onClick={handleCloseModal}
-                  variant="outlined"
-                  color="primary"
-                >
-                  戻る
-                </Button>
-              </Box>
-            </Box>
-          </Fade>
-        </Modal>
         <div className="imageMessage">
-          <img src={fileURL} alt="" className="images" />
+          {/* fileURLが存在する場合のみ画像を表示 */}
+          {fileURL && <img src={fileURL} alt="" className="images" />}
         </div>
       </div>
-
-      <Modal
-        open={isEditing}
-        onClose={() => {
-          setIsEditing(false);
-          setEditedMessage(props.message);
-        }}
-      >
-        <Box sx={modalStyle}>
-          <div className="modalContent">
-            <h2>メッセージを編集</h2>
-            <div className="editContainer">
-              <input
-                type="text"
-                value={editedMessage}
-                onChange={(e) => setEditedMessage(e.target.value)}
-                className="editInput"
-                autoFocus
-              />
-              <div className="editButtons">
-                <button onClick={handleEdit} className="saveButton">
-                  保存
-                </button>
-                <button
-                  onClick={() => {
-                    setIsEditing(false);
-                    setEditedMessage(props.message);
-                  }}
-                  className="cancelButton"
-                >
-                  キャンセル
-                </button>
-              </div>
-            </div>
-          </div>
-        </Box>
-      </Modal>
     </div>
   );
 };
