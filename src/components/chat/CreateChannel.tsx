@@ -8,18 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import AddIcon from "@mui/icons-material/Add";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-interface CreateChannelProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export const CreateChannel = ({ isOpen, onClose }: CreateChannelProps) => {
+export const CreateChannel = () => {
   const [channelName, setChannelName] = useState("");
+  const [open, setOpen] = useState(false);
   const serverId = useAppSelector((state) => state.server.serverId);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,22 +35,39 @@ export const CreateChannel = ({ isOpen, onClose }: CreateChannelProps) => {
         timestamp: new Date(),
       });
       setChannelName("");
-      onClose();
+      setOpen(false);
     } catch (error) {
       console.log("チャンネル作成に失敗しました:", error);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start px-2"
+              >
+                <AddIcon fontSize="small" />
+              </Button>
+              <TooltipContent>
+                <p>チャンネルを作成</p>
+              </TooltipContent>
+            </TooltipTrigger>
+          </Tooltip>
+        </TooltipProvider>
+      </DialogTrigger>
       <DialogContent className="bg-white text-black border border-gray-200">
         <DialogHeader>
           <DialogTitle>チャンネルを作成</DialogTitle>
         </DialogHeader>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="channel-name">チャンネル名</Label>
             <Input
               id="channel-name"
               value={channelName}
@@ -57,20 +77,20 @@ export const CreateChannel = ({ isOpen, onClose }: CreateChannelProps) => {
               className="bg-white border border-gray-300 text-black"
             />
           </div>
-          
+
           <DialogFooter className="flex justify-end gap-2 mt-4">
             <Button
               variant="default"
               type="submit"
               disabled={!channelName}
-              className="bg-blue-500 text-white cursor-pointer"
+              className="bg-black text-white cursor-pointer"
             >
               作成
             </Button>
             <Button
               type="button"
               variant="link"
-              onClick={onClose}
+              onClick={() => setOpen(false)}
               className="text-gray-700 border-none cursor-pointer"
             >
               キャンセル
@@ -80,4 +100,4 @@ export const CreateChannel = ({ isOpen, onClose }: CreateChannelProps) => {
       </DialogContent>
     </Dialog>
   );
-}; 
+};

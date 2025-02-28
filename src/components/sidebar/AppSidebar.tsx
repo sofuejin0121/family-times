@@ -1,9 +1,8 @@
 import { useAppSelector } from "../../app/hooks";
-import { auth, db } from "../../firebase";
-import { useCallback, useState } from "react";
+import { auth } from "../../firebase";
+import { useState } from "react";
 import useChannel from "../../hooks/useChannel";
 import useServer from "../../hooks/useServer";
-import { addDoc, collection } from "firebase/firestore";
 import { LogOut } from "lucide-react";
 import { Avatar, AvatarImage } from "../ui/avatar";
 import Server from "./Server";
@@ -12,7 +11,7 @@ import { CreateInvite } from "../createInvite/CreateInvite";
 import { CreateServer } from "./CreateServer";
 import UserEdit from "./UserEdit";
 import AddIcon from "@mui/icons-material/Add";
-
+import {CreateChannel} from "../chat/CreateChannel"
 import {
   Sidebar,
   SidebarContent,
@@ -49,17 +48,6 @@ export function AppSidebar({
   const { documents: servers } = useServer();
   const [isCreateServerOpen, setIsCreateServerOpen] = useState(false);
   const [isUserEditOpen, setIsUserEditOpen] = useState(false);
-
-  const addChannel = useCallback(async () => {
-    const channelName: string | null = prompt("新しいチャンネル作成");
-
-    if (channelName && serverId !== null) {
-      await addDoc(collection(db, "servers", serverId, "channels"), {
-        channelName: channelName,
-        timestamp: new Date(),
-      });
-    }
-  }, [serverId]);
 
   // サーバーが選択されているかチェック
   const isServerSelected = Boolean(serverId);
@@ -146,30 +134,9 @@ export function AppSidebar({
                     <SidebarGroupLabel className="flex items-center gap-1">
                       <span>テキストチャンネル</span>
                     </SidebarGroupLabel>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 cursor-pointer"
-                            onClick={addChannel}
-                            disabled={!isServerSelected}
-                          >
-                            <AddIcon fontSize="small" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right">
-                          <p>
-                            {isServerSelected
-                              ? "チャンネルを追加"
-                              : "サーバーを選択してください"}
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    {isServerSelected && <CreateChannel />}
                   </div>
-
+              
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {channels.map((channel) => (
