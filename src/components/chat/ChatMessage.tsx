@@ -179,7 +179,7 @@ const ChatMessage = (props: Props) => {
     <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white border-b border-gray-200">
       <div className="flex-shrink-0">
         <Avatar className="w-11 h-11">
-          <AvatarImage src={props.user.photo}  className="object-cover "/>
+          <AvatarImage src={props.user.photo} className="object-cover " />
         </Avatar>
       </div>
       <div className="flex-1 p-2.5 overflow-hidden">
@@ -211,12 +211,17 @@ const ChatMessage = (props: Props) => {
                       autoFocus
                     />
                     <DialogFooter>
-                      <Button variant="default" onClick={handleEdit}>
+                      <Button
+                        variant="default"
+                        onClick={handleEdit}
+                        className="cursor-pointer bg-black text-white"
+                      >
                         保存
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setEditDialogOpen(false)}
+                        className="cursor-pointer bg-white text-black"
                       >
                         キャンセル
                       </Button>
@@ -241,12 +246,17 @@ const ChatMessage = (props: Props) => {
                       </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
-                      <Button variant="default" onClick={deleteMessage}>
+                      <Button
+                        variant="default"
+                        onClick={deleteMessage}
+                        className="cursor-pointer bg-black text-white"
+                      >
                         削除する
                       </Button>
                       <Button
                         variant="outline"
                         onClick={() => setDeleteDialogOpen(false)}
+                        className="cursor-pointer bg-white text-black"
                       >
                         戻る
                       </Button>
