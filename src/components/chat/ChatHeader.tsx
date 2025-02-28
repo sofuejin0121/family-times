@@ -1,4 +1,3 @@
-import SearchIcon from "@mui/icons-material/Search";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Menu } from "lucide-react";
@@ -28,7 +27,6 @@ const ChatHeader = (props: Props) => {
             onChange={(e) => onSearchMessage(e.target.value)}
             className="md:w-auto w-[120px]"
           />
-          <SearchIcon className="cursor-pointer" />
         </div>
 
         {/* モバイル用メンバーリストトグルボタン */}

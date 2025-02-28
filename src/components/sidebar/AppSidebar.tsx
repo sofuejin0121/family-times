@@ -12,7 +12,6 @@ import { CreateInvite } from "../createInvite/CreateInvite";
 import { CreateServer } from "./CreateServer";
 import UserEdit from "./UserEdit";
 import AddIcon from "@mui/icons-material/Add";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 
 import {
   Sidebar,
@@ -121,7 +120,6 @@ export function AppSidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: AppSidebar
           <div className="flex items-center justify-between">
             <h3 className="font-semibold">Family-Times</h3>
             <div className="flex items-center gap-2">
-              <ExpandMoreIcon />
               {serverId && <CreateInvite />}
             </div>
           </div>
@@ -131,7 +129,6 @@ export function AppSidebar({ isMobileMenuOpen, setIsMobileMenuOpen }: AppSidebar
           <SidebarGroup>
             <div className="flex justify-between items-center p-2">
               <SidebarGroupLabel className="flex items-center gap-1">
-                <ExpandMoreIcon fontSize="small" />
                 <span>テキストチャンネル</span>
               </SidebarGroupLabel>
               <TooltipProvider>
