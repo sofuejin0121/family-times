@@ -37,7 +37,7 @@ function App() {
         setIsMobileMenuOpen(false);
         return;
       }
-      
+
       // メンバーリストが表示されている場合は閉じる
       if (isMemberSidebarOpen) {
         setIsMemberSidebarOpen(false);
@@ -80,27 +80,36 @@ function App() {
 
   return (
     <SidebarProvider>
-      <div className="app" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }} {...swipeHandlers}>
+      <div
+        className="app"
+        style={{
+          display: "flex",
+          overflow: "hidden",
+        }}
+        {...swipeHandlers}
+      >
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={
-              <div 
-                className="flex w-full h-screen overflow-hidden" 
-                style={{ width: '100%' }}
-                
-              >
-                <AppSidebar 
-                  isMobileMenuOpen={isMobileMenuOpen} 
-                  setIsMobileMenuOpen={setIsMobileMenuOpen} 
-                />
-                <div className="flex-1 min-w-0">
-                  <Chat 
-                    isMemberSidebarOpen={isMemberSidebarOpen}
-                    setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+            <Route
+              path="/"
+              element={
+                <div
+                  className="flex w-full h-screen overflow-hidden"
+                  style={{ width: "100%" }}
+                >
+                  <AppSidebar
+                    isMobileMenuOpen={isMobileMenuOpen}
+                    setIsMobileMenuOpen={setIsMobileMenuOpen}
                   />
+                  <div className="flex-1 min-w-0">
+                    <Chat
+                      isMemberSidebarOpen={isMemberSidebarOpen}
+                      setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                    />
+                  </div>
                 </div>
-              </div>
-            } />
+              }
+            />
             <Route path="/invite" element={<InvitePage />} />
           </Routes>
           <Toaster />

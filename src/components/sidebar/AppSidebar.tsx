@@ -11,7 +11,7 @@ import { CreateInvite } from "../createInvite/CreateInvite";
 import { CreateServer } from "./CreateServer";
 import UserEdit from "./UserEdit";
 import AddIcon from "@mui/icons-material/Add";
-import {CreateChannel} from "../chat/CreateChannel"
+import { CreateChannel } from "../chat/CreateChannel";
 import {
   Sidebar,
   SidebarContent,
@@ -136,7 +136,7 @@ export function AppSidebar({
                     </SidebarGroupLabel>
                     {isServerSelected && <CreateChannel />}
                   </div>
-              
+
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {channels.map((channel) => (
