@@ -34,9 +34,13 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
   const serverId = useAppSelector((state) => state.server.serverId);
 
   const sendMessage = useCallback(
-    async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    async (e: React.FormEvent) => {
       e.preventDefault();
-
+      ///入力が空の場合は送信ボタンを無効化
+      if (!inputText.trim()) {
+        return;
+      }
+      //入力が空でない場合のみ送信処理実行
       if (serverId !== null) {
         //channelsコレクションの中にあるmessagesコレクションの中にメッセージ情報を入れる
         const collectionRef: CollectionReference<DocumentData> = collection(
@@ -125,12 +129,17 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
 
   return (
     <div className="flex w-full h-full relative">
-      <div className="flex flex-col flex-grow h-screen min-w-0" style={{ minWidth: 0, flexGrow: 1 }}>
+      <div
+        className="flex flex-col flex-grow h-screen min-w-0"
+        style={{ minWidth: 0, flexGrow: 1 }}
+      >
         {/* chatHeader */}
         <ChatHeader
           channelName={channelName}
           onSearchMessage={setSearchMessage}
-          onToggleMemberSidebar={() => setIsMemberSidebarOpen(!isMemberSidebarOpen)}
+          onToggleMemberSidebar={() =>
+            setIsMemberSidebarOpen(!isMemberSidebarOpen)
+          }
         />
         {/* chatMessage */}
         <div
@@ -169,7 +178,15 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
           >
             <AddCircleOutlineIcon className="text-2xl" />
           </label>
-          <form className="flex-grow">
+          <form
+            className="flex-grow"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (inputText.trim()) {
+                sendMessage(e);
+              }
+            }}
+          >
             <Input
               type="text"
               placeholder={
@@ -177,7 +194,9 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
                   ? `${channelName}へメッセージを送信`
                   : "メッセージを送信"
               }
-              onChange={(e) => setInputText(e.target.value)}
+              onChange={(e) => {
+                setInputText(e.target.value);
+              }}
               value={inputText}
               className="bg-white text-black border border-gray-300"
             />
@@ -187,25 +206,28 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
               onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) =>
                 sendMessage(e)
               }
+              disabled={!inputText.trim()}
             ></button>
           </form>
         </div>
       </div>
-      
+
       {/* メンバーサイドバーのオーバーレイ（モバイル用） */}
       {isMemberSidebarOpen && (
-        <div 
-          className="md:hidden mobile-overlay" 
+        <div
+          className="md:hidden mobile-overlay"
           onClick={() => setIsMemberSidebarOpen(false)}
         />
       )}
-      
+
       {/* メンバーサイドバー */}
-      <div 
+      <div
         className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
                    md:relative md:translate-x-0 fixed top-0 bottom-0 right-0 z-40 transition-transform duration-300 ease-in-out
-                   ${isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'} md:translate-x-0`}
-        style={{ minWidth: '240px', flexShrink: 0 }}
+                   ${
+                     isMemberSidebarOpen ? "translate-x-0" : "translate-x-full"
+                   } md:translate-x-0`}
+        style={{ minWidth: "240px", flexShrink: 0 }}
       >
         <MemberSidebar key={channelId} />
       </div>
