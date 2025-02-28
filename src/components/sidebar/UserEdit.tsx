@@ -17,6 +17,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Loader2 } from "lucide-react";
 
 interface UserEditProps {
   isOpen: boolean;
@@ -53,72 +54,61 @@ const UserEdit = (props: UserEditProps) => {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!auth.currentUser) return;
+    if (!displayName) return;
+    setIsUploading(true);
 
     try {
-      await updateProfile(auth.currentUser, {
-        displayName,
-        photoURL: photoURL || undefined,
-      });
-
-      const updateResult = await updateUser(user.uid, {
-        displayName,
-        photoURL: photoURL || "",
-      });
-
-      if (updateResult) {
-        // 成功時はReduxステートも更新
-        dispatch(
-          updateUserInfo({
-            displayName: displayName,
-            photo: photoURL || user.photo, // 新しい画像URLまたは既存の画像URL
-          })
-        );
-
-        // モーダルを閉じる
-        onClose();
-      } else {
-        console.error("ユーザー情報の更新に失敗しました");
+      // Firebaseの認証プロフィールを更新
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        await updateProfile(currentUser, {
+          displayName: displayName,
+          photoURL: photoURL,
+        });
       }
+
+      // Firestoreのユーザー情報を更新
+      await updateUser(user.uid, {
+        displayName: displayName,
+        photoURL: photoURL,
+      });
+
+      // Reduxストアのユーザー情報を更新
+      dispatch(
+        updateUserInfo({
+          displayName: displayName,
+          photo: photoURL,
+        })
+      );
+
+      onClose();
     } catch (error) {
-      console.error("プロファイル更新エラー:", error);
+      console.error("プロフィールの更新に失敗しました:", error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
-
-
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white text-black border border-gray-200 sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md dialog-content">
         <DialogHeader>
-          <DialogTitle>ユーザー情報の編集</DialogTitle>
+          <DialogTitle>プロフィール編集</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex flex-col items-center gap-2">
-            <div className="relative group">
-              <Avatar
-                className={cn(
-                  "w-[100px] h-[100px] mb-2 relative",
-                  isUploading &&
-                    "after:content-['アップロード中...'] after:absolute after:inset-0 after:bg-black/70 after:flex after:justify-center after:items-center after:rounded-full after:text-xs"
-                )}
-              >
-                <AvatarImage
-                  src={photoURL || user.photo}
-                  alt="プロフィール"
-                  className="object-cover"
-                />
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* アバター画像 */}
+          <div className="flex justify-center">
+            <div
+              className="relative cursor-pointer"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Avatar className={cn("h-24 w-24", isUploading && "opacity-50")}>
+                <AvatarImage src={photoURL} className="object-cover" />
               </Avatar>
-
-              {/* ホバー時に表示されるオーバーレイ */}
-              <div
-                className="absolute inset-0 bg-black/70 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-              >
+              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 hover:opacity-100 transition-opacity">
                 <span className="text-white text-sm font-medium">画像変更</span>
               </div>
             </div>
@@ -131,8 +121,10 @@ const UserEdit = (props: UserEditProps) => {
               className="hidden"
               accept="image/*"
             />
+          </div>
 
-            {/* 表示入力フォーム */}
+          {/* 表示名入力フォーム */}
+          <div className="space-y-2">
             <Label htmlFor="display-name">表示名</Label>
             <Input
               id="display-name"
@@ -144,22 +136,28 @@ const UserEdit = (props: UserEditProps) => {
             />
           </div>
 
-          <DialogFooter className="flex justify-between mt-4 gap-2">
+          <DialogFooter className="flex justify-end gap-2 mt-6">
             <Button
               variant="default"
               type="submit"
-              className="cursor-pointer text-white"
+              disabled={isUploading || !displayName}
+              className="bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
             >
-              保存
+              {isUploading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "保存"
+              )}
             </Button>
             <Button
-              variant="link"
+              type="button"
+              variant="outline"
               onClick={onClose}
-              className="text-gray-700 hover:text-gray-900 cursor-pointer"
+              disabled={isUploading}
+              className="border border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
             >
               キャンセル
             </Button>
-
           </DialogFooter>
         </form>
       </DialogContent>

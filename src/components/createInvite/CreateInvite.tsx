@@ -83,9 +83,9 @@ export const CreateInvite = () => {
               size="icon"
               onClick={handleOpen}
               disabled={isLoading}
-              className="text-black cursor-pointer"
+              className="h-6 w-6 cursor-pointer"
             >
-              <UserPlus className="h-5 w-5" />
+              <UserPlus className="h-4 w-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent side="top">
@@ -95,9 +95,9 @@ export const CreateInvite = () => {
       </TooltipProvider>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md dialog-content">
           <DialogHeader>
-            <DialogTitle>サーバーへ招待</DialogTitle>
+            <DialogTitle>招待リンクを作成</DialogTitle>
           </DialogHeader>
           
           {error ? (
@@ -122,9 +122,9 @@ export const CreateInvite = () => {
                   </div>
                   <Button
                     size="icon"
-                    variant="outline"
+                    variant="ghost"
                     onClick={handleCopyCode}
-                    className="flex-shrink-0"
+                    className="flex-shrink-0 cursor-pointer "
                     title="URLをコピー"
                   >
                     <Copy className="h-4 w-4" />
@@ -138,7 +138,7 @@ export const CreateInvite = () => {
           )}
           
           <DialogFooter className="sm:justify-end">
-            <Button variant="secondary" onClick={handleClose}>
+            <Button variant="default" onClick={handleClose} className="cursor-pointer bg-gray-900 text-white hover:bg-gray-800">
               閉じる
             </Button>
           </DialogFooter>

@@ -20,18 +20,17 @@ const Login = () => {
   };
 
   return (
-    <div className="flex flex-col justify-center items-center w-full h-screen gap-[30px]">
-      <div className="loginLogo">
-        <img src="./discordIcon.png" alt="" className="object-cover h-[150px]" />
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+      <div className="p-8 bg-white rounded-lg shadow-md text-center">
+        <h2 className="text-2xl font-bold mb-6">Family-Timesにログイン</h2>
+        <Button 
+          onClick={signIn}
+          variant="default"
+          className="bg-gray-900 text-white hover:bg-gray-800 transition-colors cursor-pointer"
+        >
+          Googleでログイン
+        </Button>
       </div>
-
-      <Button 
-        variant="default" 
-        className="w-[200px]  text-[#eff2f5] font-extrabold cursor-pointer" 
-        onClick={signIn}
-      >
-        ログイン
-      </Button>
     </div>
   );
 };

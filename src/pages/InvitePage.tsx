@@ -1,5 +1,5 @@
 // pages/InvitePage.tsx
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   collection,
@@ -13,13 +13,15 @@ import {
 import { db } from "../firebase";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { setServerInfo } from "../features/serverSlice";
-import Sidebar from "../components/sidebar/Sidebar";
+import { AppSidebar } from "../components/sidebar/AppSidebar";
 import Chat from "../components/chat/Chat";
 
 export const InvitePage = () => {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.user.user);
   const [searchParams] = useSearchParams();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false);
 
   useEffect(() => {
     const handleInvite = async () => {
@@ -62,9 +64,17 @@ export const InvitePage = () => {
   }, [searchParams, user, dispatch]);
 
   return (
-    <div className="App">
-      <Sidebar />
-      <Chat />
+    <div className="flex w-full h-screen overflow-hidden" style={{ width: '100%' }}>
+      <AppSidebar 
+        isMobileMenuOpen={isMobileMenuOpen} 
+        setIsMobileMenuOpen={setIsMobileMenuOpen} 
+      />
+      <div className="flex-1 min-w-0">
+        <Chat 
+          isMemberSidebarOpen={isMemberSidebarOpen}
+          setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+        />
+      </div>
     </div>
   );
 };

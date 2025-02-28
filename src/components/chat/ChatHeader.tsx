@@ -1,15 +1,19 @@
 import SearchIcon from "@mui/icons-material/Search";
 import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { Menu } from "lucide-react";
 
 interface Props {
   channelName: string | null;
   onSearchMessage: React.Dispatch<React.SetStateAction<string>>;
+  onToggleMemberSidebar: () => void;
 }
+
 const ChatHeader = (props: Props) => {
-  const { channelName, onSearchMessage } = props;
+  const { channelName, onSearchMessage, onToggleMemberSidebar } = props;
 
   return (
-    <div className="flex items-center justify-between w-full min-h-[77px] border-b">
+    <div className="flex items-center justify-between w-full min-h-[77px] border-b border-gray-200">
       <div className="pl-[15px]">
         <h3 className="text-black">
           <span className="text-[#7b7c85] pr-[7px]">#</span>
@@ -22,9 +26,20 @@ const ChatHeader = (props: Props) => {
             type="text"
             placeholder="検索"
             onChange={(e) => onSearchMessage(e.target.value)}
+            className="md:w-auto w-[120px]"
           />
           <SearchIcon className="cursor-pointer" />
         </div>
+
+        {/* モバイル用メンバーリストトグルボタン */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={onToggleMemberSidebar}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );

@@ -48,36 +48,38 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!serverName || !user) return;
-
+    if (!serverName) return;
+    
     setIsLoading(true);
-
     try {
       let imageUrl = "";
       if (selectedFile) {
         const storage = getStorage();
-        const storageRef = ref(storage, `servers/${Date.now()}_${selectedFile?.name}`);
-        const snapshot = await uploadBytes(storageRef, selectedFile);
-        imageUrl = await getDownloadURL(snapshot.ref);
+        const storageRef = ref(storage, `servers/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(storageRef, selectedFile);
+        imageUrl = await getDownloadURL(storageRef);
       }
-
+      
       await addDoc(collection(db, "servers"), {
         name: serverName,
         imageUrl,
+        createdAt: new Date(),
+        createdBy: user?.uid,
         members: {
-          [user.uid]: {
+          [user?.uid || ""]: {
             role: "admin",
             joinedAt: new Date(),
           },
         },
+        invites: {},
       });
-
+      
       setServerName("");
       setSelectedFile(null);
       setPreviewUrl(null);
       onClose();
     } catch (error) {
-      console.log("サーバー作成に失敗しました:", error);
+      console.error("Error creating server:", error);
     } finally {
       setIsLoading(false);
     }
@@ -85,25 +87,22 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="bg-white text-black border border-gray-200">
+      <DialogContent className="sm:max-w-md dialog-content">
         <DialogHeader>
-          <DialogTitle>サーバーを作成</DialogTitle>
+          <DialogTitle className="text-center">サーバーを作成</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex justify-center">
-            <Label 
-              htmlFor="server-image" 
-              className="cursor-pointer block"
-            >
+            <Label htmlFor="server-image" className="cursor-pointer">
               {previewUrl ? (
                 <img 
                   src={previewUrl} 
-                  alt="プレビュー" 
-                  className="w-24 h-24 rounded-full object-cover"
+                  alt="Server preview" 
+                  className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 cursor-pointer">
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
                   <span>画像を選択</span>
                 </div>
               )}
@@ -134,16 +133,16 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
               variant="default"
               type="submit"
               disabled={isLoading || !serverName}
-              className="text-white cursor-pointer"
+              className="bg-gray-900 text-white hover:bg-gray-800 cursor-pointer"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "作成"}
             </Button>
             <Button
               type="button"
-              variant="link"
+              variant="outline"
               onClick={onClose}
               disabled={isLoading}
-              className="text-gray-700 border-none cursor-pointer"
+              className="border border-gray-300 text-gray-700 hover:bg-gray-100 cursor-pointer"
             >
               キャンセル
             </Button>

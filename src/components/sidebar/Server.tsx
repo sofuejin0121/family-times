@@ -45,7 +45,7 @@ const Server = (props: Props) => {
       <Tooltip>
         <TooltipTrigger>
           <div
-            className="flex items-center justify-center text-white group w-12 h-12 rounded-[24px] mb-2 relative bg-zinc-700 cursor-pointer transition-all duration-200 ease-in-out hover:rounded-[16px] hover:bg-indigo-500 hover:scale-105"
+            className="m-2 flex items-center justify-center text-white group w-12 h-12 rounded-[24px] relative bg-zinc-700 cursor-pointer transition-all duration-200 ease-in-out hover:rounded-[16px] hover:bg-indigo-500 hover:scale-105"
             onClick={handleServerClick}
           >
             {imageUrl ? (
@@ -55,14 +55,14 @@ const Server = (props: Props) => {
                 className="w-full h-full rounded-[24px] object-cover transition-all duration-200 group-hover:rounded-[16px]"
               />
             ) : (
-              <h3 className="text-white text-lg leading-[48px] text-center m-0">
+              <h3 className="text-white text-base">
                 {name}
               </h3>
             )}
             <div className="absolute -left-[4px] top-1/2 -translate-y-1/2 w-[4px] h-5 bg-white rounded-r-sm opacity-0 transition-all duration-200 group-hover:opacity-100" />
           </div>
         </TooltipTrigger>
-        <TooltipContent side="right">
+        <TooltipContent side="right" className="tooltip-arrow">
           <p>{name}</p>
         </TooltipContent>
       </Tooltip>

@@ -176,7 +176,7 @@ const ChatMessage = (props: Props) => {
   }, []);
 
   return (
-    <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white">
+    <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white border-b border-gray-200">
       <div className="flex-shrink-0">
         <Avatar className="w-11 h-11">
           <AvatarImage src={props.user.photo}  className="object-cover "/>

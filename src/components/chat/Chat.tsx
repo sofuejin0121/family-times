@@ -16,7 +16,13 @@ import MemberSidebar from "../sidebar/MemberSidebar";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
-const Chat = () => {
+
+interface ChatProps {
+  isMemberSidebarOpen: boolean;
+  setIsMemberSidebarOpen: (isOpen: boolean) => void;
+}
+
+const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
   const [inputText, setInputText] = useState<string>("");
   const [searchMessage, setSearchMessage] = useState<string>("");
   const channelId = useAppSelector((state) => state.channel.channelId);
@@ -26,6 +32,7 @@ const Chat = () => {
   //カスタムフックを使用してメッセージデータを取得
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
+
   const sendMessage = useCallback(
     async (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
       e.preventDefault();
@@ -117,16 +124,17 @@ const Chat = () => {
   }, []);
 
   return (
-    <div className="flex w-full h-full">
-      <div className="flex flex-col flex-grow h-screen">
+    <div className="flex w-full h-full relative">
+      <div className="flex flex-col flex-grow h-screen min-w-0" style={{ minWidth: 0, flexGrow: 1 }}>
         {/* chatHeader */}
         <ChatHeader
           channelName={channelName}
           onSearchMessage={setSearchMessage}
+          onToggleMemberSidebar={() => setIsMemberSidebarOpen(!isMemberSidebarOpen)}
         />
         {/* chatMessage */}
         <div
-          className="h-[calc(100vh-120px)] overflow-y-scroll px-4 
+          className="h-[calc(100vh-120px)] overflow-y-auto px-4 
           scrollbar scrollbar-w-2 
           scrollbar-track-[#2f3136] scrollbar-track-rounded-md
           scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
@@ -183,7 +191,22 @@ const Chat = () => {
           </form>
         </div>
       </div>
-      <div className="w-60 bg-[#2f3136] h-screen">
+      
+      {/* メンバーサイドバーのオーバーレイ（モバイル用） */}
+      {isMemberSidebarOpen && (
+        <div 
+          className="md:hidden mobile-overlay" 
+          onClick={() => setIsMemberSidebarOpen(false)}
+        />
+      )}
+      
+      {/* メンバーサイドバー */}
+      <div 
+        className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
+                   md:relative md:translate-x-0 fixed top-0 bottom-0 right-0 z-40 transition-transform duration-300 ease-in-out
+                   ${isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'} md:translate-x-0`}
+        style={{ minWidth: '240px', flexShrink: 0 }}
+      >
         <MemberSidebar key={channelId} />
       </div>
     </div>
