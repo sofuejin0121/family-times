@@ -134,7 +134,7 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
         />
         {/* chatMessage */}
         <div
-          className="h-[calc(100vh-120px)] overflow-y-auto px-4 
+          className="h-[calc(100svh-77px-56px)] overflow-y-auto px-4 
           scrollbar scrollbar-w-2 
           scrollbar-track-[#2f3136] scrollbar-track-rounded-md
           scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
