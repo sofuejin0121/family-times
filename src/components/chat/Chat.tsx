@@ -32,7 +32,8 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
   //カスタムフックを使用してメッセージデータを取得
   const { subDocuments: messages } = useMessage();
   const serverId = useAppSelector((state) => state.server.serverId);
-
+  const isServerSelected = Boolean(serverId);
+  const isChannelSelected = Boolean(channelId);
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -141,79 +142,105 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
             setIsMemberSidebarOpen(!isMemberSidebarOpen)
           }
         />
-        {/* chatMessage */}
-        <div
-          className="h-[calc(100svh-77px-56px)] overflow-y-auto px-4 
+        {!isServerSelected ? (
+          <div className="flex flex-col items-center justify-center h-full h-[calc(100svh-77px-56px)] w-full">
+            <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
+              <h3 className="text-lg font-medium mb-2">
+                サーバーが選択されていません
+              </h3>
+              <p className="text-sm text-white-400">
+                サーバーを選択するかサーバーに参加してください
+              </p>
+            </div>
+          </div>
+        ) : !isChannelSelected ? (
+          <div className="flex flex-col items-center justify-center h-full h-[calc(100svh-77px-56px)] w-full">
+            <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
+              <h3 className="text-lg font-medium mb-2">
+                チャンネルが選択されていません
+              </h3>
+              <p className="text-sm text-white-400">
+                チャンネルを選択してメッセージを送信してください
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* chatMessage */}
+            <div
+              className="h-[calc(100svh-77px-56px)] overflow-y-auto px-4 
           scrollbar scrollbar-w-2 
           scrollbar-track-[#2f3136] scrollbar-track-rounded-md
           scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
           hover:scrollbar-thumb-[#2f3136]"
-        >
-          {filterMessages.map((message, index) => (
-            <ChatMessage
-              id={message.id}
-              key={index}
-              message={message.message}
-              timestamp={message.timestamp}
-              user={message.user}
-              photoId={message.photoId}
-              photoURL={message.photoURL}
-              reactions={message.reactions}
-            />
-          ))}
-        </div>
-        {/* chatInput */}
-        <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4 mb-6 text-gray-700">
-          <input
-            type="file"
-            className="hidden"
-            id="file-input"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept="image/*"
-          />
-          <label
-            htmlFor="file-input"
-            className="bg-transparent border-none text-gray-500 px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-gray-700"
-          >
-            <AddCircleOutlineIcon className="text-2xl" />
-          </label>
-          <form
-            className="flex-grow"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (inputText.trim()) {
-                sendMessage(e);
-              }
-            }}
-          >
-            <Input
-              type="text"
-              placeholder={
-                channelName
-                  ? `${channelName}へメッセージを送信`
-                  : "メッセージを送信"
-              }
-              onChange={(e) => {
-                setInputText(e.target.value);
-              }}
-              value={inputText}
-              className="bg-white text-black border border-gray-300"
-            />
-            <button
-              type="submit"
-              className="hidden"
-              onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) =>
-                sendMessage(e)
-              }
-              disabled={!inputText.trim()}
-            ></button>
-          </form>
-        </div>
+            >
+              {filterMessages.map((message, index) => (
+                <ChatMessage
+                  id={message.id}
+                  key={index}
+                  message={message.message}
+                  timestamp={message.timestamp}
+                  user={message.user}
+                  photoId={message.photoId}
+                  photoURL={message.photoURL}
+                  reactions={message.reactions}
+                />
+              ))}
+            </div>
+            {/* chatInput */}
+            <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4  text-gray-700">
+              <input
+                type="file"
+                className="hidden"
+                id="file-input"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+              />
+              <label
+                htmlFor="file-input"
+                className="bg-transparent border-none text-gray-500 px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-gray-700"
+              >
+                <AddCircleOutlineIcon className="text-2xl" />
+              </label>
+              <form
+                className="flex-grow"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (inputText.trim()) {
+                    sendMessage(e);
+                  }
+                }}
+              >
+                <Input
+                  type="text"
+                  placeholder={
+                    channelName
+                      ? `${channelName}へメッセージを送信`
+                      : "メッセージを送信"
+                  }
+                  onChange={(e) => {
+                    setInputText(e.target.value);
+                  }}
+                  value={inputText}
+                  className="bg-white text-black border border-gray-300"
+                />
+                <button
+                  type="submit"
+                  className="hidden"
+                  onClick={(
+                    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+                  ) => sendMessage(e)}
+                  disabled={!inputText.trim()}
+                ></button>
+              </form>
+            </div>
+          </>
+        )}
       </div>
 
       {/* メンバーサイドバーのオーバーレイ（モバイル用） */}
-      {isMemberSidebarOpen && (
+      {isMemberSidebarOpen && isServerSelected && (
         <div
           className="md:hidden mobile-overlay"
           onClick={() => setIsMemberSidebarOpen(false)}
@@ -221,16 +248,18 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
       )}
 
       {/* メンバーサイドバー */}
-      <div
-        className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
+      {isServerSelected && (
+        <div
+          className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
                    md:relative md:translate-x-0 fixed top-0 bottom-0 right-0 z-40 transition-transform duration-300 ease-in-out
                    ${
                      isMemberSidebarOpen ? "translate-x-0" : "translate-x-full"
                    } md:translate-x-0`}
-        style={{ minWidth: "240px", flexShrink: 0 }}
-      >
-        <MemberSidebar key={channelId} />
-      </div>
+          style={{ minWidth: "240px", flexShrink: 0 }}
+        >
+          <MemberSidebar key={channelId} />
+        </div>
+      )}
     </div>
   );
 };

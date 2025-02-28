@@ -17,7 +17,9 @@ const MemberSidebar = () => {
   // 取得した単一のserver docからObject.keysを使って、membersオブジェクトのkeyの配列を取得する（これがuniqueIds）
   const uniqueIds = Object.keys(server?.docData.members || {});
 
+
   return (
+    
     <Sidebar
       collapsible="none"
       className="w-full h-screen flex flex-col border-l border-gray-200"
