@@ -80,14 +80,14 @@ function App() {
 
   return (
     <SidebarProvider>
-      <div className="app" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }}>
+      <div className="app" style={{ display: 'flex', width: '100vw', height: '100vh', overflow: 'hidden' }} {...swipeHandlers}>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={
               <div 
                 className="flex w-full h-screen overflow-hidden" 
                 style={{ width: '100%' }}
-                {...swipeHandlers}
+                
               >
                 <AppSidebar 
                   isMobileMenuOpen={isMobileMenuOpen} 
