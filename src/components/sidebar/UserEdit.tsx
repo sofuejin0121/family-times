@@ -125,7 +125,9 @@ const UserEdit = (props: UserEditProps) => {
 
           {/* 表示名入力フォーム */}
           <div className="space-y-2">
-            <Label htmlFor="display-name">表示名</Label>
+            <Label htmlFor="display-name" className="mb-2">
+              表示名
+            </Label>
             <Input
               id="display-name"
               placeholder="表示名"

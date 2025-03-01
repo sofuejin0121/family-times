@@ -45,6 +45,7 @@ type Props = {
       users: string[];
     };
   };
+  scrollToBottom: () => void;
 };
 
 const ChatMessage = (props: Props) => {
@@ -79,6 +80,13 @@ const ChatMessage = (props: Props) => {
         try {
           const photoURL = await getDownloadURL(ref(storage, photoId));
           setFileURL(photoURL);
+
+          // 画像が読み込まれたら画面の一番下までスクロール
+          const img = new Image();
+          img.onload = () => {
+            props.scrollToBottom();
+          };
+          img.src = photoURL;
         } catch (error) {
           console.log("画像URLの取得に失敗しました:", error);
         }
@@ -209,7 +217,7 @@ const ChatMessage = (props: Props) => {
           <div className="flex items-center gap-2 relative">
             <p className="m-0">{props.message}</p>
             {props.user.uid === user?.uid && (
-              <div className="flex gap-1 opacity-0 invisible transition-all duration-200 ease-in-out group-hover:opacity-100 group-hover:visible">
+              <div className="flex gap-1 opacity-0 invisible transition-all duration-200 ease-in-out lg:group-hover:opacity-100 group-hover:visible">
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
                     <button className="inline-fle cursor-pointer items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
@@ -220,11 +228,11 @@ const ChatMessage = (props: Props) => {
                     <DialogHeader>
                       <DialogTitle>メッセージを編集</DialogTitle>
                     </DialogHeader>
+
                     <Input
                       value={editedMessage}
                       onChange={(e) => setEditedMessage(e.target.value)}
                       className="p-2 border border-[#dcddde] rounded text-sm w-full focus:outline-none focus:border-[#7983f5] bg-white"
-                      autoFocus
                     />
                     <DialogFooter>
                       <Button
@@ -283,7 +291,10 @@ const ChatMessage = (props: Props) => {
             )}
           </div>
           {fileURL && (
-            <Dialog open={isImagePreviewOpen} onOpenChange={setIsImagePreviewOpen}>
+            <Dialog
+              open={isImagePreviewOpen}
+              onOpenChange={setIsImagePreviewOpen}
+            >
               <DialogTrigger asChild>
                 <div className="mt-3 w-full md:w-4/5 lg:w-1/2">
                   <img
@@ -295,7 +306,11 @@ const ChatMessage = (props: Props) => {
                 </div>
               </DialogTrigger>
               <DialogContent variant="image" hideCloseButton>
-                <img src={fileURL} alt="" className="w-full h-full object-contain rounded" />
+                <img
+                  src={fileURL}
+                  alt=""
+                  className="w-full h-full object-contain rounded"
+                />
               </DialogContent>
             </Dialog>
           )}

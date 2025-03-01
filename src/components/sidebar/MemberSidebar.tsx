@@ -26,7 +26,7 @@ const MemberSidebar = () => {
       side="right"
     >
       <SidebarHeader className="pl-[15px] border-b border-gray-200 min-h-[77px] flex items-center justify-center">
-        <h3 className="text-black">メンバーリスト</h3>
+        <h3 className="text-black font-semibold">メンバーリスト</h3>
       </SidebarHeader>
 
       <SidebarContent className="flex-grow overflow-y-auto scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 scrollbar-thumb-rounded hover:scrollbar-thumb-gray-400">
@@ -38,7 +38,7 @@ const MemberSidebar = () => {
                 <AvatarImage src={user.photoURL} className="object-cover" />
               </Avatar>
               <div className="flex items-center gap-[5px]">
-                <h4 className="text-black">{user.displayName}</h4>
+                <h4 className="text-black p-2">{user.displayName}</h4>
               </div>
             </div>
           ))}

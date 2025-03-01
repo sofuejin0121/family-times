@@ -24,7 +24,12 @@ interface ChatProps {
   setIsMobileMenuOpen: (isOpen: boolean) => void;
 }
 
-const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,setIsMobileMenuOpen }: ChatProps) => {
+const Chat = ({
+  isMemberSidebarOpen,
+  setIsMemberSidebarOpen,
+  isMobileMenuOpen,
+  setIsMobileMenuOpen,
+}: ChatProps) => {
   const [inputText, setInputText] = useState<string>("");
   const [searchMessage, setSearchMessage] = useState<string>("");
   const channelId = useAppSelector((state) => state.channel.channelId);
@@ -36,6 +41,15 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
   const serverId = useAppSelector((state) => state.server.serverId);
   const isServerSelected = Boolean(serverId);
   const isChannelSelected = Boolean(channelId);
+  //メッセージリストのコンテナへの参照作成
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  ///画面の一番下までスクロールする関数
+  const scrollToBottom = useCallback(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "auto" });
+    }
+  }, []);
+
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -61,9 +75,10 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
           user: user,
         });
         setInputText("");
+        scrollToBottom();
       }
     },
-    [channelId, inputText, serverId, user]
+    [channelId, inputText, serverId, user, scrollToBottom]
   );
 
   const handleFileChange = useCallback(
@@ -104,13 +119,14 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
               }
             );
             console.log("メッセージが追加されました");
+            scrollToBottom();
           }
         } catch (error) {
           console.error("ファイルアップロードエラー:", error);
         }
       }
     },
-    [channelId, serverId, user]
+    [channelId, serverId, user, scrollToBottom]
   );
 
   const filterMessages = messages.filter((message) => {
@@ -123,13 +139,13 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
     }
   });
 
+  //ファイル入力の参照が初期化されたらログを出力
   useEffect(() => {
     console.log(
       "fileInputRef初期化:",
       fileInputRef.current ? "存在します" : "nullです"
     );
   }, []);
-
   return (
     <div className="flex w-full h-full relative">
       <div
@@ -143,12 +159,10 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
           onToggleMemberSidebar={() =>
             setIsMemberSidebarOpen(!isMemberSidebarOpen)
           }
-          onToggleMobileMenu={() =>
-            setIsMobileMenuOpen(!isMobileMenuOpen)
-          }
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         />
         {!isServerSelected ? (
-          <div className="flex flex-col items-center justify-center h-full h-[calc(100svh-77px-56px)] w-full">
+          <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
             <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
               <h3 className="text-lg font-medium mb-2">
                 サーバーが選択されていません
@@ -159,7 +173,7 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
             </div>
           </div>
         ) : !isChannelSelected ? (
-          <div className="flex flex-col items-center justify-center h-full h-[calc(100svh-77px-56px)] w-full">
+          <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
             <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
               <h3 className="text-lg font-medium mb-2">
                 チャンネルが選択されていません
@@ -189,8 +203,10 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,set
                   photoId={message.photoId}
                   photoURL={message.photoURL}
                   reactions={message.reactions}
+                  scrollToBottom={scrollToBottom}
                 />
               ))}
+              <div ref={messagesEndRef} />
             </div>
             {/* chatInput */}
             <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4  text-gray-700">
