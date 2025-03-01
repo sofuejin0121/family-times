@@ -16,7 +16,7 @@ import MemberSidebar from "../sidebar/MemberSidebar";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
-
+import { Send } from 'lucide-react';
 interface ChatProps {
   isMemberSidebarOpen: boolean;
   setIsMemberSidebarOpen: (isOpen: boolean) => void;
@@ -236,7 +236,7 @@ const Chat = ({
                 <AddCircleOutlineIcon className="text-2xl" />
               </label>
               <form
-                className="flex-grow"
+                className="flex-grow flex items-center"
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (inputText.trim()) {
@@ -259,12 +259,14 @@ const Chat = ({
                 />
                 <button
                   type="submit"
-                  className="hidden"
+                  className="md:hidden"
                   onClick={(
                     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
                   ) => sendMessage(e)}
                   disabled={!inputText.trim()}
-                ></button>
+                >
+                  <Send className="ml-2"/>
+                </button>
               </form>
             </div>
           </>
