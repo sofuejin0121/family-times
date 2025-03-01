@@ -11,10 +11,12 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/sidebar/AppSidebar";
 import Chat from "./components/chat/Chat";
 import { SidebarProvider } from "@/components/ui/sidebar";
-
+import { startAuthCheck } from "./features/userSlice";
+import LoadingScreen from "./components/loading/LoadingScreen";
 function App() {
-  const user = useAppSelector((state) => state.user.user);
   const dispatch = useAppDispatch();
+  const isAuthChecking = useAppSelector((state) => state.user.isAuthChecking);
+  const user = useAppSelector((state) => state.user.user);
   // モバイルでは初期状態で非表示に設定
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false);
@@ -23,7 +25,7 @@ function App() {
   // スワイプ状態を管理
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const [touchEnd, setTouchEnd] = useState({ x: 0, y: 0 });
-//タッチ開始時の処理
+  //タッチ開始時の処理
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     setTouchStart({
       x: e.touches[0].clientX,
@@ -42,7 +44,7 @@ function App() {
     // タッチ開始時とタッチ終了時の座標の差を計算
     const distanceX = Math.abs(touchEnd.x - touchStart.x);
     const distanceY = Math.abs(touchEnd.y - touchStart.y);
-    
+
     // 左右のスワイプ距離の方が上下より長い && 小さなスワイプは検知しないようにする
     if (distanceX > distanceY && distanceX > minimumDistance) {
       // 右スワイプ
@@ -68,6 +70,9 @@ function App() {
   };
 
   useEffect(() => {
+    // 認証状態確認開始
+    dispatch(startAuthCheck());
+
     const unsubscribe = auth.onAuthStateChanged((loginUser) => {
       if (loginUser) {
         dispatch(
@@ -85,6 +90,11 @@ function App() {
 
     return () => unsubscribe();
   }, [dispatch]);
+
+  // 認証状態確認中はローディング表示
+  if (isAuthChecking) {
+    return <LoadingScreen />;
+  }
 
   if (!user) {
     return (

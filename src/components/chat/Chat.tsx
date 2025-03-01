@@ -86,6 +86,17 @@ const Chat = ({
       console.log("ファイルが選択されました", e.target.files);
       if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0];
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        if (file.size > MAX_FILE_SIZE) {
+          alert(
+            `ファイルサイズが大きすぎます (最大: 5MB)。現在のサイズ: ${(
+              file.size /
+              (1024 * 1024)
+            ).toFixed(2)}MB`
+          );
+          e.target.value = "";
+          return;
+        }
         try {
           const photoId = uuid4();
           const fileName = photoId + file.name;

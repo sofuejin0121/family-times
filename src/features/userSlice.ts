@@ -3,6 +3,7 @@ import { InitialUserState } from "../Types";
 
 const initialState: InitialUserState = {
   user: null,
+  isAuthChecking: true, //認証状態確認中フラグ
 };
 
 export const userSlice = createSlice({
@@ -12,9 +13,19 @@ export const userSlice = createSlice({
   reducers: {
     login: (state, action) => {
       state.user = action.payload;
+      state.isAuthChecking = false;
     },
     logout: (state) => {
       state.user = null;
+      state.isAuthChecking = false;
+    },
+    //認証状態確認開始
+    startAuthCheck: (state) => {
+      state.isAuthChecking = true;
+    },
+    //認証状態確認終了
+    finishAuthCheck: (state) => {
+      state.isAuthChecking = false;
     },
     //ユーザー情報を更新
     updateUserInfo: (state, action) => {
@@ -30,5 +41,5 @@ export const userSlice = createSlice({
   },
 });
 
-export const { login, logout, updateUserInfo } = userSlice.actions;
+export const { login, logout, updateUserInfo,startAuthCheck,finishAuthCheck  } = userSlice.actions;
 export default userSlice.reducer;
