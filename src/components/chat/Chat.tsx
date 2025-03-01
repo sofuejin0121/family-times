@@ -16,7 +16,7 @@ import MemberSidebar from "../sidebar/MemberSidebar";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
-import { Send } from 'lucide-react';
+import { Send } from "lucide-react";
 interface ChatProps {
   isMemberSidebarOpen: boolean;
   setIsMemberSidebarOpen: (isOpen: boolean) => void;
@@ -265,7 +265,7 @@ const Chat = ({
                   ) => sendMessage(e)}
                   disabled={!inputText.trim()}
                 >
-                  <Send className="ml-2"/>
+                  <Send className="ml-2" />
                 </button>
               </form>
             </div>

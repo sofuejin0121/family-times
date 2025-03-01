@@ -217,7 +217,7 @@ const ChatMessage = (props: Props) => {
           <div className="flex items-center gap-2 relative">
             <p className="m-0">{props.message}</p>
             {props.user.uid === user?.uid && (
-              <div className="flex gap-1 opacity-0 invisible transition-all duration-200 ease-in-out lg:group-hover:opacity-100 group-hover:visible">
+              <div className="flex gap-1 md:opacity-0 md:invisible transition-all duration-200 ease-in-out md:group-hover:opacity-100 md:group-hover:visible opacity-100 ">
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
                     <button className="inline-fle cursor-pointer items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
