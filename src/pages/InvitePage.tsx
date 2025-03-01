@@ -73,6 +73,8 @@ export const InvitePage = () => {
         <Chat 
           isMemberSidebarOpen={isMemberSidebarOpen}
           setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+          isMobileMenuOpen={isMobileMenuOpen}
+          setIsMobileMenuOpen={setIsMobileMenuOpen}
         />
       </div>
     </div>
