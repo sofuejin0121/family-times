@@ -23,44 +23,26 @@ function App() {
   // スワイプ状態を管理
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 });
   const [touchEnd, setTouchEnd] = useState({ x: 0, y: 0 });
-
-  // タッチ開始時の処理
-  const handleTouchStart = (e: React.TouchEvent) => {
-    // Android対応のため初期値を設定
-    setTouchEnd({
-      x: e.touches[0].clientX,
-      y: e.touches[0].clientY,
-    });
+//タッチ開始時の処理
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     setTouchStart({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
     });
   };
-
-  // タッチ移動時の処理
-  const handleTouchMove = (e: React.TouchEvent) => {
-    // preventDefault()は必要な場合のみ使用（スクロールを妨げる可能性あり）
-    // e.preventDefault();
+  //タッチ移動時の処理
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     setTouchEnd({
-      x: e.changedTouches[0].clientX,
-      y: e.changedTouches[0].clientY,
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
     });
   };
-
-  // タッチ終了時の処理
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    // touchMoveが発火しなかった場合のための対策
-    if (touchEnd.x === 0 && touchEnd.y === 0) {
-      setTouchEnd({
-        x: e.changedTouches[0].clientX,
-        y: e.changedTouches[0].clientY,
-      });
-    }
-
-    // スワイプ終了時にx軸とy軸の移動量を取得
+  //タッチ終了時の処理
+  const handleTouchEnd = () => {
+    // タッチ開始時とタッチ終了時の座標の差を計算
     const distanceX = Math.abs(touchEnd.x - touchStart.x);
     const distanceY = Math.abs(touchEnd.y - touchStart.y);
-
+    
     // 左右のスワイプ距離の方が上下より長い && 小さなスワイプは検知しないようにする
     if (distanceX > distanceY && distanceX > minimumDistance) {
       // 右スワイプ
@@ -83,10 +65,6 @@ function App() {
         }
       }
     }
-
-    // 状態をリセット（Android対応）
-    setTouchStart({ x: 0, y: 0 });
-    setTouchEnd({ x: 0, y: 0 });
   };
 
   useEffect(() => {
@@ -148,6 +126,8 @@ function App() {
                     <Chat
                       isMemberSidebarOpen={isMemberSidebarOpen}
                       setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                      isMobileMenuOpen={isMobileMenuOpen}
+                      setIsMobileMenuOpen={setIsMobileMenuOpen}
                     />
                   </div>
                 </div>

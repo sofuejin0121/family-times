@@ -20,9 +20,11 @@ import { Input } from "../ui/input";
 interface ChatProps {
   isMemberSidebarOpen: boolean;
   setIsMemberSidebarOpen: (isOpen: boolean) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (isOpen: boolean) => void;
 }
 
-const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
+const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen,isMobileMenuOpen,setIsMobileMenuOpen }: ChatProps) => {
   const [inputText, setInputText] = useState<string>("");
   const [searchMessage, setSearchMessage] = useState<string>("");
   const channelId = useAppSelector((state) => state.channel.channelId);
@@ -140,6 +142,9 @@ const Chat = ({ isMemberSidebarOpen, setIsMemberSidebarOpen }: ChatProps) => {
           onSearchMessage={setSearchMessage}
           onToggleMemberSidebar={() =>
             setIsMemberSidebarOpen(!isMemberSidebarOpen)
+          }
+          onToggleMobileMenu={() =>
+            setIsMobileMenuOpen(!isMobileMenuOpen)
           }
         />
         {!isServerSelected ? (
