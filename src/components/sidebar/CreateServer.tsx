@@ -102,7 +102,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
                   className="w-24 h-24 rounded-full object-cover border-2 border-gray-300"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 border-gray-300">
+                <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center border-2 m-2 border-gray-300">
                   <span>画像を選択</span>
                 </div>
               )}
@@ -117,7 +117,6 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="server-name">サーバー名</Label>
             <Input
               id="server-name"
               value={serverName}

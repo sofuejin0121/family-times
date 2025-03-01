@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "../ui/input";
 import { Avatar, AvatarImage } from "../ui/avatar";
+import useUsers from "../../hooks/useUsers";
+
 type Props = {
   timestamp: Timestamp;
   message: string;
@@ -59,6 +61,16 @@ const ChatMessage = (props: Props) => {
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const [editedMessage, setEditedMessage] = useState(props.message);
   const user = useAppSelector((state) => state.user.user);
+  const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+  // useUsersフックを使用して最新のユーザー情報を取得
+  const { documents: users } = useUsers();
+
+  // メッセージのユーザーIDに一致するユーザー情報を検索
+  const currentUser = users.find((user) => user.uid === props.user.uid);
+
+  // 最新のユーザー情報またはpropsのデータを使用
+  const userPhoto = currentUser?.photoURL || props.user.photo;
+  const userDisplayName = currentUser?.displayName || props.user.displayName;
 
   useEffect(() => {
     const fetchURL = async () => {
@@ -179,12 +191,16 @@ const ChatMessage = (props: Props) => {
     <div className="flex items-start p-2 px-4 relative text-black gap-4 hover:bg-gray-100 group bg-white border-b border-gray-200">
       <div className="flex-shrink-0">
         <Avatar className="w-11 h-11">
-          <AvatarImage src={props.user.photo} className="object-cover " />
+          <AvatarImage
+            src={userPhoto}
+            className="object-cover"
+            key={userPhoto} // キーを追加して強制的に再レンダリング
+          />
         </Avatar>
       </div>
       <div className="flex-1 p-2.5 overflow-hidden">
         <h4 className="flex items-center gap-2.5 mb-2">
-          {props.user.displayName}
+          {userDisplayName}
           <span className="text-[#7b7c85] text-base font-normal">
             {new Date(timestamp?.toDate()).toLocaleString()}
           </span>
@@ -266,8 +282,24 @@ const ChatMessage = (props: Props) => {
               </div>
             )}
           </div>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {/* オブジェクトのエントリー(キーと値のペア)を配列に変換してマップ */}
+          {fileURL && (
+            <Dialog open={isImagePreviewOpen} onOpenChange={setIsImagePreviewOpen}>
+              <DialogTrigger asChild>
+                <div className="mt-3 w-full md:w-4/5 lg:w-1/2">
+                  <img
+                    src={fileURL}
+                    alt=""
+                    className="w-full h-auto rounded cursor-pointer"
+                    onClick={() => setIsImagePreviewOpen(true)}
+                  />
+                </div>
+              </DialogTrigger>
+              <DialogContent variant="image" hideCloseButton>
+                <img src={fileURL} alt="" className="w-full h-full object-contain rounded" />
+              </DialogContent>
+            </Dialog>
+          )}
+          <div className="flex flex-wrap gap-1 mt-2">
             {Object.entries(props.reactions || {}).map(([emoji, reaction]) => (
               <button
                 key={emoji}
@@ -306,12 +338,6 @@ const ChatMessage = (props: Props) => {
               </div>
             )}
           </div>
-        </div>
-        <div className="w-1/2 mt-2.5">
-          {/* fileURLが存在する場合のみ画像を表示 */}
-          {fileURL && (
-            <img src={fileURL} alt="" className="w-full h-auto rounded" />
-          )}
         </div>
       </div>
     </div>
