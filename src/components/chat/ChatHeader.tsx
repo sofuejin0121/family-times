@@ -15,9 +15,9 @@ const ChatHeader = (props: Props) => {
 
   return (
     <div className="flex items-center justify-between w-full min-h-[77px] border-b border-gray-200">
-      <div className="pl-[15px]">
+      <div className="pl-[15px] flex items-center gap-[13px]">
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onToggleMobileMenu}>
-          <Users className="h-5 w-5" />
+          <Users className="h-5 w-5 " />
         </Button>
         <h3 className="text-black">
           <span className="text-[#7b7c85] pr-[7px]">#</span>
