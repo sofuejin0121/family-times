@@ -53,16 +53,30 @@ const Login = () => {
 
       // メール認証が完了しているか確認
       if (!result.user.emailVerified) {
-        // 未認証の場合はログアウトさせる
-        await auth.signOut()
-        toast.error(
-          'メールアドレスの認証が完了していません。受信したメールのリンクをクリックしてください。'
+        // トーストでメール認証が完了していないことを通知
+        toast.info(
+          'メール認証が完了していません。受信したメールのリンクをクリックしてください。'
         )
 
-        // 再度認証メールを送信するオプションを提供
+        // メール認証が完了していない場合は、認証用のメールを再度送信する
+        try {
+          await sendEmailVerification(result.user, {
+            url: `${window.location.origin}/login`,
+            handleCodeInApp: false,
+          })
+        } catch (error: unknown) {
+          const errorMessage =
+            error instanceof Error ? error.message : '不明なエラー'
+          toast.error('認証メールの送信に失敗しました: ' + errorMessage)
+        }
+
+        // トーストでメール認証が完了していないことを通知
         toast.info(
-          '認証メールが届いていない場合は、アカウント作成をもう一度お試しください。'
+          'メールアドレス宛に認証リンクを送信しました。受信したメールのリンクをクリックしてください。'
         )
+
+        // ログアウトさせる
+        await auth.signOut()
         return
       }
 
