@@ -156,7 +156,7 @@ const Chat = ({
     );
   }, []);
   return (
-    <div className="flex w-full h-full relative">
+    <div className="flex flex-col w-full h-full relative">
       <div
         className="flex flex-col flex-grow h-screen min-w-0"
         style={{ minWidth: 0, flexGrow: 1 }}
@@ -193,14 +193,14 @@ const Chat = ({
             </div>
           </div>
         ) : (
-          <>
+          <div className="flex flex-col flex-1 overflow-hidden">
             {/* chatMessage */}
             <div
-              className="h-[calc(100svh-77px-56px)] overflow-y-auto px-4 
-          scrollbar scrollbar-w-2 
-          scrollbar-track-[#2f3136] scrollbar-track-rounded-md
-          scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
-          hover:scrollbar-thumb-[#2f3136]"
+              className="flex-1 overflow-y-auto px-4 
+              scrollbar scrollbar-w-2 
+              scrollbar-track-[#2f3136] scrollbar-track-rounded-md
+              scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
+              hover:scrollbar-thumb-[#2f3136]"
             >
               {filterMessages.map((message, index) => (
                 <ChatMessage
@@ -267,7 +267,7 @@ const Chat = ({
                 </button>
               </form>
             </div>
-          </>
+          </div>
         )}
       </div>
 

@@ -21,7 +21,7 @@ const ChatHeader = (props: Props) => {
   const isServerSelected = Boolean(serverId);
 
   return (
-    <div className="flex items-center justify-between w-full min-h-[77px] border-b border-gray-200">
+    <div className="flex  items-center justify-between w-full min-h-[77px] border-b border-gray-200">
       <Button
         variant="ghost"
         size="icon"
