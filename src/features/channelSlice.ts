@@ -4,6 +4,7 @@ import { InitialChannelState } from "../Types";
 const initialState: InitialChannelState = {
     channelId: null,
     channelName: null,
+    createdBy: null
 }
 
 export const channelSlice = createSlice({
