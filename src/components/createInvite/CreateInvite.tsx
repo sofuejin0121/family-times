@@ -50,7 +50,7 @@ export const CreateInvite = () => {
       setError("招待コードの作成に失敗しました");
       setOpen(true);
       console.error(err);
-      
+
       toast.error("招待コードの作成に失敗しました", {
         duration: 3000,
       });
@@ -67,7 +67,7 @@ export const CreateInvite = () => {
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(inviteCode);
-    
+
     toast.success("招待URLをコピーしました", {
       duration: 2000,
     });
@@ -99,7 +99,7 @@ export const CreateInvite = () => {
           <DialogHeader>
             <DialogTitle>招待リンクを作成</DialogTitle>
           </DialogHeader>
-          
+
           {error ? (
             <p className="text-destructive">{error}</p>
           ) : (
@@ -136,9 +136,13 @@ export const CreateInvite = () => {
               </p>
             </>
           )}
-          
+
           <DialogFooter className="sm:justify-end">
-            <Button variant="default" onClick={handleClose} className="cursor-pointer bg-gray-900 text-white hover:bg-gray-800">
+            <Button
+              variant="default"
+              onClick={handleClose}
+              className="cursor-pointer bg-gray-900 text-white hover:bg-gray-800"
+            >
               閉じる
             </Button>
           </DialogFooter>

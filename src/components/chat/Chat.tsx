@@ -17,6 +17,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
 import { Send } from "lucide-react";
+import { toast } from "sonner";
 interface ChatProps {
   isMemberSidebarOpen: boolean;
   setIsMemberSidebarOpen: (isOpen: boolean) => void;
@@ -88,12 +89,9 @@ const Chat = ({
         const file = e.target.files[0];
         const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
         if (file.size > MAX_FILE_SIZE) {
-          alert(
-            `ファイルサイズが大きすぎます (最大: 5MB)。現在のサイズ: ${(
-              file.size /
-              (1024 * 1024)
-            ).toFixed(2)}MB`
-          );
+          toast.error("ファイルサイズが大きすぎます (最大: 5MB)", {
+            duration: 3000,
+          });
           e.target.value = "";
           return;
         }
