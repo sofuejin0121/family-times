@@ -45,23 +45,17 @@ export const InvitePage = () => {
         const serverRef = doc(db, 'servers', serverDoc.id)
 
         let channelId
-        let channelName 
+        let channelName
 
         // トランザクションでサーバーメンバー追加とチャンネル作成を実行
         await runTransaction(db, async (transaction) => {
-          console.log('招待処理を開始します: inviteCode=', inviteCode)
-
           // メンバー情報を取得して、初めての参加かどうかを確認
           const serverSnapshot = await transaction.get(serverRef)
           const serverMemberData = serverSnapshot.data()?.members || {}
           const isFirstJoin = !serverMemberData[user.uid]
 
-          console.log('ユーザー情報:', user.uid, user.displayName)
-          console.log('初回参加:', isFirstJoin)
-
           if (isFirstJoin) {
             // メンバーとして追加
-            console.log('新規メンバーとして追加します')
             transaction.update(serverRef, {
               [`members.${user.uid}`]: {
                 role: 'member',
@@ -85,31 +79,22 @@ export const InvitePage = () => {
           )
           const channelSnapshot = await getDocs(channelQuery)
 
-          console.log(
-            'チャンネル検索結果:',
-            channelSnapshot.empty ? '存在しません' : '存在します'
-          )
-
           // 初めての参加でチャンネルが存在しない場合のみ作成
           if (channelSnapshot.empty && isFirstJoin) {
-            console.log('新規チャンネルを作成します:', channelName)
-
             const newChannelRef = doc(
               collection(db, 'servers', serverDoc.id, 'channels')
             )
             transaction.set(newChannelRef, {
               channelName: channelName,
               timestamp: serverTimestamp(),
-              createdBy: user.uid
+              createdBy: user.uid,
             })
 
             channelId = newChannelRef.id
-            console.log('作成したチャンネルID:', channelId)
           } else if (!channelSnapshot.empty) {
             // チャンネルが既に存在する場合
             channelId = channelSnapshot.docs[0].id
             channelName = channelSnapshot.docs[0].data().channelName
-            console.log('既存チャンネルを使用します:', channelId, channelName)
           }
         })
 
@@ -125,7 +110,7 @@ export const InvitePage = () => {
             setChannelInfo({
               channelId: channelId,
               channelName: channelName,
-              createdBy: user.uid
+              createdBy: user.uid,
             })
           )
         }
