@@ -75,12 +75,16 @@ function App() {
 
     const unsubscribe = auth.onAuthStateChanged((loginUser) => {
       if (loginUser) {
+        // ユーザーの表示名が設定されていない場合の対応
+        const displayName = loginUser.displayName || 
+                           (loginUser.email ? loginUser.email.split('@')[0] : '名称未設定');
+                           
         dispatch(
           login({
             uid: loginUser.uid,
             photo: loginUser.photoURL,
             email: loginUser.email,
-            displayName: loginUser.displayName,
+            displayName: displayName,
           })
         );
       } else {
@@ -98,6 +102,7 @@ function App() {
 
   if (!user) {
     return (
+      
       <BrowserRouter>
         <Routes>
           <Route path="*" element={<Login />} />
