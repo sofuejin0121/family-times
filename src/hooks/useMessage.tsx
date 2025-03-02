@@ -20,6 +20,8 @@ interface Messages {
   photoURL: string;
   timestamp: Timestamp;
   message: string;
+  imageWidth?: number;
+  imageHeight?: number;
   user: {
     uid: string;
     photo: string;
@@ -33,11 +35,13 @@ interface Messages {
 
 const useMessage = () => {
   const [subDocuments, setSubDocuments] = useState<Messages[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const channelId = useAppSelector((state) => state.channel.channelId);
   const serverId = useAppSelector((state) => state.server.serverId);
 
   useEffect(() => {
-    if (serverId !== null) {
+    if (serverId !== null && channelId !== null) {
+      setIsLoading(true);
       const collectionRef = collection(
         db,
         "servers",
@@ -51,7 +55,7 @@ const useMessage = () => {
         orderBy("timestamp", "asc")
       );
 
-      onSnapshot(collectionRefOrderBy, (snapshot) => {
+      const unsubscribe = onSnapshot(collectionRefOrderBy, (snapshot) => {
         const results: Messages[] = [];
         snapshot.docs.forEach((doc) => {
           results.push({
@@ -61,15 +65,20 @@ const useMessage = () => {
             user: doc.data().user,
             photoId: doc.data().photoId,
             photoURL: doc.data().photoURL,
+            imageWidth: doc.data().imageWidth,
+            imageHeight: doc.data().imageHeight,
             reactions: doc.data().reactions || {},
           });
         });
         setSubDocuments(results);
+        setIsLoading(false);
       });
+      
+      return () => unsubscribe();
     }
   }, [channelId, serverId]);
 
-  return { subDocuments };
+  return { subDocuments, isLoading };
 };
 
 export default useMessage;

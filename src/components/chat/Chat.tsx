@@ -18,6 +18,8 @@ import { v4 as uuid4 } from "uuid";
 import { Input } from "../ui/input";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
+import LoadingScreen from "../loading/LoadingScreen";
+
 interface ChatProps {
   isMemberSidebarOpen: boolean;
   setIsMemberSidebarOpen: (isOpen: boolean) => void;
@@ -42,6 +44,8 @@ const Chat = ({
   const serverId = useAppSelector((state) => state.server.serverId);
   const isServerSelected = Boolean(serverId);
   const isChannelSelected = Boolean(channelId);
+  const { isLoading } = useMessage();
+  
   //メッセージリストのコンテナへの参照作成
   const messagesEndRef = useRef<HTMLDivElement>(null);
   ///画面の一番下までスクロールする関数
@@ -50,6 +54,12 @@ const Chat = ({
       messagesEndRef.current.scrollIntoView({ behavior: "auto" });
     }
   }, []);
+  useEffect(() => {
+    if(!isLoading) {
+      messagesEndRef?.current?.scrollIntoView();
+    }
+    console.log("isLoading", isLoading);
+  }, [isLoading]);
 
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
@@ -100,6 +110,24 @@ const Chat = ({
           const fileName = photoId + file.name;
           const FileRef = ref(storage, fileName);
 
+          // 画像のサイズを取得
+          const imageWidth = await new Promise<number>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img.width);
+            img.src = URL.createObjectURL(file);
+          });
+          
+          const imageHeight = await new Promise<number>((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(img.height);
+            img.src = URL.createObjectURL(file);
+          });
+
+          console.log({
+            imageWidth,
+            imageHeight,
+          });
+
           // アップロード処理
           const uploadTask = await uploadBytes(FileRef, file);
           const downloadURL = await getDownloadURL(FileRef);
@@ -125,6 +153,8 @@ const Chat = ({
                 timestamp: serverTimestamp(),
                 user: user,
                 photoId: fileName,
+                imageWidth: imageWidth,
+                imageHeight: imageHeight,
               }
             );
             console.log("メッセージが追加されました");
@@ -156,143 +186,150 @@ const Chat = ({
     );
   }, []);
   return (
-    <div className="flex w-full h-full relative">
-      <div
-        className="flex flex-col h-svh min-w-0"
-        style={{ minWidth: 0, flexGrow: 1 }}
-      >
-        {/* chatHeader */}
-        <ChatHeader
-          channelName={channelName}
-          onSearchMessage={setSearchMessage}
-          onToggleMemberSidebar={() =>
-            setIsMemberSidebarOpen(!isMemberSidebarOpen)
-          }
-          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        />
-        {!isServerSelected ? (
-          <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
-            <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
-              <h3 className="text-lg font-medium mb-2">
-                サーバーが選択されていません
-              </h3>
-              <p className="text-sm text-white-400">
-                サーバーを選択するかサーバーに参加してください
-              </p>
-            </div>
-          </div>
-        ) : !isChannelSelected ? (
-          <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
-            <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
-              <h3 className="text-lg font-medium mb-2">
-                チャンネルが選択されていません
-              </h3>
-              <p className="text-sm text-white-400">
-                チャンネルを選択してメッセージを送信してください
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* chatMessage */}
-            <div
-              className="flex-1 overflow-y-auto px-4 
-          scrollbar scrollbar-w-2 
-          scrollbar-track-[#2f3136] scrollbar-track-rounded-md
-          scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
-          hover:scrollbar-thumb-[#2f3136]"
-            >
-              {filterMessages.map((message, index) => (
-                <ChatMessage
-                  id={message.id}
-                  key={index}
-                  message={message.message}
-                  timestamp={message.timestamp}
-                  user={message.user}
-                  photoId={message.photoId}
-                  photoURL={message.photoURL}
-                  reactions={message.reactions}
-                  scrollToBottom={scrollToBottom}
-                />
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-            {/* chatInput */}
-            <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4  text-gray-700">
-              <input
-                type="file"
-                className="hidden"
-                id="file-input"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-                accept="image/*"
-              />
-              <label
-                htmlFor="file-input"
-                className="bg-transparent border-none text-gray-500 px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-gray-700"
-              >
-                <AddCircleOutlineIcon className="text-2xl" />
-              </label>
-              <form
-                className="flex-grow flex items-center"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  if (inputText.trim()) {
-                    sendMessage(e);
-                  }
-                }}
-              >
-                <Input
-                  type="text"
-                  placeholder={
-                    channelName
-                      ? `${channelName}へメッセージを送信`
-                      : "メッセージを送信"
-                  }
-                  onChange={(e) => {
-                    setInputText(e.target.value);
-                  }}
-                  value={inputText}
-                  className="bg-white text-black border border-gray-300"
-                />
-                <button
-                  type="submit"
-                  className="md:hidden"
-                  onClick={(
-                    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-                  ) => sendMessage(e)}
-                  disabled={!inputText.trim()}
+    <>
+      {isLoading ? (
+        <LoadingScreen />
+      ) : (
+        <div className="flex w-full h-full relative">
+          <div
+            className="flex flex-col h-svh min-w-0"
+            style={{ minWidth: 0, flexGrow: 1 }}
+          >
+            {/* chatHeader */}
+            <ChatHeader
+              channelName={channelName}
+              onSearchMessage={setSearchMessage}
+              onToggleMemberSidebar={() =>
+                setIsMemberSidebarOpen(!isMemberSidebarOpen)
+              }
+              onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            />
+            {!isServerSelected ? (
+              <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
+                <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
+                  <h3 className="text-lg font-medium mb-2">
+                    サーバーが選択されていません
+                  </h3>
+                  <p className="text-sm text-white-400">
+                    サーバーを選択するかサーバーに参加してください
+                  </p>
+                </div>
+              </div>
+            ) : !isChannelSelected ? (
+              <div className="flex flex-col items-center justify-center h-[calc(100svh-77px-56px)] w-full">
+                <div className="bg-grey-100 p-8 rounded-lg max-w-md text-black text-center transform -translate-x-[10%] md:-translate-x-[15%]">
+                  <h3 className="text-lg font-medium mb-2">
+                    チャンネルが選択されていません
+                  </h3>
+                  <p className="text-sm text-white-400">
+                    チャンネルを選択してメッセージを送信してください
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* chatMessage */}
+                <div
+                  className="flex-1 overflow-y-auto px-4 
+              scrollbar scrollbar-w-2 
+              scrollbar-track-[#2f3136] scrollbar-track-rounded-md
+              scrollbar-thumb-[#202225] scrollbar-thumb-rounded-md 
+              hover:scrollbar-thumb-[#2f3136] " 
                 >
-                  <Send className="ml-2" />
-                </button>
-              </form>
+                  {filterMessages.map((message, index) => (
+                    <ChatMessage
+                      id={message.id}
+                      key={index}
+                      message={message.message}
+                      timestamp={message.timestamp}
+                      user={message.user}
+                      photoId={message.photoId}
+                      photoURL={message.photoURL}
+                      imageWidth={message.imageWidth}
+                      imageHeight={message.imageHeight}
+                      reactions={message.reactions}
+                    />
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+                {/* chatInput */}
+                <div className="flex items-center justify-between p-2.5 bg-white rounded-lg mx-4  text-gray-700">
+                  <input
+                    type="file"
+                    className="hidden"
+                    id="file-input"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                  <label
+                    htmlFor="file-input"
+                    className="bg-transparent border-none text-gray-500 px-4 cursor-pointer transition-colors duration-200 flex items-center justify-center hover:text-gray-700"
+                  >
+                    <AddCircleOutlineIcon className="text-2xl" />
+                  </label>
+                  <form
+                    className="flex-grow flex items-center"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (inputText.trim()) {
+                        sendMessage(e);
+                      }
+                    }}
+                  >
+                    <Input
+                      type="text"
+                      placeholder={
+                        channelName
+                          ? `${channelName}へメッセージを送信`
+                          : "メッセージを送信"
+                      }
+                      onChange={(e) => {
+                        setInputText(e.target.value);
+                      }}
+                      value={inputText}
+                      className="bg-white text-black border border-gray-300"
+                    />
+                    <button
+                      type="submit"
+                      className="md:hidden"
+                      onClick={(
+                        e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+                      ) => sendMessage(e)}
+                      disabled={!inputText.trim()}
+                    >
+                      <Send className="ml-2" />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* メンバーサイドバーのオーバーレイ（モバイル用） */}
+          {isMemberSidebarOpen && isServerSelected && (
+            <div
+              className="md:hidden mobile-overlay"
+              onClick={() => setIsMemberSidebarOpen(false)}
+            />
+          )}
+
+          {/* メンバーサイドバー */}
+          {isServerSelected && (
+            <div
+              className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
+                       md:relative md:translate-x-0 fixed top-0 bottom-0 right-0 z-40 transition-transform duration-300 ease-in-out
+                       ${
+                         isMemberSidebarOpen ? "translate-x-0" : "translate-x-full"
+                       } md:translate-x-0`}
+              style={{ minWidth: "240px", flexShrink: 0 }}
+            >
+              <MemberSidebar key={channelId} />
             </div>
-          </>
-        )}
-      </div>
-
-      {/* メンバーサイドバーのオーバーレイ（モバイル用） */}
-      {isMemberSidebarOpen && isServerSelected && (
-        <div
-          className="md:hidden mobile-overlay"
-          onClick={() => setIsMemberSidebarOpen(false)}
-        />
-      )}
-
-      {/* メンバーサイドバー */}
-      {isServerSelected && (
-        <div
-          className={`w-60 min-w-[240px] bg-white h-screen flex-shrink-0 border-l border-gray-200
-                   md:relative md:translate-x-0 fixed top-0 bottom-0 right-0 z-40 transition-transform duration-300 ease-in-out
-                   ${
-                     isMemberSidebarOpen ? "translate-x-0" : "translate-x-full"
-                   } md:translate-x-0`}
-          style={{ minWidth: "240px", flexShrink: 0 }}
-        >
-          <MemberSidebar key={channelId} />
+          )}
         </div>
       )}
-    </div>
+    </>
   );
 };
 

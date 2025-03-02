@@ -138,6 +138,7 @@ function App() {
                       setIsMemberSidebarOpen={setIsMemberSidebarOpen}
                       isMobileMenuOpen={isMobileMenuOpen}
                       setIsMobileMenuOpen={setIsMobileMenuOpen}
+
                     />
                   </div>
                 </div>
