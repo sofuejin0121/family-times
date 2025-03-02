@@ -10,6 +10,7 @@ export interface InitialUserState {
 export interface InitialChannelState {
     channelId: string | null;
     channelName: string | null;
+    createdBy: string | null;
 }
 
 export interface InitialServerState {
