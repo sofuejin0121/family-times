@@ -158,7 +158,7 @@ const Chat = ({
   return (
     <div className="flex w-full h-full relative">
       <div
-        className="flex flex-col  h-svh min-w-0"
+        className="flex flex-col h-svh min-w-0"
         style={{ minWidth: 0, flexGrow: 1 }}
       >
         {/* chatHeader */}
