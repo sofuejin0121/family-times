@@ -176,7 +176,7 @@ function App() {
   return (
     <SidebarProvider>
       <div
-        className="flex w-full overflow-hidden"
+        className="flex w-full overflow-hidden justify-center items-center "
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -206,6 +206,7 @@ function App() {
               }
             />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/profile" element={<NewUserProfile />} />
           </Routes>
           <Toaster />
         </BrowserRouter>
