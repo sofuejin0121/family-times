@@ -63,7 +63,8 @@ export const InvitePage = () => {
               },
             })
           }
-
+          
+          // 自動で作成するテキストチャンネルにはプレフィックスにtimes-を付ける
           channelName = `times-${user.displayName}`
 
           // ユーザーのチャンネルがすでに作成済みかチェック
