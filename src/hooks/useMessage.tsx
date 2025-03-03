@@ -22,6 +22,8 @@ interface Messages {
   message: string;
   imageWidth?: number;
   imageHeight?: number;
+  latitude?: number;
+  longitude?: number;
   user: {
     uid: string;
     photo: string;
@@ -67,6 +69,8 @@ const useMessage = () => {
             photoURL: doc.data().photoURL,
             imageWidth: doc.data().imageWidth,
             imageHeight: doc.data().imageHeight,
+            latitude: doc.data().latitude,
+            longitude: doc.data().longitude,
             reactions: doc.data().reactions || {},
           });
         });

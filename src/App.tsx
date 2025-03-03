@@ -14,6 +14,9 @@ import { startAuthCheck } from './features/userSlice'
 import LoadingScreen from './components/loading/LoadingScreen'
 import NewUserProfile from './components/NewUserProfile'
 import { toast } from 'sonner'
+import 'leaflet/dist/leaflet.css' // Leafletは外部ライブラリなので残す必要あり
+// import './styles/map.css' // 削除
+// import '@/components/ui/tabs.css' // 削除
 
 function App() {
   const dispatch = useAppDispatch()
@@ -24,51 +27,77 @@ function App() {
   const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false)
   // タップ時の誤動作を防ぐためのスワイプ時の処理を実行しない最小距離
   const minimumDistance = 30
+  //  地図モードの状態
+  const [isMapMode, setIsMapMode] = useState(false)
   // スワイプ状態を管理
   const [touchStart, setTouchStart] = useState({ x: 0, y: 0 })
   const [touchEnd, setTouchEnd] = useState({ x: 0, y: 0 })
-  //タッチ開始時の処理
+  // スワイプ動作を検出するフラグを追加
+  const [isSwiping, setIsSwiping] = useState(false)
+
+  // タッチ開始時の処理
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    setTouchStart({
+    // スワイプ不可領域のチェック
+    if ((e.target as HTMLElement).closest('[data-no-swipe]')) {
+      return;
+    }
+    
+    // タッチ開始時に両方の座標を同じ値に初期化
+    const touchPosition = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
-    })
+    };
+    setTouchStart(touchPosition);
+    setTouchEnd(touchPosition); // 同じ値で初期化
+    setIsSwiping(false); // スワイプフラグを初期化
   }
-  //タッチ移動時の処理
+
+  // タッチ移動時の処理
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    // タッチ開始が記録されていない場合は処理しない
+    if (touchStart.x === 0 && touchStart.y === 0) return;
+    
     setTouchEnd({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
-    })
+    });
+    
+    // 最小移動距離を超えた場合のみスワイプとみなす
+    const currentDistanceX = Math.abs(e.touches[0].clientX - touchStart.x);
+    if (currentDistanceX > minimumDistance / 2) {
+      setIsSwiping(true);
+    }
   }
-  //タッチ終了時の処理
-  const handleTouchEnd = () => {
-    // タッチ開始時とタッチ終了時の座標の差を計算
-    const distanceX = Math.abs(touchEnd.x - touchStart.x)
-    const distanceY = Math.abs(touchEnd.y - touchStart.y)
 
-    // 左右のスワイプ距離の方が上下より長い && 小さなスワイプは検知しないようにする
+  // タッチ終了時の処理
+  const handleTouchEnd = () => {
+    // スワイプ動作がない場合や無効化条件の場合は処理しない
+    if (!isSwiping || isMapMode || isImageDialogOpen) return;
+
+    const distanceX = Math.abs(touchEnd.x - touchStart.x);
+    const distanceY = Math.abs(touchEnd.y - touchStart.y);
+
     if (distanceX > distanceY && distanceX > minimumDistance) {
-      // 右スワイプ
+      // 既存のスワイプ処理
       if (touchEnd.x > touchStart.x) {
-        // メンバーリストが表示されている場合は閉じる
+        // 右スワイプ
         if (isMemberSidebarOpen) {
-          setIsMemberSidebarOpen(false)
+          setIsMemberSidebarOpen(false);
         } else {
-          // メンバーリストが表示されていない場合のみサイドバーを表示
-          setIsMobileMenuOpen(true)
+          setIsMobileMenuOpen(true);
         }
       } else {
         // 左スワイプ
         if (isMobileMenuOpen) {
-          // サーバーサイドバーが表示されている場合は閉じる
-          setIsMobileMenuOpen(false)
+          setIsMobileMenuOpen(false);
         } else if (isMemberSidebarOpen) {
-          // メンバーリストが表示されている場合は閉じる
-          setIsMemberSidebarOpen(false)
+          setIsMemberSidebarOpen(false);
         }
       }
     }
+    
+    // タッチ終了後に状態をリセット
+    setIsSwiping(false);
   }
 
   // 追加：ログイン直後のフラグを管理
@@ -82,6 +111,9 @@ function App() {
     !user.photo &&
     user.email &&
     !user.email.includes('gmail.com') // Googleログイン以外の場合
+
+  // App.tsxに新しい状態を追加
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
 
   useEffect(() => {
     // 認証状態確認開始
@@ -176,7 +208,7 @@ function App() {
   return (
     <SidebarProvider>
       <div
-        className="flex w-full overflow-hidden justify-center items-center "
+        className="flex w-full items-center justify-center overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -200,6 +232,9 @@ function App() {
                       setIsMemberSidebarOpen={setIsMemberSidebarOpen}
                       isMobileMenuOpen={isMobileMenuOpen}
                       setIsMobileMenuOpen={setIsMobileMenuOpen}
+                      isMapMode={isMapMode}
+                      setIsMapMode={setIsMapMode}
+                      setIsImageDialogOpen={setIsImageDialogOpen}
                     />
                   </div>
                 </div>

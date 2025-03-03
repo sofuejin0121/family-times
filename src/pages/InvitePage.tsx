@@ -140,6 +140,9 @@ export const InvitePage = () => {
           setIsMemberSidebarOpen={setIsMemberSidebarOpen}
           isMobileMenuOpen={isMobileMenuOpen}
           setIsMobileMenuOpen={setIsMobileMenuOpen}
+          isMapMode={false}
+          setIsMapMode={() => {}}
+          setIsImageDialogOpen={() => {}}
         />
       </div>
     </div>
