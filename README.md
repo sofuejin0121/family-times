@@ -1,50 +1,32 @@
-# React + TypeScript + Vite
+## 概要
+Family-Timesは、家族がつながりを保つためのリアルタイムコミュニケーションプラットフォームです。
+このアプリケーションはチャットルーム、サーバー作成、ユーザープロフィール、位置情報共有機能を備え、
+距離に関係なく家族がコミュニケーションを取り、活動を共有することを容易にします。
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 機能
 
-Currently, two official plugins are available:
+- **ユーザー認証**: メール/パスワード、Googleログイン、電話番号認証など複数の認証方法
+- **サーバー管理**: カスタマイズ可能な設定でサーバーを作成・参加
+- **チャンネルシステム**: サーバー内で会話を異なるチャンネルに整理
+- **リアルタイムメッセージング**: 即時メッセージ配信
+- **メディア共有**: 会話で画像などのメディアを共有
+- **位置情報共有**: インタラクティブなマップで位置情報を共有・表示
+- **ユーザープロフィール**: 表示名とプロフィール画像でカスタマイズ可能なプロフィール
+- **モバイル対応**: モバイルとデスクトップ用のレスポンシブデザイン
+- **招待システム**: サーバーへの招待リンクを生成・共有
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 使用技術
 
-## Expanding the ESLint configuration
+- **フロントエンド**: React, TypeScript, Tailwind CSS
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- **バックエンド**: Firebase (Firestore, Authentication, Storage)
 
-- Configure the top-level `parserOptions` property like this:
+- **地図**: Leaflet.js
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+- **状態管理**: Redux Toolkit
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+- **ビルドツール**: Vite
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+- **UIコンポーネント**: shadcn/uiの原則に基づくカスタムコンポーネント
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
-```
+- **PWAサポート**: プログレッシブウェブアプリケーション機能
