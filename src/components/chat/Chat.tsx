@@ -289,53 +289,21 @@ const Chat = ({
       if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0]
         console.log('選択されたファイル:', file.name, file.type, file.size)
-
-        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
-            duration: 3000,
-          })
-          e.target.value = ''
-          return
-        }
-
-        // 選択したファイルを状態に保存
-        setSelectedFile(file)
-
-        // プレビュー用のURLを作成
-        const previewURL = URL.createObjectURL(file)
-        setSelectedFilePreview(previewURL)
-
-        // 画像のサイズを取得
-        const img = new Image()
-        img.onload = () => {
-          setFileImageDimensions({
-            width: img.width,
-            height: img.height,
-          })
-        }
-        img.src = previewURL
-
-        // 写真から位置情報を取得
+        
+        // ファイルの詳細情報をログに出力
         try {
+          const exifr = await import('exifr')
+          // 全メタデータを取得して確認（デバッグ用）
+          const allMetadata = await exifr.default.parse(file)
+          console.log('すべてのメタデータ:', allMetadata)
+          
+          // 残りの処理は同じ
           const locationData = await getImageLocation(file)
           console.log('取得した位置情報:', locationData)
-
-          if (locationData) {
-            setImageLocation(locationData)
-            toast.success('写真から位置情報を取得しました')
-          } else {
-            setImageLocation(null)
-            console.log('位置情報は取得できませんでした')
-          }
+          // ...
         } catch (error) {
-          console.error('写真の位置情報取得に失敗しました:', error)
-          setImageLocation(null)
+          console.error('メタデータ取得エラー:', error)
         }
-
-        // 入力欄にフォーカスを当てる
-        document.getElementById('message-input')?.focus()
       }
     },
     []
