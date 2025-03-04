@@ -194,11 +194,11 @@ const Chat = ({
           // アップロード処理
           const uploadTask = await uploadBytes(FileRef, file)
           const downloadURL = await getDownloadURL(FileRef)
-          // console.log(
-          //   'ファイルがアップロードされました',
-          //   uploadTask,
-          //   downloadURL
-          // )
+          console.log(
+            'ファイルがアップロードされました',
+            uploadTask,
+            downloadURL
+          )
 
           // Firestoreにメッセージを追加
           const messageData: MessageData = {
