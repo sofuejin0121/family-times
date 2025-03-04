@@ -19,7 +19,6 @@ import { Input } from '../ui/input'
 import { Send } from 'lucide-react'
 import { toast } from 'sonner'
 import LoadingScreen from '../loading/LoadingScreen'
-import 'leaflet/dist/leaflet.css'
 import { Tabs, TabsContent } from "@/components/ui/tabs"
 
 interface ChatProps {
@@ -88,7 +87,7 @@ const Chat = ({
     if (!isLoading) {
       messagesEndRef?.current?.scrollIntoView()
     }
-    console.log('isLoading', isLoading)
+    
   }, [isLoading])
 
   const sendMessage = useCallback(
@@ -127,7 +126,7 @@ const Chat = ({
 
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
-      console.log('ファイルが選択されました', e.target.files)
+      
       if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0]
         const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -138,13 +137,13 @@ const Chat = ({
           e.target.value = ''
           return
         }
-        
+
         // アップロード開始時にスピナー表示
         setIsUploading(true);
-        
+
         try {
           // 位置情報の取得を試みる
-          const getLocationPromise = new Promise<{latitude: number, longitude: number} | null>((resolve) => {
+          const getLocationPromise = new Promise<{ latitude: number, longitude: number } | null>((resolve) => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -158,7 +157,7 @@ const Chat = ({
                   console.error('位置情報の取得に失敗しました:', error);
                   toast.error('位置情報の取得に失敗しました');
                   resolve(null);
-                }, 
+                },
                 { timeout: 10000, enableHighAccuracy: true }
               );
             } else {
@@ -166,13 +165,13 @@ const Chat = ({
               resolve(null);
             }
           });
-          
+
           // 位置情報の取得を待つ（最大10秒）
           const locationData = await Promise.race([
             getLocationPromise,
             new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000))
           ]);
-          
+
           // 既存のアップロード処理コード
           const photoId = uuid4()
           const fileName = photoId + file.name
@@ -191,19 +190,15 @@ const Chat = ({
             img.src = URL.createObjectURL(file)
           })
 
-          console.log({
-            imageWidth,
-            imageHeight,
-          })
 
           // アップロード処理
           const uploadTask = await uploadBytes(FileRef, file)
           const downloadURL = await getDownloadURL(FileRef)
-          console.log(
-            'ファイルがアップロードされました',
-            uploadTask,
-            downloadURL
-          )
+          // console.log(
+          //   'ファイルがアップロードされました',
+          //   uploadTask,
+          //   downloadURL
+          // )
 
           // Firestoreにメッセージを追加
           const messageData: MessageData = {
@@ -214,13 +209,13 @@ const Chat = ({
             imageWidth,
             imageHeight,
           };
-          
+
           // 位置情報がある場合は追加
           if (locationData) {
             messageData.latitude = locationData.latitude;
             messageData.longitude = locationData.longitude;
           }
-          
+
           // Firestoreに保存
           if (serverId !== null && channelId !== null) {
             await addDoc(
@@ -234,10 +229,10 @@ const Chat = ({
               ),
               messageData
             )
-            console.log('メッセージが追加されました')
+            // console.log('メッセージが追加されました')
             scrollToBottom()
           }
-          
+
           // 処理成功
           setIsUploading(false);
           e.target.value = ''
@@ -263,23 +258,23 @@ const Chat = ({
   })
 
   //ファイル入力の参照が初期化されたらログを出力
-  useEffect(() => {
-    console.log(
-      'fileInputRef初期化:',
-      fileInputRef.current ? '存在します' : 'nullです'
-    )
-  }, [])
+  // useEffect(() => {
+  //   console.log(
+  //     'fileInputRef初期化:',
+  //     fileInputRef.current ? '存在します' : 'nullです'
+  //   )
+  // }, [])
 
   // タブのステートを追加
   const [activeTab, setActiveTab] = useState<string>("chat");
-  
+
   // タブが変更されたときの処理
   const handleTabChange = useCallback((value: string) => {
     setActiveTab(value);
     // マップモード状態を更新
     setIsMapMode(value === "map");
   }, [setIsMapMode]);
-  
+
   // MapPinアイコンクリック時の処理を修正
   const handleMapClick = useCallback(() => {
     const newTabValue = activeTab === "map" ? "chat" : "map";
@@ -287,13 +282,13 @@ const Chat = ({
     // マップモード状態を更新
     setIsMapMode(newTabValue === "map");
   }, [activeTab, setIsMapMode]);
-  
+
   // MessageCircleMoreアイコンクリック時の処理を修正
   const handleChatClick = useCallback(() => {
     setActiveTab("chat");
     // マップモード状態を更新
     setIsMapMode(false);
-    
+
     // タブ切り替え後、少し遅延させてスクロールを最下部に移動
     setTimeout(() => {
       scrollToBottom();
@@ -302,12 +297,12 @@ const Chat = ({
 
   // 明確な名前のハンドラー関数に変更
   const handleMobileMenuToggle = useCallback(() => {
-    console.log('モバイルメニュー切り替え');
+    // console.log('モバイルメニュー切り替え');
     setIsMobileMenuOpen(!isMobileMenuOpen);
   }, [isMobileMenuOpen, setIsMobileMenuOpen]);
 
   const handleMemberSidebarToggle = useCallback(() => {
-    console.log('メンバーサイドバー切り替え');
+    // console.log('メンバーサイドバー切り替え');
     setIsMemberSidebarOpen(!isMemberSidebarOpen);
   }, [isMemberSidebarOpen, setIsMemberSidebarOpen]);
 
@@ -366,8 +361,8 @@ const Chat = ({
               </div>
             ) : (
               // Tabsコンポーネントを使用
-              <Tabs 
-                value={activeTab} 
+              <Tabs
+                value={activeTab}
                 onValueChange={handleTabChange}
                 className="flex-1 flex flex-col h-[calc(100svh-77px)]"
               >
@@ -393,7 +388,7 @@ const Chat = ({
                     ))}
                     <div ref={messagesEndRef} />
                   </div>
-                  
+
                   {/* チャット入力エリア（既存のコード） */}
                   <div className="mx-4 flex items-center justify-between rounded-lg bg-white p-2.5 text-gray-700 relative">
                     <input
@@ -407,11 +402,10 @@ const Chat = ({
                     />
                     <label
                       htmlFor="file-input"
-                      className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${
-                        isUploading 
-                          ? "text-blue-500 animate-pulse" 
-                          : "text-gray-500 hover:text-gray-700"
-                      }`}
+                      className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${isUploading
+                        ? "text-blue-500 animate-pulse"
+                        : "text-gray-500 hover:text-gray-700"
+                        }`}
                     >
                       <AddCircleOutlineIcon className={`text-2xl ${isUploading ? "text-blue-500" : ""}`} />
                     </label>
@@ -445,12 +439,12 @@ const Chat = ({
                         ) => sendMessage(e)}
                         disabled={!inputText.trim()}
                       >
-                        <Send className="ml-2" />
+                        <Send className={`ml-2 ${inputText.trim() ? "text-blue-500" : "text-grey-400"} `} />
                       </button>
                     </form>
                   </div>
                 </TabsContent>
-                
+
                 <TabsContent value="map" className="flex-1 data-[state=active]:flex data-[state=active]:flex-col">
                   <div className="h-full w-full">
                     <Suspense fallback={<div className="flex items-center justify-center h-full">地図を読み込み中...</div>}>
@@ -475,9 +469,8 @@ const Chat = ({
           {/* メンバーサイドバー */}
           {isServerSelected && (
             <div
-              className={`fixed top-0 right-0 bottom-0 z-40 h-screen w-60 min-w-[240px] flex-shrink-0 border-l border-gray-200 bg-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
-                isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-              } md:translate-x-0`}
+              className={`fixed top-0 right-0 bottom-0 z-40 h-screen w-60 min-w-[240px] flex-shrink-0 border-l border-gray-200 bg-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+                } md:translate-x-0`}
               style={{ minWidth: '240px', flexShrink: 0 }}
             >
               <MemberSidebar key={channelId} />

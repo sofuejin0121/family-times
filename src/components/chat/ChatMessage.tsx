@@ -78,6 +78,12 @@ const ChatMessage = ({
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
   const { documents: users } = useUsers()
 
+  // 現在のユーザーのIDを取得
+  const currentUser = useAppSelector((state) => state.user.user)
+
+  // メッセージの送信者かどうかをチェック
+  const isMessageOwner = currentUser?.uid === userProps.uid
+
   const userPhoto = useMemo(
     () =>
       users.find((user) => {
@@ -207,13 +213,6 @@ const ChatMessage = ({
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
-
-  // console.log({
-  //     fileURL,
-  //     imageWidth,
-  //     imageHeight,
-  // })
-
   return (
     <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white p-2 px-4 text-black hover:bg-gray-100">
       <div className="flex-shrink-0">
@@ -235,79 +234,82 @@ const ChatMessage = ({
         <div className="relative">
           <div className="relative flex items-center gap-2">
             <p className="m-0">{message}</p>
-            <div className="flex gap-1 opacity-100 transition-all duration-200 ease-in-out md:invisible md:opacity-0 md:group-hover:visible md:group-hover:opacity-100">
-              <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                <DialogTrigger asChild>
-                  <button className="inline-fle ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
-                    <EditIcon fontSize="small" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="border border-gray-200 bg-white text-black">
-                  <DialogHeader>
-                    <DialogTitle>メッセージを編集</DialogTitle>
-                  </DialogHeader>
+            {/* 編集・削除ボタンを送信者のみに表示 */}
+            {isMessageOwner && (
+              <div className="flex gap-1 opacity-100 transition-all duration-200 ease-in-out md:invisible md:opacity-0 md:group-hover:visible md:group-hover:opacity-100">
+                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                  <DialogTrigger asChild>
+                    <button className="inline-fle ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
+                      <EditIcon fontSize="small" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="border border-gray-200 bg-white text-black">
+                    <DialogHeader>
+                      <DialogTitle>メッセージを編集</DialogTitle>
+                    </DialogHeader>
 
-                  <Input
-                    value={editedMessage || ''}
-                    onChange={(e) => setEditedMessage(e.target.value)}
-                    className="w-full rounded border border-[#dcddde] bg-white p-2 text-sm focus:border-[#7983f5] focus:outline-none"
-                  />
-                  <DialogFooter>
-                    <Button
-                      variant="default"
-                      onClick={handleEdit}
-                      className="cursor-pointer bg-black text-white"
-                    >
-                      保存
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setEditDialogOpen(false)}
-                      className="cursor-pointer bg-white text-black"
-                    >
-                      キャンセル
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    <Input
+                      value={editedMessage || ''}
+                      onChange={(e) => setEditedMessage(e.target.value)}
+                      className="w-full rounded border border-[#dcddde] bg-white p-2 text-sm focus:border-[#7983f5] focus:outline-none"
+                    />
+                    <DialogFooter>
+                      <Button
+                        variant="default"
+                        onClick={handleEdit}
+                        className="cursor-pointer bg-black text-white"
+                      >
+                        保存
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setEditDialogOpen(false)}
+                        className="cursor-pointer bg-white text-black"
+                      >
+                        キャンセル
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-              <Dialog
-                open={deleteDialogOpen}
-                onOpenChange={setDeleteDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <button 
-                    className="ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:bg-opacity-10 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:text-[#ed4245] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </button>
-                </DialogTrigger>
-                <DialogContent className="border border-gray-200 bg-white text-black">
-                  <DialogHeader>
-                    <DialogTitle>メッセージを削除しますか？</DialogTitle>
-                    <DialogDescription>
-                      この操作は元に戻すことはできません。
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DialogFooter>
-                    <Button
-                      variant="default"
-                      onClick={deleteMessage}
-                      className="cursor-pointer bg-black text-white"
+                <Dialog
+                  open={deleteDialogOpen}
+                  onOpenChange={setDeleteDialogOpen}
+                >
+                  <DialogTrigger asChild>
+                    <button
+                      className="ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:bg-opacity-10 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:text-[#ed4245] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
                     >
-                      削除する
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setDeleteDialogOpen(false)}
-                      className="cursor-pointer bg-white text-black"
-                    >
-                      戻る
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
+                      <DeleteIcon fontSize="small" />
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent className="border border-gray-200 bg-white text-black">
+                    <DialogHeader>
+                      <DialogTitle>メッセージを削除しますか？</DialogTitle>
+                      <DialogDescription>
+                        この操作は元に戻すことはできません。
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="default"
+                        onClick={deleteMessage}
+                        className="cursor-pointer bg-black text-white"
+                      >
+                        削除する
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => setDeleteDialogOpen(false)}
+                        className="cursor-pointer bg-white text-black"
+                      >
+                        戻る
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
           </div>
           {fileURL ? (
             <Dialog
@@ -351,22 +353,28 @@ const ChatMessage = ({
             />
           ) : null}
           <div className="mt-2 flex flex-wrap gap-1">
-            {Object.entries(reactions || {}).map(([emoji, reaction]) => (
-              <button
-                key={emoji}
-                onClick={() => addReaction(emoji)}
-                className={`flex cursor-pointer items-center gap-1 rounded-lg border border-transparent bg-[#f2f3f5] p-1 px-2 text-sm transition-all duration-200 ease-in-out hover:bg-[#e3e5e8] ${
-                  reaction.users.includes(userProps?.uid || '')
-                    ? 'border-[#7983f5] bg-[#e7e9fd]'
-                    : ''
-                }`}
-              >
-                <span className="text-base">{emoji}</span>
-                <span className="min-w-3 text-center text-xs text-[#4f545c]">
-                  ({reaction.users.length})
-                </span>
-              </button>
-            ))}
+            {Object.entries(reactions || {}).map(([emoji, reaction]) => {
+              const hasReacted = reaction.users.includes(userProps?.uid || '');
+              return (
+                <button
+                  key={emoji}
+                  onClick={() => addReaction(emoji)}
+                  className={`
+                    flex cursor-pointer items-center gap-1 rounded-lg 
+                    border p-1 px-2 text-sm transition-all duration-200 ease-in-out 
+                    ${hasReacted
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-transparent bg-[#f2f3f5] hover:bg-[#e3e5e8]'
+                    }
+                  `}
+                >
+                  <span className="text-base">{emoji}</span>
+                  <span className="min-w-3 text-center text-xs text-[#4f545c]">
+                    ({reaction.users.length})
+                  </span>
+                </button>
+              );
+            })}
           </div>
           <div className="relative ml-1 inline-block">
             <button

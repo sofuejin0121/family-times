@@ -14,7 +14,6 @@ import { startAuthCheck } from './features/userSlice'
 import LoadingScreen from './components/loading/LoadingScreen'
 import NewUserProfile from './components/NewUserProfile'
 import { toast } from 'sonner'
-import 'leaflet/dist/leaflet.css' // Leafletは外部ライブラリなので残す必要あり
 // import './styles/map.css' // 削除
 // import '@/components/ui/tabs.css' // 削除
 
@@ -41,7 +40,7 @@ function App() {
     if ((e.target as HTMLElement).closest('[data-no-swipe]')) {
       return;
     }
-    
+
     // タッチ開始時に両方の座標を同じ値に初期化
     const touchPosition = {
       x: e.touches[0].clientX,
@@ -56,12 +55,12 @@ function App() {
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     // タッチ開始が記録されていない場合は処理しない
     if (touchStart.x === 0 && touchStart.y === 0) return;
-    
+
     setTouchEnd({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
     });
-    
+
     // 最小移動距離を超えた場合のみスワイプとみなす
     const currentDistanceX = Math.abs(e.touches[0].clientX - touchStart.x);
     if (currentDistanceX > minimumDistance / 2) {
@@ -95,7 +94,7 @@ function App() {
         }
       }
     }
-    
+
     // タッチ終了後に状態をリセット
     setIsSwiping(false);
   }
