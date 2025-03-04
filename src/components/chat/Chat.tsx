@@ -6,14 +6,12 @@ import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import {
   addDoc,
   collection,
-  CollectionReference,
-  DocumentData,
   serverTimestamp,
 } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
 import useMessage from '../../hooks/useMessage'
 import MemberSidebar from '../sidebar/MemberSidebar'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref, uploadBytes } from 'firebase/storage'
 import { v4 as uuid4 } from 'uuid'
 import { Input } from '../ui/input'
 import { Send } from 'lucide-react'
@@ -62,8 +60,14 @@ const Chat = ({
   setIsMapMode,
   setIsImageDialogOpen,
 }: ChatProps) => {
+  // 状態を先に宣言
   const [inputText, setInputText] = useState<string>('')
   const [searchMessage, setSearchMessage] = useState<string>('')
+  const [isUploading, setIsUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(null);
+  const [fileImageDimensions, setFileImageDimensions] = useState<{ width: number, height: number } | null>(null);
+
   const channelId = useAppSelector((state) => state.channel.channelId)
   const channelName = useAppSelector((state) => state.channel.channelName)
   const user = useAppSelector((state) => state.user.user)
@@ -90,60 +94,43 @@ const Chat = ({
     
   }, [isLoading])
 
+  // 関連するstateを宣言した後に関数を定義
+  const clearSelectedFile = useCallback(() => {
+    if (selectedFilePreview) {
+      URL.revokeObjectURL(selectedFilePreview);
+    }
+    setSelectedFile(null);
+    setSelectedFilePreview(null);
+    setFileImageDimensions(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [selectedFilePreview]);
+
+  // sendMessage関数はここで定義
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
-      e.preventDefault()
-      ///入力が空の場合は送信ボタンを無効化
-      if (!inputText.trim()) {
-        return
-      }
-      //入力が空でない場合のみ送信処理実行
-      if (serverId !== null) {
-        //channelsコレクションの中にあるmessagesコレクションの中にメッセージ情報を入れる
-        const collectionRef: CollectionReference<DocumentData> = collection(
-          db,
-          'servers',
-          serverId,
-          'channels',
-          String(channelId),
-          'messages'
-        )
-        await addDoc(collectionRef, {
-          photoId: null,
-          message: inputText,
-          timestamp: serverTimestamp(),
-          user: user,
-        })
-        setInputText('')
-        scrollToBottom()
-      }
-    },
-    [channelId, inputText, serverId, user, scrollToBottom]
-  )
-
-  // アップロード状態を管理するstateを追加
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      e.preventDefault();
       
-      if (e.target.files && e.target.files.length > 0) {
-        const file = e.target.files[0]
-        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
-            duration: 3000,
-          })
-          e.target.value = ''
-          return
-        }
-
-        // アップロード開始時にスピナー表示
-        setIsUploading(true);
-
+      // テキストも画像も何もない場合は送信しない
+      if (!inputText.trim() && !selectedFile) {
+        return;
+      }
+      
+      if (serverId !== null && channelId !== null) {
         try {
+          // アップロード処理開始時のローディング表示
+          if (selectedFile) {
+            setIsUploading(true);
+          }
+          
+          let photoId = null;
+          let fileName = null;
+          let imageWidth = null;
+          let imageHeight = null;
+          
           // 位置情報の取得を試みる
-          const getLocationPromise = new Promise<{ latitude: number, longitude: number } | null>((resolve) => {
+          const locationData = await new Promise<{ latitude: number, longitude: number } | null>((resolve) => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -155,97 +142,113 @@ const Chat = ({
                 },
                 (error) => {
                   console.error('位置情報の取得に失敗しました:', error);
-                  toast.error('位置情報の取得に失敗しました');
                   resolve(null);
                 },
                 { timeout: 10000, enableHighAccuracy: true }
               );
             } else {
-              toast.error('お使いのブラウザは位置情報に対応していません');
               resolve(null);
             }
           });
-
-          // 位置情報の取得を待つ（最大10秒）
-          const locationData = await Promise.race([
-            getLocationPromise,
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000))
-          ]);
-
-          // 既存のアップロード処理コード
-          const photoId = uuid4()
-          const fileName = photoId + file.name
-          const FileRef = ref(storage, fileName)
-
-          // 画像のサイズを取得
-          const imageWidth = await new Promise<number>((resolve) => {
-            const img = new Image()
-            img.onload = () => resolve(img.width)
-            img.src = URL.createObjectURL(file)
-          })
-
-          const imageHeight = await new Promise<number>((resolve) => {
-            const img = new Image()
-            img.onload = () => resolve(img.height)
-            img.src = URL.createObjectURL(file)
-          })
-
-
-          // アップロード処理
-          const uploadTask = await uploadBytes(FileRef, file)
-          const downloadURL = await getDownloadURL(FileRef)
-          console.log(
-            'ファイルがアップロードされました',
-            uploadTask,
-            downloadURL
-          )
-
+          
+          // 画像がある場合はアップロード
+          if (selectedFile) {
+            photoId = uuid4();
+            fileName = photoId + selectedFile.name;
+            const fileRef = ref(storage, fileName);
+            
+            await uploadBytes(fileRef, selectedFile);
+            
+            if (fileImageDimensions) {
+              imageWidth = fileImageDimensions.width;
+              imageHeight = fileImageDimensions.height;
+            }
+          }
+          
           // Firestoreにメッセージを追加
           const messageData: MessageData = {
-            message: null,
+            message: inputText || null,
             timestamp: serverTimestamp(),
             user: user,
             photoId: fileName,
-            imageWidth,
-            imageHeight,
+            imageWidth: imageWidth ?? undefined,
+            imageHeight: imageHeight ?? undefined,
           };
-
+          
           // 位置情報がある場合は追加
           if (locationData) {
             messageData.latitude = locationData.latitude;
             messageData.longitude = locationData.longitude;
           }
-
+          
           // Firestoreに保存
-          if (serverId !== null && channelId !== null) {
-            await addDoc(
-              collection(
-                db,
-                'servers',
-                serverId,
-                'channels',
-                String(channelId),
-                'messages'
-              ),
-              messageData
-            )
-            // console.log('メッセージが追加されました')
-            scrollToBottom()
-          }
-
-          // 処理成功
+          await addDoc(
+            collection(
+              db,
+              'servers',
+              serverId,
+              'channels',
+              String(channelId),
+              'messages'
+            ),
+            messageData
+          );
+          
+          // 入力フィールドをクリア
+          setInputText('');
+          clearSelectedFile();
+          
+          // 処理終了
           setIsUploading(false);
-          e.target.value = ''
-          scrollToBottom()
+          scrollToBottom();
         } catch (error) {
-          console.error('ファイルのアップロードに失敗しました:', error)
-          toast.error('画像のアップロードに失敗しました')
+          console.error('メッセージの送信に失敗しました:', error);
+          toast.error('メッセージの送信に失敗しました');
           setIsUploading(false);
         }
       }
     },
-    [channelId, serverId, user, scrollToBottom]
+    [channelId, inputText, serverId, user, selectedFile, fileImageDimensions, clearSelectedFile, scrollToBottom]
   )
+
+  // ファイル選択時の処理を変更
+  const handleFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files && e.target.files.length > 0) {
+        const file = e.target.files[0];
+        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+        
+        if (file.size > MAX_FILE_SIZE) {
+          toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
+            duration: 3000,
+          });
+          e.target.value = '';
+          return;
+        }
+
+        // 選択したファイルを状態に保存
+        setSelectedFile(file);
+        
+        // プレビュー用のURLを作成
+        const previewURL = URL.createObjectURL(file);
+        setSelectedFilePreview(previewURL);
+        
+        // 画像のサイズを取得
+        const img = new Image();
+        img.onload = () => {
+          setFileImageDimensions({
+            width: img.width,
+            height: img.height
+          });
+        };
+        img.src = previewURL;
+        
+        // 入力欄にフォーカスを当てる
+        document.getElementById('message-input')?.focus();
+      }
+    },
+    []
+  );
 
   const filterMessages = messages.filter((message) => {
     if (searchMessage !== '') {
@@ -390,58 +393,74 @@ const Chat = ({
                   </div>
 
                   {/* チャット入力エリア（既存のコード） */}
-                  <div className="mx-4 flex items-center justify-between rounded-lg bg-white p-2.5 text-gray-700 relative">
-                    <input
-                      type="file"
-                      className="hidden"
-                      id="file-input"
-                      ref={fileInputRef}
-                      onChange={handleFileChange}
-                      accept="image/*"
-                      disabled={isUploading}
-                    />
-                    <label
-                      htmlFor="file-input"
-                      className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${isUploading
-                        ? "text-blue-500 animate-pulse"
-                        : "text-gray-500 hover:text-gray-700"
-                        }`}
-                    >
-                      <AddCircleOutlineIcon className={`text-2xl ${isUploading ? "text-blue-500" : ""}`} />
-                    </label>
-                    <form
-                      className="flex flex-grow items-center"
-                      onSubmit={(e) => {
-                        e.preventDefault()
-                        if (inputText.trim()) {
-                          sendMessage(e)
-                        }
-                      }}
-                    >
-                      <Input
-                        type="text"
-                        placeholder={
-                          channelName
-                            ? `${channelName}へメッセージを送信`
-                            : 'メッセージを送信'
-                        }
-                        onChange={(e) => {
-                          setInputText(e.target.value)
-                        }}
-                        value={inputText}
-                        className="border border-gray-300 bg-white text-black"
+                  <div className="mx-4 mb-4 flex flex-col rounded-lg bg-white text-gray-700">
+                    {/* 選択した画像のプレビュー */}
+                    {selectedFilePreview && (
+                      <div className="relative m-2 inline-block max-w-xs">
+                        <img 
+                          src={selectedFilePreview} 
+                          alt="プレビュー" 
+                          className="max-h-32 rounded-md object-contain"
+                        />
+                        <button
+                          onClick={clearSelectedFile}
+                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white hover:bg-gray-700"
+                        >
+                          &times;
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* 入力フォーム */}
+                    <div className="flex items-center justify-between p-2.5">
+                      <input
+                        type="file"
+                        className="hidden"
+                        id="file-input"
+                        ref={fileInputRef}
+                        onChange={handleFileChange}
+                        accept="image/*"
+                        disabled={isUploading}
                       />
-                      <button
-                        type="submit"
-                        className="md:hidden"
-                        onClick={(
-                          e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-                        ) => sendMessage(e)}
-                        disabled={!inputText.trim()}
+                      <label
+                        htmlFor="file-input"
+                        className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${isUploading
+                          ? "text-blue-500 animate-pulse"
+                          : "text-gray-500 hover:text-gray-700"
+                          }`}
                       >
-                        <Send className={`ml-2 ${inputText.trim() ? "text-blue-500" : "text-grey-400"} `} />
-                      </button>
-                    </form>
+                        <AddCircleOutlineIcon className={`text-2xl ${isUploading ? "text-blue-500" : ""}`} />
+                      </label>
+                      <form
+                        className="flex flex-grow items-center"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          sendMessage(e);
+                        }}
+                      >
+                        <Input
+                          id="message-input"
+                          type="text"
+                          placeholder={
+                            channelName
+                              ? `${channelName}へメッセージを送信`
+                              : 'メッセージを送信'
+                          }
+                          onChange={(e) => {
+                            setInputText(e.target.value);
+                          }}
+                          value={inputText}
+                          className="border border-gray-300 bg-white text-black"
+                        />
+                        <button
+                          type="submit"
+                          className={`ml-2 ${(inputText.trim() || selectedFile) ? "text-blue-500" : "text-grey-400"}`}
+                          disabled={!inputText.trim() && !selectedFile}
+                        >
+                          <Send />
+                        </button>
+                      </form>
+                    </div>
                   </div>
                 </TabsContent>
 
