@@ -14,6 +14,8 @@ import { Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import LoadingScreen from '../loading/LoadingScreen'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import NoServerView from '../sidebar/NoServerView'
+import { CreateServer } from '../sidebar/CreateServer'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -418,17 +420,14 @@ const Chat = ({
     setIsMemberSidebarOpen(!isMemberSidebarOpen)
   }, [isMemberSidebarOpen, setIsMemberSidebarOpen])
 
+  // CreateServerを開くための状態を追加
+  const [isCreateServerOpen, setIsCreateServerOpen] = useState(false)
+
   return (
     <>
-      {/* サーバーを選択していない場合はサーバー選択画面を表示 */}
+      {/* サーバーを選択していない場合はNoServerViewを表示 */}
       {!isServerSelected && (
-        <div className="flex h-svh w-full items-center justify-center">
-          <h1 className="mt-5 text-center text-2xl">
-            サーバーを選択または
-            <br />
-            作成してください
-          </h1>
-        </div>
+        <NoServerView onCreateServer={() => setIsCreateServerOpen(true)} />
       )}
       {/* サーバーを選択していて、かつisLoadingがtrueの場合はLoadingScreenを表示 */}
       {isServerSelected && isLoading && <LoadingScreen />}
@@ -667,6 +666,12 @@ const Chat = ({
           </div>
         </div>
       )}
+      
+      {/* CreateServerコンポーネントをエクスポート */}
+      <CreateServer 
+        isOpen={isCreateServerOpen}
+        onClose={() => setIsCreateServerOpen(false)}
+      />
     </>
   )
 }

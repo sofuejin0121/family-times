@@ -12,8 +12,9 @@ import Chat from './components/chat/Chat'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { startAuthCheck } from './features/userSlice'
 import LoadingScreen from './components/loading/LoadingScreen'
-import NewUserProfile from './components/NewUserProfile'
+import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
+import { InviteRedirect } from './pages/InviteRedirect'
 // import './styles/map.css' // 削除
 // import '@/components/ui/tabs.css' // 削除
 
@@ -38,65 +39,65 @@ function App() {
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     // スワイプ不可領域のチェック
     if ((e.target as HTMLElement).closest('[data-no-swipe]')) {
-      return;
+      return
     }
 
     // タッチ開始時に両方の座標を同じ値に初期化
     const touchPosition = {
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
-    };
-    setTouchStart(touchPosition);
-    setTouchEnd(touchPosition); // 同じ値で初期化
-    setIsSwiping(false); // スワイプフラグを初期化
+    }
+    setTouchStart(touchPosition)
+    setTouchEnd(touchPosition) // 同じ値で初期化
+    setIsSwiping(false) // スワイプフラグを初期化
   }
 
   // タッチ移動時の処理
   const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
     // タッチ開始が記録されていない場合は処理しない
-    if (touchStart.x === 0 && touchStart.y === 0) return;
+    if (touchStart.x === 0 && touchStart.y === 0) return
 
     setTouchEnd({
       x: e.touches[0].clientX,
       y: e.touches[0].clientY,
-    });
+    })
 
     // 最小移動距離を超えた場合のみスワイプとみなす
-    const currentDistanceX = Math.abs(e.touches[0].clientX - touchStart.x);
+    const currentDistanceX = Math.abs(e.touches[0].clientX - touchStart.x)
     if (currentDistanceX > minimumDistance / 2) {
-      setIsSwiping(true);
+      setIsSwiping(true)
     }
   }
 
   // タッチ終了時の処理
   const handleTouchEnd = () => {
     // スワイプ動作がない場合や無効化条件の場合は処理しない
-    if (!isSwiping || isMapMode || isImageDialogOpen) return;
+    if (!isSwiping || isMapMode || isImageDialogOpen) return
 
-    const distanceX = Math.abs(touchEnd.x - touchStart.x);
-    const distanceY = Math.abs(touchEnd.y - touchStart.y);
+    const distanceX = Math.abs(touchEnd.x - touchStart.x)
+    const distanceY = Math.abs(touchEnd.y - touchStart.y)
 
     if (distanceX > distanceY && distanceX > minimumDistance) {
       // 既存のスワイプ処理
       if (touchEnd.x > touchStart.x) {
         // 右スワイプ
         if (isMemberSidebarOpen) {
-          setIsMemberSidebarOpen(false);
+          setIsMemberSidebarOpen(false)
         } else {
-          setIsMobileMenuOpen(true);
+          setIsMobileMenuOpen(true)
         }
       } else {
         // 左スワイプ
         if (isMobileMenuOpen) {
-          setIsMobileMenuOpen(false);
+          setIsMobileMenuOpen(false)
         } else if (isMemberSidebarOpen) {
-          setIsMemberSidebarOpen(false);
+          setIsMemberSidebarOpen(false)
         }
       }
     }
 
     // タッチ終了後に状態をリセット
-    setIsSwiping(false);
+    setIsSwiping(false)
   }
 
   // 追加：ログイン直後のフラグを管理
@@ -240,6 +241,7 @@ function App() {
               }
             />
             <Route path="/invite" element={<InvitePage />} />
+            <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
             <Route path="/profile" element={<NewUserProfile />} />
           </Routes>
           <Toaster />

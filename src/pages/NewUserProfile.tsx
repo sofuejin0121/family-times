@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Loader2 } from 'lucide-react'
 
 const NewUserProfile = () => {
   const user = useAppSelector((state) => state.user.user)
@@ -34,16 +35,31 @@ const NewUserProfile = () => {
     user?.photo || null
   )
 
+  // 画像ロード状態を管理する新しいstate
+  const [isImageLoading, setIsImageLoading] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // プロフィール画像選択処理
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // ローディング状態を開始
+      setIsImageLoading(true)
+      
       // プレビュー表示用のURL生成
       const reader = new FileReader()
       reader.onload = () => {
-        setPreviewURL(reader.result as string)
+        // 画像読み込みに少し時間がかかっているように見せるため、
+        // 実際のロードよりも少し遅延させると、UXが向上します
+        setTimeout(() => {
+          setPreviewURL(reader.result as string)
+          setIsImageLoading(false) // ローディング状態を終了
+        }, 500)
+      }
+      reader.onerror = () => {
+        toast.error('画像の読み込みに失敗しました')
+        setIsImageLoading(false)
       }
       reader.readAsDataURL(file)
     }
@@ -136,16 +152,26 @@ const NewUserProfile = () => {
               ref={fileInputRef}
               onChange={handleFileChange}
             />
-            <Avatar
-              className="h-24 w-24 cursor-pointer transition-opacity hover:opacity-80"
-              onClick={handleAvatarClick}
-            >
-              <AvatarImage src={previewURL || undefined} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-xl">
-                {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
-              </AvatarFallback>
-            </Avatar>
-            <p className="mt-2 text-sm text-gray-500">クリックして画像を変更</p>
+            <div className="relative h-24 w-24">
+              {isImageLoading ? (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <Avatar
+                  className="h-24 w-24 cursor-pointer transition-opacity hover:opacity-80"
+                  onClick={handleAvatarClick}
+                >
+                  <AvatarImage src={previewURL || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-xl">
+                    {displayName ? displayName.charAt(0).toUpperCase() : 'U'}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+            </div>
+            <p className="mt-2 text-sm text-gray-500">
+              {isImageLoading ? '読み込み中...' : 'クリックして画像を変更'}
+            </p>
           </div>
 
           {/* 表示名入力 */}
@@ -161,8 +187,19 @@ const NewUserProfile = () => {
 
           {/* ボタン */}
           <div className="flex flex-col space-y-3 pt-2">
-            <Button type="submit" disabled={isLoading} className="w-full">
-              {isLoading ? '保存中...' : 'プロフィールを保存'}
+            <Button 
+              type="submit" 
+              disabled={isLoading || isImageLoading} 
+              className="w-full cursor-pointer"
+            >
+              {isLoading ? (
+                <span className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  保存中...
+                </span>
+              ) : (
+                'プロフィールを保存'
+              )}
             </Button>
           </div>
         </form>
