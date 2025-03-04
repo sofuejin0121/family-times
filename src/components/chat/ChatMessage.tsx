@@ -4,7 +4,6 @@ import { db, storage } from '../../firebase'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import EmojiPicker from 'emoji-picker-react'
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt'
 import EditIcon from '@mui/icons-material/Edit'
 import { Button } from '../ui/button'
@@ -21,6 +20,9 @@ import {
 import { Input } from '../ui/input'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import useUsers from '../../hooks/useUsers'
+
+// 固定の絵文字リアクションを定義
+const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 interface Reaction {
   emoji: string
@@ -69,11 +71,6 @@ const ChatMessage = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false)
   const channelId = useAppSelector((state) => state.channel.channelId)
   const serverId = useAppSelector((state) => state.server.serverId)
-  //絵文字ピッカーの表示/非表示を管理
-  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
-  //絵文字ピッカーのDOM要素への参照を作成
-  //useRef コンポーネントのレンダリング間で値を保持するため
-  const emojiPickerRef = useRef<HTMLDivElement>(null)
   const [editedMessage, setEditedMessage] = useState(message)
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
   const { documents: users } = useUsers()
@@ -195,17 +192,19 @@ const ChatMessage = ({
       }
     }
   }
-  //画面全体のクリックイベントを監視するeffect
+
+  // 絵文字リアクションパネルの表示/非表示を管理
+  const [showReactionPanel, setShowReactionPanel] = useState<boolean>(false)
+  const reactionPanelRef = useRef<HTMLDivElement>(null)
+  
+  // リアクションパネルの外側をクリックした時に閉じる処理
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        //絵文字ピッカーが存在し
-        emojiPickerRef.current &&
-        //クリックされた場所が絵文字ピッカーの外である場合
-        !emojiPickerRef.current.contains(event.target as Node) //event.targetはクリックされた要素
+        reactionPanelRef.current &&
+        !reactionPanelRef.current.contains(event.target as Node)
       ) {
-        //絵文字ピッカーを閉じる
-        setShowEmojiPicker(false)
+        setShowReactionPanel(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -213,8 +212,9 @@ const ChatMessage = ({
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
   return (
-    <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white p-2 px-4 text-black hover:bg-gray-100">
+    <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white  text-black hover:bg-gray-100">
       <div className="flex-shrink-0">
         <Avatar className="h-11 w-11">
           <AvatarImage
@@ -376,24 +376,32 @@ const ChatMessage = ({
               );
             })}
           </div>
-          <div className="relative ml-1 inline-block">
+          
+          {/* 絵文字リアクションパネル */}
+          <div className="relative  flex">
             <button
-              className="cursor-pointer rounded border-none bg-transparent p-1 text-gray-700 opacity-80 transition-all duration-200 ease-in-out hover:bg-gray-200 hover:text-black"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="cursor-pointer rounded border-none bg-transparent p-1 text-gray-700 opacity-80 transition-all duration-200 ease-in-out hover:bg-gray-200 hover:text-black "
+              onClick={() => setShowReactionPanel(!showReactionPanel)}
             >
               <SentimentSatisfiedAltIcon />
             </button>
-            {showEmojiPicker && (
+            {showReactionPanel && (
               <div
-                className="rounded-2xl border border-transparent bg-[#f2f3f5]"
-                ref={emojiPickerRef}
+                className="absolute bottom-10 left-0 z-10 flex flex-row gap-1 rounded-lg border border-gray-200 bg-white  shadow-md"
+                ref={reactionPanelRef}
               >
-                <EmojiPicker
-                  onEmojiClick={(emoji) => {
-                    addReaction(emoji.emoji)
-                    setShowEmojiPicker(false)
-                  }}
-                />
+                {PRESET_REACTIONS.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      addReaction(emoji);
+                      setShowReactionPanel(false);
+                    }}
+                    className="cursor-pointer rounded-md p-2 text-xl hover:bg-gray-100"
+                  >
+                    {emoji}
+                  </button>
+                ))}
               </div>
             )}
           </div>
