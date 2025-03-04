@@ -62,28 +62,20 @@ const getImageLocation = async (
       }
 
       try {
-        // EXIF-JSをここでインポート
-        const EXIF = await import('exif-js')
+        // EXIF-JSをインポート
+        const exifr = await import('exifr')
 
-        // EXIFライブラリを使用して画像のメタデータを取得
-        const tags = EXIF.readFromBinaryFile
-          ? EXIF.readFromBinaryFile(e.target.result as ArrayBuffer)
-          : EXIF.default.readFromBinaryFile(e.target.result as ArrayBuffer)
+        // より信頼性の高いexifrライブラリを使用
+        const gps = await exifr.default.gps(file)
+        console.log('EXIF GPS情報:', gps) // デバッグ用
 
-        if (tags && tags.GPSLatitude && tags.GPSLongitude) {
-          // GPSLatitudeとGPSLongitudeは配列形式 [度, 分, 秒]
-          const latitude =
-            tags.GPSLatitudeRef === 'S'
-              ? -convertDMSToDD(tags.GPSLatitude)
-              : convertDMSToDD(tags.GPSLatitude)
-
-          const longitude =
-            tags.GPSLongitudeRef === 'W'
-              ? -convertDMSToDD(tags.GPSLongitude)
-              : convertDMSToDD(tags.GPSLongitude)
-
-          resolve({ latitude, longitude })
+        if (gps && gps.latitude && gps.longitude) {
+          resolve({
+            latitude: gps.latitude,
+            longitude: gps.longitude,
+          })
         } else {
+          console.log('GPS情報が見つかりませんでした')
           resolve(null)
         }
       } catch (error) {
@@ -98,14 +90,6 @@ const getImageLocation = async (
 
     reader.readAsArrayBuffer(file)
   })
-}
-
-// 度分秒から10進数への変換関数
-const convertDMSToDD = (dms: number[]): number => {
-  const degrees = dms[0]
-  const minutes = dms[1] / 60
-  const seconds = dms[2] / 3600
-  return degrees + minutes + seconds
 }
 
 const Chat = ({
@@ -299,11 +283,13 @@ const Chat = ({
     ]
   )
 
-  // ファイル選択時の処理を変更
+  // ファイル選択時の処理
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0]
+        console.log('選択されたファイル:', file.name, file.type, file.size)
+
         const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
         if (file.size > MAX_FILE_SIZE) {
@@ -331,15 +317,17 @@ const Chat = ({
         }
         img.src = previewURL
 
-        // 写真から位置情報を取得（追加部分）
+        // 写真から位置情報を取得
         try {
-          // EXIF-JSをインポートして使用
           const locationData = await getImageLocation(file)
+          console.log('取得した位置情報:', locationData)
+
           if (locationData) {
             setImageLocation(locationData)
             toast.success('写真から位置情報を取得しました')
           } else {
             setImageLocation(null)
+            console.log('位置情報は取得できませんでした')
           }
         } catch (error) {
           console.error('写真の位置情報取得に失敗しました:', error)
