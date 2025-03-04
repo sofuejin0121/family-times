@@ -157,9 +157,12 @@ const Chat = ({
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
+      
+      console.log('送信処理開始:', { テキスト: inputText, 画像: !!selectedFile })
 
       // テキストも画像も何もない場合は送信しない
       if (!inputText.trim() && !selectedFile) {
+        console.log('送信内容がありません')
         return
       }
 
@@ -232,14 +235,20 @@ const Chat = ({
             timestamp: serverTimestamp(),
             user: user,
             photoId: fileName,
-            imageWidth: imageWidth ?? undefined,
-            imageHeight: imageHeight ?? undefined,
+          }
+
+          // 画像サイズがある場合のみ追加
+          if (imageWidth) {
+            messageData.imageWidth = imageWidth;
+          }
+          if (imageHeight) {
+            messageData.imageHeight = imageHeight;
           }
 
           // 位置情報がある場合は追加
           if (locationData) {
-            messageData.latitude = locationData.latitude
-            messageData.longitude = locationData.longitude
+            messageData.latitude = locationData.latitude;
+            messageData.longitude = locationData.longitude;
           }
 
           // Firestoreに保存
@@ -541,6 +550,7 @@ const Chat = ({
                         className="flex flex-grow items-center"
                         onSubmit={(e) => {
                           e.preventDefault()
+                          console.log('フォーム送信:', inputText) // デバッグ用
                           sendMessage(e)
                         }}
                       >
@@ -553,7 +563,16 @@ const Chat = ({
                               : 'メッセージを送信'
                           }
                           onChange={(e) => {
+                            console.log('入力テキスト変更:', e.target.value) // デバッグ用
                             setInputText(e.target.value)
+                          }}
+                          onKeyDown={(e) => {
+                            // Enterキーで送信できるようにする（Shift+Enterは改行）
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              const formEvent = new Event('submit', { bubbles: true, cancelable: true }) as unknown as React.FormEvent
+                              sendMessage(formEvent)
+                            }
                           }}
                           value={inputText}
                           className="border border-gray-300 bg-white text-black"
