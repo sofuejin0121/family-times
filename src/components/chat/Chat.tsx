@@ -3,21 +3,17 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import ChatMessage from './ChatMessage'
 import { useAppSelector } from '../../app/hooks'
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
-import {
-  addDoc,
-  collection,
-  serverTimestamp,
-} from 'firebase/firestore'
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
 import useMessage from '../../hooks/useMessage'
 import MemberSidebar from '../sidebar/MemberSidebar'
 import { ref, uploadBytes } from 'firebase/storage'
 import { v4 as uuid4 } from 'uuid'
 import { Input } from '../ui/input'
-import { Send } from 'lucide-react'
+import { Send, X } from 'lucide-react'
 import { toast } from 'sonner'
 import LoadingScreen from '../loading/LoadingScreen'
-import { Tabs, TabsContent } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -30,26 +26,26 @@ interface ChatProps {
 }
 
 // 地図コンポーネントを動的にインポート
-const MapView = lazy(() => import('./MapView'));
+const MapView = lazy(() => import('./MapView'))
 
 // ユーザー情報の型定義
 interface User {
-  uid: string;
-  email?: string;
-  photoURL?: string;
-  displayName?: string;
+  uid: string
+  email?: string
+  photoURL?: string
+  displayName?: string
 }
 
 // メッセージデータの型定義
 interface MessageData {
-  message: string | null;
-  timestamp: ReturnType<typeof serverTimestamp>;
-  user: User | null;
-  photoId: string | null;
-  imageWidth?: number;
-  imageHeight?: number;
-  latitude?: number;
-  longitude?: number;
+  message: string | null
+  timestamp: ReturnType<typeof serverTimestamp>
+  user: User | null
+  photoId: string | null
+  imageWidth?: number
+  imageHeight?: number
+  latitude?: number
+  longitude?: number
 }
 
 const Chat = ({
@@ -60,13 +56,17 @@ const Chat = ({
   setIsMapMode,
   setIsImageDialogOpen,
 }: ChatProps) => {
-  // 状態を先に宣言
   const [inputText, setInputText] = useState<string>('')
   const [searchMessage, setSearchMessage] = useState<string>('')
-  const [isUploading, setIsUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(null);
-  const [fileImageDimensions, setFileImageDimensions] = useState<{ width: number, height: number } | null>(null);
+  const [isUploading, setIsUploading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(
+    null
+  )
+  const [fileImageDimensions, setFileImageDimensions] = useState<{
+    width: number
+    height: number
+  } | null>(null)
 
   const channelId = useAppSelector((state) => state.channel.channelId)
   const channelName = useAppSelector((state) => state.channel.channelName)
@@ -91,80 +91,80 @@ const Chat = ({
     if (!isLoading) {
       messagesEndRef?.current?.scrollIntoView()
     }
-    
   }, [isLoading])
 
-  // 関連するstateを宣言した後に関数を定義
   const clearSelectedFile = useCallback(() => {
     if (selectedFilePreview) {
-      URL.revokeObjectURL(selectedFilePreview);
+      URL.revokeObjectURL(selectedFilePreview)
     }
-    setSelectedFile(null);
-    setSelectedFilePreview(null);
-    setFileImageDimensions(null);
+    setSelectedFile(null)
+    setSelectedFilePreview(null)
+    setFileImageDimensions(null)
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = ''
     }
-  }, [selectedFilePreview]);
+  }, [selectedFilePreview])
 
-  // sendMessage関数はここで定義
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
-      e.preventDefault();
-      
+      e.preventDefault()
+
       // テキストも画像も何もない場合は送信しない
       if (!inputText.trim() && !selectedFile) {
-        return;
+        return
       }
-      
+
       if (serverId !== null && channelId !== null) {
         try {
           // アップロード処理開始時のローディング表示
           if (selectedFile) {
-            setIsUploading(true);
+            setIsUploading(true)
           }
-          
-          let photoId = null;
-          let fileName = null;
-          let imageWidth = null;
-          let imageHeight = null;
-          
+
+          let photoId = null
+          let fileName = null
+          let imageWidth = null
+          let imageHeight = null
+
           // 位置情報の取得を試みる
-          const locationData = await new Promise<{ latitude: number, longitude: number } | null>((resolve) => {
+          const locationData = await new Promise<{
+            latitude: number
+            longitude: number
+          } | null>((resolve) => {
             if (navigator.geolocation) {
               navigator.geolocation.getCurrentPosition(
                 (position) => {
                   resolve({
                     latitude: position.coords.latitude,
-                    longitude: position.coords.longitude
-                  });
-                  toast.success('位置情報を取得しました');
+                    longitude: position.coords.longitude,
+                  })
+                  toast.success('位置情報を取得しました')
                 },
                 (error) => {
-                  console.error('位置情報の取得に失敗しました:', error);
-                  resolve(null);
+                  console.error('位置情報の取得に失敗しました:', error)
+                  resolve(null)
                 },
                 { timeout: 10000, enableHighAccuracy: true }
-              );
+              )
             } else {
-              resolve(null);
+              resolve(null)
             }
-          });
-          
+          })
+
           // 画像がある場合はアップロード
           if (selectedFile) {
-            photoId = uuid4();
-            fileName = photoId + selectedFile.name;
-            const fileRef = ref(storage, fileName);
-            
-            await uploadBytes(fileRef, selectedFile);
-            
+            photoId = uuid4()
+            fileName = photoId + selectedFile.name
+            const fileRef = ref(storage, fileName)
+
+            await uploadBytes(fileRef, selectedFile)
+
             if (fileImageDimensions) {
-              imageWidth = fileImageDimensions.width;
-              imageHeight = fileImageDimensions.height;
+              imageWidth = fileImageDimensions.width
+              imageHeight = fileImageDimensions.height
             }
           }
-          
+
           // Firestoreにメッセージを追加
           const messageData: MessageData = {
             message: inputText || null,
@@ -173,14 +173,14 @@ const Chat = ({
             photoId: fileName,
             imageWidth: imageWidth ?? undefined,
             imageHeight: imageHeight ?? undefined,
-          };
-          
+          }
+
           // 位置情報がある場合は追加
           if (locationData) {
-            messageData.latitude = locationData.latitude;
-            messageData.longitude = locationData.longitude;
+            messageData.latitude = locationData.latitude
+            messageData.longitude = locationData.longitude
           }
-          
+
           // Firestoreに保存
           await addDoc(
             collection(
@@ -192,63 +192,72 @@ const Chat = ({
               'messages'
             ),
             messageData
-          );
-          
+          )
+
           // 入力フィールドをクリア
-          setInputText('');
-          clearSelectedFile();
-          
+          setInputText('')
+          clearSelectedFile()
+
           // 処理終了
-          setIsUploading(false);
-          scrollToBottom();
+          setIsUploading(false)
+          scrollToBottom()
         } catch (error) {
-          console.error('メッセージの送信に失敗しました:', error);
-          toast.error('メッセージの送信に失敗しました');
-          setIsUploading(false);
+          console.error('メッセージの送信に失敗しました:', error)
+          toast.error('メッセージの送信に失敗しました')
+          setIsUploading(false)
         }
       }
     },
-    [channelId, inputText, serverId, user, selectedFile, fileImageDimensions, clearSelectedFile, scrollToBottom]
+    [
+      channelId,
+      inputText,
+      serverId,
+      user,
+      selectedFile,
+      fileImageDimensions,
+      clearSelectedFile,
+      scrollToBottom,
+    ]
   )
 
   // ファイル選択時の処理を変更
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       if (e.target.files && e.target.files.length > 0) {
-        const file = e.target.files[0];
-        const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-        
+        const file = e.target.files[0]
+        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+
         if (file.size > MAX_FILE_SIZE) {
           toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
             duration: 3000,
-          });
-          e.target.value = '';
-          return;
+          })
+          e.target.value = ''
+          return
         }
 
         // 選択したファイルを状態に保存
-        setSelectedFile(file);
-        
+        setSelectedFile(file)
+
         // プレビュー用のURLを作成
-        const previewURL = URL.createObjectURL(file);
-        setSelectedFilePreview(previewURL);
-        
+        const previewURL = URL.createObjectURL(file)
+        setSelectedFilePreview(previewURL)
+
         // 画像のサイズを取得
-        const img = new Image();
+        const img = new Image()
         img.onload = () => {
           setFileImageDimensions({
             width: img.width,
-            height: img.height
-          });
-        };
-        img.src = previewURL;
-        
+            height: img.height,
+          })
+        }
+        img.src = previewURL
+
         // 入力欄にフォーカスを当てる
-        document.getElementById('message-input')?.focus();
+        document.getElementById('message-input')?.focus()
       }
     },
     []
-  );
+  )
 
   const filterMessages = messages.filter((message) => {
     if (searchMessage !== '') {
@@ -269,45 +278,48 @@ const Chat = ({
   // }, [])
 
   // タブのステートを追加
-  const [activeTab, setActiveTab] = useState<string>("chat");
+  const [activeTab, setActiveTab] = useState<string>('chat')
 
   // タブが変更されたときの処理
-  const handleTabChange = useCallback((value: string) => {
-    setActiveTab(value);
-    // マップモード状態を更新
-    setIsMapMode(value === "map");
-  }, [setIsMapMode]);
+  const handleTabChange = useCallback(
+    (value: string) => {
+      setActiveTab(value)
+      // マップモード状態を更新
+      setIsMapMode(value === 'map')
+    },
+    [setIsMapMode]
+  )
 
   // MapPinアイコンクリック時の処理を修正
   const handleMapClick = useCallback(() => {
-    const newTabValue = activeTab === "map" ? "chat" : "map";
-    setActiveTab(newTabValue);
+    const newTabValue = activeTab === 'map' ? 'chat' : 'map'
+    setActiveTab(newTabValue)
     // マップモード状態を更新
-    setIsMapMode(newTabValue === "map");
-  }, [activeTab, setIsMapMode]);
+    setIsMapMode(newTabValue === 'map')
+  }, [activeTab, setIsMapMode])
 
   // MessageCircleMoreアイコンクリック時の処理を修正
   const handleChatClick = useCallback(() => {
-    setActiveTab("chat");
+    setActiveTab('chat')
     // マップモード状態を更新
-    setIsMapMode(false);
+    setIsMapMode(false)
 
     // タブ切り替え後、少し遅延させてスクロールを最下部に移動
     setTimeout(() => {
-      scrollToBottom();
-    }, 100);
-  }, [setIsMapMode, scrollToBottom]);
+      scrollToBottom()
+    }, 100)
+  }, [setIsMapMode, scrollToBottom])
 
   // 明確な名前のハンドラー関数に変更
   const handleMobileMenuToggle = useCallback(() => {
     // console.log('モバイルメニュー切り替え');
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  }, [isMobileMenuOpen, setIsMobileMenuOpen]);
+    setIsMobileMenuOpen(!isMobileMenuOpen)
+  }, [isMobileMenuOpen, setIsMobileMenuOpen])
 
   const handleMemberSidebarToggle = useCallback(() => {
     // console.log('メンバーサイドバー切り替え');
-    setIsMemberSidebarOpen(!isMemberSidebarOpen);
-  }, [isMemberSidebarOpen, setIsMemberSidebarOpen]);
+    setIsMemberSidebarOpen(!isMemberSidebarOpen)
+  }, [isMemberSidebarOpen, setIsMemberSidebarOpen])
 
   return (
     <>
@@ -367,9 +379,12 @@ const Chat = ({
               <Tabs
                 value={activeTab}
                 onValueChange={handleTabChange}
-                className="flex-1 flex flex-col h-[calc(100svh-77px)]"
+                className="flex h-[calc(100svh-77px)] flex-1 flex-col"
               >
-                <TabsContent value="chat" className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col">
+                <TabsContent
+                  value="chat"
+                  className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col"
+                >
                   {/* チャットメッセージ表示エリア（既存のコード） */}
                   <div className="chat-messages flex-1 overflow-y-auto p-4">
                     {filterMessages.map((message, index) => (
@@ -393,24 +408,24 @@ const Chat = ({
                   </div>
 
                   {/* チャット入力エリア（既存のコード） */}
-                  <div className="mx-4 mb-4 flex flex-col rounded-lg bg-white text-gray-700">
+                  <div className="mx-4 mb-4 flex flex-col rounded-lg text-gray-400">
                     {/* 選択した画像のプレビュー */}
                     {selectedFilePreview && (
-                      <div className="relative m-2 inline-block max-w-xs">
-                        <img 
-                          src={selectedFilePreview} 
-                          alt="プレビュー" 
-                          className="max-h-32 rounded-md object-contain"
+                      <div className="relative m-2 inline-block max-w-full">
+                        <img
+                          src={selectedFilePreview}
+                          alt="プレビュー"
+                          className="max-h-32 rounded-md object-contain p-3"
                         />
                         <button
                           onClick={clearSelectedFile}
-                          className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-gray-800 text-white hover:bg-gray-700"
+                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center cursor-pointer bg-white/80 rounded-full shadow-sm hover:bg-white"
                         >
-                          &times;
+                          <X className="h-4 w-4 text-gray-800 hover:text-gray-600" />
                         </button>
                       </div>
                     )}
-                    
+
                     {/* 入力フォーム */}
                     <div className="flex items-center justify-between p-2.5">
                       <input
@@ -424,18 +439,21 @@ const Chat = ({
                       />
                       <label
                         htmlFor="file-input"
-                        className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${isUploading
-                          ? "text-blue-500 animate-pulse"
-                          : "text-gray-500 hover:text-gray-700"
-                          }`}
+                        className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${
+                          isUploading
+                            ? 'animate-pulse text-blue-500'
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
                       >
-                        <AddCircleOutlineIcon className={`text-2xl ${isUploading ? "text-blue-500" : ""}`} />
+                        <AddCircleOutlineIcon
+                          className={`text-2xl ${isUploading ? 'text-blue-500' : ''}`}
+                        />
                       </label>
                       <form
                         className="flex flex-grow items-center"
                         onSubmit={(e) => {
-                          e.preventDefault();
-                          sendMessage(e);
+                          e.preventDefault()
+                          sendMessage(e)
                         }}
                       >
                         <Input
@@ -447,14 +465,14 @@ const Chat = ({
                               : 'メッセージを送信'
                           }
                           onChange={(e) => {
-                            setInputText(e.target.value);
+                            setInputText(e.target.value)
                           }}
                           value={inputText}
                           className="border border-gray-300 bg-white text-black"
                         />
                         <button
                           type="submit"
-                          className={`ml-2 ${(inputText.trim() || selectedFile) ? "text-blue-500" : "text-grey-400"}`}
+                          className={`ml-2 ${inputText.trim() || selectedFile ? 'text-blue-500' : 'text-grey-400'}`}
                           disabled={!inputText.trim() && !selectedFile}
                         >
                           <Send />
@@ -464,10 +482,19 @@ const Chat = ({
                   </div>
                 </TabsContent>
 
-                <TabsContent value="map" className="flex-1 data-[state=active]:flex data-[state=active]:flex-col">
+                <TabsContent
+                  value="map"
+                  className="flex-1 data-[state=active]:flex data-[state=active]:flex-col"
+                >
                   <div className="h-full w-full">
-                    <Suspense fallback={<div className="flex items-center justify-center h-full">地図を読み込み中...</div>}>
-                      {activeTab === "map" && (
+                    <Suspense
+                      fallback={
+                        <div className="flex h-full items-center justify-center">
+                          地図を読み込み中...
+                        </div>
+                      }
+                    >
+                      {activeTab === 'map' && (
                         <MapView messages={filterMessages} />
                       )}
                     </Suspense>
@@ -488,8 +515,9 @@ const Chat = ({
           {/* メンバーサイドバー */}
           {isServerSelected && (
             <div
-              className={`fixed top-0 right-0 bottom-0 z-40 h-screen w-60 min-w-[240px] flex-shrink-0 border-l border-gray-200 bg-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'
-                } md:translate-x-0`}
+              className={`fixed top-0 right-0 bottom-0 z-40 h-screen w-60 min-w-[240px] flex-shrink-0 border-l border-gray-200 bg-white transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${
+                isMemberSidebarOpen ? 'translate-x-0' : 'translate-x-full'
+              } md:translate-x-0`}
               style={{ minWidth: '240px', flexShrink: 0 }}
             >
               <MemberSidebar key={channelId} />
@@ -500,9 +528,9 @@ const Chat = ({
 
       {/* 画面全体をカバーするスピナーオーバーレイ - ぼかし効果適用 */}
       {isUploading && (
-        <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50">
-          <div className="bg-white/90 p-6 rounded-lg shadow-lg flex flex-col items-center backdrop-blur-md">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-4"></div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
+          <div className="flex flex-col items-center rounded-lg bg-white/90 p-6 shadow-lg backdrop-blur-md">
+            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
             <p className="text-gray-700">画像をアップロード中...</p>
           </div>
         </div>
