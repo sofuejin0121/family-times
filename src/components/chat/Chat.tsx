@@ -48,6 +48,66 @@ interface MessageData {
   longitude?: number
 }
 
+// EXIFデータ読み取り用の関数を修正
+const getImageLocation = async (
+  file: File
+): Promise<{ latitude: number; longitude: number } | null> => {
+  return new Promise((resolve) => {
+    const reader = new FileReader()
+
+    reader.onload = async function (e) {
+      if (!e.target?.result) {
+        resolve(null)
+        return
+      }
+
+      try {
+        // EXIF-JSをここでインポート
+        const EXIF = await import('exif-js')
+
+        // EXIFライブラリを使用して画像のメタデータを取得
+        const tags = EXIF.readFromBinaryFile
+          ? EXIF.readFromBinaryFile(e.target.result as ArrayBuffer)
+          : EXIF.default.readFromBinaryFile(e.target.result as ArrayBuffer)
+
+        if (tags && tags.GPSLatitude && tags.GPSLongitude) {
+          // GPSLatitudeとGPSLongitudeは配列形式 [度, 分, 秒]
+          const latitude =
+            tags.GPSLatitudeRef === 'S'
+              ? -convertDMSToDD(tags.GPSLatitude)
+              : convertDMSToDD(tags.GPSLatitude)
+
+          const longitude =
+            tags.GPSLongitudeRef === 'W'
+              ? -convertDMSToDD(tags.GPSLongitude)
+              : convertDMSToDD(tags.GPSLongitude)
+
+          resolve({ latitude, longitude })
+        } else {
+          resolve(null)
+        }
+      } catch (error) {
+        console.error('EXIF情報の読み取りに失敗しました:', error)
+        resolve(null)
+      }
+    }
+
+    reader.onerror = function () {
+      resolve(null)
+    }
+
+    reader.readAsArrayBuffer(file)
+  })
+}
+
+// 度分秒から10進数への変換関数
+const convertDMSToDD = (dms: number[]): number => {
+  const degrees = dms[0]
+  const minutes = dms[1] / 60
+  const seconds = dms[2] / 3600
+  return degrees + minutes + seconds
+}
+
 const Chat = ({
   isMemberSidebarOpen,
   setIsMemberSidebarOpen,
@@ -67,6 +127,11 @@ const Chat = ({
     width: number
     height: number
   } | null>(null)
+  const [imageLocation, setImageLocation] = useState<{
+    latitude: number
+    longitude: number
+  } | null>(null)
+  const [useCurrentLocation, setUseCurrentLocation] = useState(true)
 
   const channelId = useAppSelector((state) => state.channel.channelId)
   const channelName = useAppSelector((state) => state.channel.channelName)
@@ -126,30 +191,42 @@ const Chat = ({
           let imageWidth = null
           let imageHeight = null
 
-          // 位置情報の取得を試みる
-          const locationData = await new Promise<{
-            latitude: number
-            longitude: number
-          } | null>((resolve) => {
-            if (navigator.geolocation) {
-              navigator.geolocation.getCurrentPosition(
-                (position) => {
-                  resolve({
-                    latitude: position.coords.latitude,
-                    longitude: position.coords.longitude,
-                  })
-                  toast.success('位置情報を取得しました')
-                },
-                (error) => {
-                  console.error('位置情報の取得に失敗しました:', error)
-                  resolve(null)
-                },
-                { timeout: 10000, enableHighAccuracy: true }
-              )
-            } else {
-              resolve(null)
-            }
-          })
+          // 位置情報の取得: 写真のEXIF位置情報を優先
+          let locationData = imageLocation
+
+          // 写真から位置情報が取得できない場合のみ、現在位置を使用
+          if (
+            !locationData &&
+            (
+              document.getElementById(
+                'use-current-location'
+              ) as HTMLInputElement
+            )?.checked
+          ) {
+            locationData = await new Promise<{
+              latitude: number
+              longitude: number
+            } | null>((resolve) => {
+              if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                  (position) => {
+                    resolve({
+                      latitude: position.coords.latitude,
+                      longitude: position.coords.longitude,
+                    })
+                    toast.success('現在の位置情報を取得しました')
+                  },
+                  (error) => {
+                    console.error('位置情報の取得に失敗しました:', error)
+                    resolve(null)
+                  },
+                  { timeout: 10000, enableHighAccuracy: true }
+                )
+              } else {
+                resolve(null)
+              }
+            })
+          }
 
           // 画像がある場合はアップロード
           if (selectedFile) {
@@ -197,6 +274,7 @@ const Chat = ({
           // 入力フィールドをクリア
           setInputText('')
           clearSelectedFile()
+          setImageLocation(null) // 位置情報もクリア
 
           // 処理終了
           setIsUploading(false)
@@ -217,6 +295,7 @@ const Chat = ({
       fileImageDimensions,
       clearSelectedFile,
       scrollToBottom,
+      imageLocation, // 依存配列に追加
     ]
   )
 
@@ -251,6 +330,21 @@ const Chat = ({
           })
         }
         img.src = previewURL
+
+        // 写真から位置情報を取得（追加部分）
+        try {
+          // EXIF-JSをインポートして使用
+          const locationData = await getImageLocation(file)
+          if (locationData) {
+            setImageLocation(locationData)
+            toast.success('写真から位置情報を取得しました')
+          } else {
+            setImageLocation(null)
+          }
+        } catch (error) {
+          console.error('写真の位置情報取得に失敗しました:', error)
+          setImageLocation(null)
+        }
 
         // 入力欄にフォーカスを当てる
         document.getElementById('message-input')?.focus()
@@ -419,7 +513,7 @@ const Chat = ({
                         />
                         <button
                           onClick={clearSelectedFile}
-                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center cursor-pointer bg-white/80 rounded-full shadow-sm hover:bg-white"
+                          className="absolute top-1 right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-white/80 shadow-sm hover:bg-white"
                         >
                           <X className="h-4 w-4 text-gray-800 hover:text-gray-600" />
                         </button>
@@ -479,6 +573,31 @@ const Chat = ({
                         </button>
                       </form>
                     </div>
+                    {selectedFile && (
+                      <div className="mb-2 flex items-center px-4 text-xs text-gray-500">
+                        <div className="mr-2 flex items-center">
+                          <input
+                            type="checkbox"
+                            id="use-current-location"
+                            checked={useCurrentLocation}
+                            onChange={(e) =>
+                              setUseCurrentLocation(e.target.checked)
+                            }
+                            className="mr-1"
+                          />
+                          <label htmlFor="use-current-location">
+                            {imageLocation
+                              ? '写真の位置情報を使用'
+                              : '現在の位置情報を使用'}
+                          </label>
+                        </div>
+                        {imageLocation && (
+                          <span className="text-green-500">
+                            (写真から位置情報が取得されました)
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 

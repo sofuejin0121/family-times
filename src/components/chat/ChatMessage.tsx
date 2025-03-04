@@ -320,7 +320,7 @@ const ChatMessage = ({
               }}
             >
               <DialogTrigger asChild>
-                <div className="mt-3 w-full md:w-4/5 lg:w-1/2">
+                <div className="mt-3 w-full md:w-3/5 lg:w-2/5 xl:w-1/3 max-w-sm">
                   <img
                     src={fileURL}
                     alt=""
@@ -337,7 +337,7 @@ const ChatMessage = ({
                 <img
                   src={fileURL}
                   alt=""
-                  className="h-full w-full rounded object-contain"
+                  className="h-full w-full   rounded object-contain"
                 />
               </DialogContent>
             </Dialog>
