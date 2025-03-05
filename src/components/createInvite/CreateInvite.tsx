@@ -106,7 +106,7 @@ export const CreateInvite = () => {
             <>
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  以下の招待URLをクリックまたは共有してメンバーを招待できます
+                  以下の招待URLを共有してメンバーを招待できます
                 </p>
                 <div className="flex items-center space-x-2">
                   <div className="grid flex-1 gap-2">

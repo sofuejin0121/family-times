@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import icon from 'leaflet/dist/images/marker-icon.png'
@@ -54,11 +54,27 @@ interface MapViewProps {
     }
   }[]
 }
+
+// 地図制御用のコンポーネント
+const MapController = ({ lat, lng }: { lat: number; lng: number }) => {
+  const map = useMap()
+  useEffect(() => {
+    if (map) {
+      map.setView([lat, lng], 15) // アニメーションオプションを削除
+    }
+  }, [lat, lng, map])
+  return null
+}
+
 const MapView = ({ messages }: MapViewProps) => {
   // MapContainerが表示された後にマーカーが正しく表示されるよう対応
   const [mapReady, setMapReady] = useState(false)
   // 画像URLをキャッシュするためのstate
   const [imageUrls, setImageUrls] = useState<{ [key: string]: string }>({})
+  const [selectedLocation, setSelectedLocation] = useState<
+    [number, number] | null
+  >(null)
+  const [isPopupOpen, setIsPopupOpen] = useState(false)
 
   useEffect(() => {
     // コンポーネントのマウント時にLeafletのデフォルトアイコンを設定
@@ -125,66 +141,142 @@ const MapView = ({ messages }: MapViewProps) => {
         ]
       : [35.6895, 139.6917] // 東京
 
-  return geoMessages.length > 0 ? (
-    <div className="relative h-full w-full">
-      <MapContainer
-        center={defaultCenter as [number, number]}
-        zoom={13}
-        className="z-0 h-full w-full rounded-lg shadow-md"
-        style={{ minHeight: '300px' }}
-        whenReady={() => setMapReady(true)}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
+  // Popupが開いたときのハンドラー
+  const handlePopupOpen = () => {
+    setIsPopupOpen(true)
+  }
 
-        {mapReady &&
-          geoMessages.map((message) => (
-            <Marker
-              key={message.id}
-              position={[message.latitude!, message.longitude!]}
-              icon={
-                message.photoURL ||
-                (message.photoId && imageUrls[message.photoId!])
-                  ? createImageMarkerIcon(
-                      message.photoURL ||
-                        (message.photoId && imageUrls[message.photoId!]) ||
-                        ''
-                    )
-                  : createTextMarker()
-              }
-            >
-              <Popup>
-                <div className="max-w-[250px] text-center">
-                  {/* 投稿写真がある場合は表示 */}
-                  {(message.photoURL ||
-                    (message.photoId && imageUrls[message.photoId!])) && (
-                    <img
-                      src={
+  // Popupが閉じたときのハンドラー
+  const handlePopupClose = () => {
+    setIsPopupOpen(false)
+  }
+
+  return geoMessages.length > 0 ? (
+    <div className="relative flex h-full w-full flex-col">
+      <div className="flex-grow">
+        <MapContainer
+          center={defaultCenter as [number, number]}
+          zoom={13}
+          className="z-0 h-full w-full rounded-lg shadow-md"
+          style={{ minHeight: '300px' }}
+          whenReady={() => setMapReady(true)}
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          {selectedLocation && (
+            <MapController
+              lat={selectedLocation[0]}
+              lng={selectedLocation[1]}
+            />
+          )}
+          {mapReady &&
+            geoMessages.map((message) => (
+              <Marker
+                key={message.id}
+                position={[message.latitude!, message.longitude!]}
+                icon={
+                  message.photoURL ||
+                  (message.photoId && imageUrls[message.photoId!])
+                    ? createImageMarkerIcon(
                         message.photoURL ||
-                        (message.photoId && imageUrls[message.photoId!]) ||
-                        ''
-                      }
-                      alt=""
-                      className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
-                      loading="lazy"
-                    />
-                  )}
-                  <p className="text-sm">
-                    {message.message || '画像が投稿されました'}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {message.user?.displayName || '匿名ユーザー'} -{' '}
-                    {message.timestamp?.toDate?.()
-                      ? message.timestamp.toDate().toLocaleString()
-                      : ''}
-                  </p>
+                          (message.photoId && imageUrls[message.photoId!]) ||
+                          ''
+                      )
+                    : createTextMarker()
+                }
+              >
+                <Popup
+                  eventHandlers={{
+                    add: handlePopupOpen,
+                    remove: handlePopupClose,
+                  }}
+                >
+                  <div className="max-w-[250px] text-center">
+                    {/* 投稿写真がある場合は表示 */}
+                    {(message.photoURL ||
+                      (message.photoId && imageUrls[message.photoId!])) && (
+                      <img
+                        src={
+                          message.photoURL ||
+                          (message.photoId && imageUrls[message.photoId!]) ||
+                          ''
+                        }
+                        alt=""
+                        className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
+                        loading="lazy"
+                      />
+                    )}
+                    <p className="text-sm">
+                      {message.message || '画像が投稿されました'}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {message.user?.displayName || '匿名ユーザー'} -{' '}
+                      {message.timestamp?.toDate?.()
+                        ? message.timestamp.toDate().toLocaleString()
+                        : ''}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+        </MapContainer>
+      </div>
+
+      {/* サムネイル一覧を追加 */}
+      <div className="mt-2 flex h-24 gap-2 overflow-x-auto rounded-lg bg-gray-50 p-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {geoMessages.map((message) => {
+          const imageUrl =
+            message.photoURL || (message.photoId && imageUrls[message.photoId])
+          return (
+            <div
+              key={message.id}
+              className="flex-shrink-0 cursor-pointer transition-opacity hover:opacity-80"
+              onClick={() => {
+                if (mapReady && message.latitude && message.longitude) {
+                  if (isPopupOpen) {
+                    // Popupが開いている場合は閉じる
+                    const popups = document.getElementsByClassName(
+                      'leaflet-popup-close-button'
+                    )
+                    if (popups.length > 0) {
+                      ;(popups[0] as HTMLElement).click()
+                    }
+                  }
+                  setSelectedLocation([message.latitude, message.longitude])
+                }
+              }}
+            >
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt=""
+                  className="h-20 w-20 rounded-lg border-2 border-white object-cover shadow-sm"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-white bg-gray-200 shadow-sm">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="text-gray-400"
+                  >
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                  </svg>
                 </div>
-              </Popup>
-            </Marker>
-          ))}
-      </MapContainer>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   ) : (
     <div className="flex h-full items-center justify-center">

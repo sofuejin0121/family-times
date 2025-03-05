@@ -1,10 +1,15 @@
-// App.tsx
 import { useEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from './app/hooks'
 import Login from './components/login/Login'
 import { auth } from './firebase'
 import { login, logout } from './features/userSlice'
-import { BrowserRouter, Route, Routes, Navigate, useNavigate } from 'react-router-dom'
+import {
+  BrowserRouter,
+  Route,
+  Routes,
+  Navigate,
+  useNavigate,
+} from 'react-router-dom'
 import { InvitePage } from './pages/InvitePage'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/sidebar/AppSidebar'
@@ -16,57 +21,57 @@ import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
-// import './styles/map.css' // 削除
-// import '@/components/ui/tabs.css' // 削除
 
 // エラーハンドリング用コンポーネント
 const InvalidInvitePath = () => {
-  const navigate = useNavigate(); // ここではRouterの中なので使用可能
-  
+  const navigate = useNavigate() // ここではRouterの中なので使用可能
+
   return (
     <div className="flex h-svh w-full items-center justify-center">
-      <div className="text-center p-4">
-        <p className="text-xl mb-4">無効なURLフォーマットです</p>
-        <p className="text-sm text-gray-500 mb-4">正しい招待リンクを使用してください</p>
+      <div className="p-4 text-center">
+        <p className="mb-4 text-xl">無効なURLフォーマットです</p>
+        <p className="mb-4 text-sm text-gray-500">
+          正しい招待リンクを使用してください
+        </p>
         <Button onClick={() => navigate('/', { replace: true })}>
           ホームに戻る
         </Button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // デープリンクをチェックするコンポーネント
 const DeepLinkChecker = () => {
-  const navigate = useNavigate(); // ここではRouterの中なので使用可能
-  
+  const navigate = useNavigate() // ここではRouterの中なので使用可能
+
   useEffect(() => {
-    const path = window.location.pathname;
-    const fullUrl = window.location.href;
-    
+    const path = window.location.pathname
+    const fullUrl = window.location.href
+
     // 問題のある形式のURLパターンをチェック
     if (path.startsWith('/invite/http')) {
-      console.log('問題のあるディープリンクを検出:', path);
-      
+      console.log('問題のあるディープリンクを検出:', path)
+
       // URLから招待コードを抽出
       try {
-        const match = fullUrl.match(/[?&]invite=([^&]+)/);
+        const match = fullUrl.match(/[?&]invite=([^&]+)/)
         if (match && match[1]) {
-          const inviteCode = match[1];
-          console.log('抽出された招待コード:', inviteCode);
-          navigate(`/invite?invite=${inviteCode}`, { replace: true });
+          const inviteCode = match[1]
+          console.log('抽出された招待コード:', inviteCode)
+          navigate(`/invite?invite=${inviteCode}`, { replace: true })
         } else {
           // 招待コードが見つからない場合はホームにリダイレクト
-          navigate('/', { replace: true });
+          navigate('/', { replace: true })
         }
       } catch (e) {
-        console.error('深いリンク処理エラー:', e);
-        navigate('/', { replace: true });
+        console.error('深いリンク処理エラー:', e)
+        navigate('/', { replace: true })
       }
     }
-  }, [navigate]);
-  
-  return null; // UIはレンダリングしない
+  }, [navigate])
+
+  return null // UIはレンダリングしない
 }
 
 function App() {
@@ -220,91 +225,88 @@ function App() {
     )
   }
 
-  if (!user) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="*" element={<Login />} />
-        </Routes>
-        <Toaster />
-      </BrowserRouter>
-    )
-  }
-
-  // プロフィール設定が必要な場合
-  if (needsProfileSetup) {
-    return (
-      <BrowserRouter>
-        <Routes>
-          {/* 招待コードページへのアクセスの場合はクエリパラメータも含めてリダイレクト */}
-          <Route
-            path="/invite"
-            element={
-              <Navigate
-                to={`/profile?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-                replace
-              />
-            }
-          />
-          {/* プロフィール設定ページそのもの */}
-          <Route path="/profile" element={<NewUserProfile />} />
-          {/* その他のパスはデフォルトでプロフィール設定に */}
-          <Route path="*" element={<Navigate to="/profile" replace />} />
-        </Routes>
-        <Toaster />
-      </BrowserRouter>
-    )
-  }
-
+  // 単一のBrowserRouterを使用する
   return (
-    <SidebarProvider>
-      <div
-        className="flex w-full items-center justify-center overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-      >
-        <BrowserRouter>
-          {/* ディープリンクチェッカーを追加 */}
-          <DeepLinkChecker />
-          
+    <BrowserRouter>
+      {/* DeepLinkCheckerはすべての状態で利用可能にする */}
+      <DeepLinkChecker />
+
+      {!user ? (
+        // 未ログイン状態
+        <>
           <Routes>
-            <Route
-              path="/"
-              element={
-                <div
-                  className="flex h-screen w-full overflow-hidden"
-                  style={{ width: '100%' }}
-                >
-                  <AppSidebar
-                    isMobileMenuOpen={isMobileMenuOpen}
-                    setIsMobileMenuOpen={setIsMobileMenuOpen}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <Chat
-                      isMemberSidebarOpen={isMemberSidebarOpen}
-                      setIsMemberSidebarOpen={setIsMemberSidebarOpen}
-                      isMobileMenuOpen={isMobileMenuOpen}
-                      setIsMobileMenuOpen={setIsMobileMenuOpen}
-                      isMapMode={isMapMode}
-                      setIsMapMode={setIsMapMode}
-                      setIsImageDialogOpen={setIsImageDialogOpen}
-                    />
-                  </div>
-                </div>
-              }
-            />
-            <Route path="/invite" element={<InvitePage />} />
-            <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
-            <Route path="/profile" element={<NewUserProfile />} />
-            
-            {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
-            <Route path="/invite/*" element={<InvalidInvitePath />} />
+            <Route path="*" element={<Login />} />
           </Routes>
           <Toaster />
-        </BrowserRouter>
-      </div>
-    </SidebarProvider>
+        </>
+      ) : needsProfileSetup ? (
+        // プロフィール設定が必要な状態
+        <>
+          <Routes>
+            {/* 招待コードページへのアクセスの場合はクエリパラメータも含めてリダイレクト */}
+            <Route
+              path="/invite"
+              element={
+                <Navigate
+                  to={`/profile?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                  replace
+                />
+              }
+            />
+            {/* プロフィール設定ページそのもの */}
+            <Route path="/profile" element={<NewUserProfile />} />
+            {/* その他のパスはデフォルトでプロフィール設定に */}
+            <Route path="*" element={<Navigate to="/profile" replace />} />
+          </Routes>
+          <Toaster />
+        </>
+      ) : (
+        // 通常のログイン済み状態
+        <SidebarProvider>
+          <div
+            className="flex w-full items-center justify-center overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <div
+                    className="flex h-screen w-full overflow-hidden"
+                    style={{ width: '100%' }}
+                  >
+                    <AppSidebar
+                      isMobileMenuOpen={isMobileMenuOpen}
+                      setIsMobileMenuOpen={setIsMobileMenuOpen}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Chat
+                        isMemberSidebarOpen={isMemberSidebarOpen}
+                        setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                        isMobileMenuOpen={isMobileMenuOpen}
+                        setIsMobileMenuOpen={setIsMobileMenuOpen}
+                        isMapMode={isMapMode}
+                        setIsMapMode={setIsMapMode}
+                        setIsImageDialogOpen={setIsImageDialogOpen}
+                      />
+                    </div>
+                  </div>
+                }
+              />
+              <Route path="/invite" element={<InvitePage />} />
+              <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
+              <Route path="/profile" element={<NewUserProfile />} />
+
+              {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
+              <Route path="/invite/*" element={<InvalidInvitePath />} />
+            </Routes>
+            <Toaster />
+          </div>
+        </SidebarProvider>
+      )}
+    </BrowserRouter>
   )
 }
 

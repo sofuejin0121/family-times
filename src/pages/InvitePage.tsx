@@ -15,7 +15,13 @@ import { setServerInfo } from '../features/serverSlice'
 import { setChannelInfo } from '../features/channelSlice'
 import { AppSidebar } from '../components/sidebar/AppSidebar'
 import Chat from '../components/chat/Chat'
-import { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle } from '../components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+} from '../components/ui/dialog'
 import { Button } from '../components/ui/button'
 import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 
@@ -32,24 +38,25 @@ export const InvitePage = () => {
   const [joinedChannelName, setJoinedChannelName] = useState('')
   const [isProcessing, setIsProcessing] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isComponentMounted, setIsComponentMounted] = useState(true)
 
   console.log('InvitePage コンポーネントがレンダリングされました')
 
   const redirectToHome = () => {
-    console.log('redirectToHome関数が呼び出されました');
+    console.log('redirectToHome関数が呼び出されました')
     navigate('/', { replace: true })
   }
 
   useEffect(() => {
     console.log('InvitePage useEffect が実行されました')
-    
+
     const handleInvite = async () => {
       console.log('handleInvite 関数が開始されました')
-      
+
       const inviteCode = searchParams.get('invite')
       console.log('取得した招待コード:', inviteCode)
       console.log('現在のユーザー:', user)
-      
+
       if (!inviteCode || !user) {
         console.log('招待コードまたはユーザーが見つかりません')
         setErrorMessage('無効な招待コードまたはログインが必要です')
@@ -66,8 +73,13 @@ export const InvitePage = () => {
         const q = query(serversRef, where(`invites.${inviteCode}`, '!=', null))
 
         const querySnapshot = await getDocs(q)
-        console.log('クエリ結果:', querySnapshot.empty ? '結果なし' : `${querySnapshot.size}件のサーバーが見つかりました`)
-        
+        console.log(
+          'クエリ結果:',
+          querySnapshot.empty
+            ? '結果なし'
+            : `${querySnapshot.size}件のサーバーが見つかりました`
+        )
+
         if (querySnapshot.empty) {
           console.log('招待コードに該当するサーバーが見つかりませんでした')
           setErrorMessage('招待コードが見つかりませんでした')
@@ -77,11 +89,14 @@ export const InvitePage = () => {
 
         const serverDoc = querySnapshot.docs[0]
         const serverData = serverDoc.data()
-        console.log('サーバー情報:', { id: serverDoc.id, name: serverData.name })
+        console.log('サーバー情報:', {
+          id: serverDoc.id,
+          name: serverData.name,
+        })
 
         const invite = serverData.invites[inviteCode]
         console.log('招待情報:', invite)
-        
+
         if (new Date(invite.expiresAt.seconds * 1000) < new Date()) {
           console.log('招待コードの有効期限が切れています')
           setErrorMessage('招待コードの有効期限が切れています')
@@ -95,35 +110,38 @@ export const InvitePage = () => {
         const serverSnapshot = await runTransaction(db, async (transaction) => {
           return await transaction.get(serverRef)
         })
-        
+
         const serverMemberData = serverSnapshot.data()?.members || {}
         const isAlreadyJoined = !!serverMemberData[user.uid]
-        console.log('ユーザーの参加状況:', isAlreadyJoined ? 'すでに参加済み' : '未参加')
+        console.log(
+          'ユーザーの参加状況:',
+          isAlreadyJoined ? 'すでに参加済み' : '未参加'
+        )
 
         if (isAlreadyJoined) {
-          console.log('すでに参加済みのサーバーです');
-          
+          console.log('すでに参加済みのサーバーです')
+
           dispatch(
             setServerInfo({
               serverId: serverDoc.id,
               serverName: serverData.name,
             })
-          );
-          
-          setIsProcessing(false);
-          
-          redirectToHome();
-          return;
+          )
+
+          setIsProcessing(false)
+
+          redirectToHome()
+          return
         }
 
         let channelId
         let channelName
 
         console.log('新規参加の処理を開始します')
-        
+
         await runTransaction(db, async (transaction) => {
           console.log('トランザクションを開始します')
-          
+
           const serverSnapshot = await transaction.get(serverRef)
           const serverMemberData = serverSnapshot.data()?.members || {}
           const isFirstJoin = !serverMemberData[user.uid]
@@ -136,7 +154,7 @@ export const InvitePage = () => {
               },
             })
           }
-          
+
           channelName = `times-${user.displayName}`
 
           const channelsRef = collection(
@@ -166,15 +184,17 @@ export const InvitePage = () => {
             channelId = channelSnapshot.docs[0].id
             channelName = channelSnapshot.docs[0].data().channelName
           }
-          
+
           console.log('トランザクションが完了しました')
         })
 
         console.log('チャンネル情報:', { id: channelId, name: channelName })
 
+        // 1. まず必要なデータを設定
         setJoinedServerName(serverData.name)
         setJoinedChannelName(channelName || '')
 
+        // 2. Reduxの更新
         dispatch(
           setServerInfo({
             serverId: serverDoc.id,
@@ -192,13 +212,15 @@ export const InvitePage = () => {
           )
         }
 
-        setIsSuccessModalOpen(true)
-        console.log('参加成功モーダルを表示します')
-        
-        setTimeout(() => {
-          console.log('ホームページにリダイレクトします')
-          redirectToHome()
-        }, 1500)
+        // 3. 処理完了を示す
+        setIsProcessing(false)
+
+        // 4. コンポーネントがマウントされている場合のみモーダルを表示
+        if (isComponentMounted) {
+          setIsSuccessModalOpen(true)
+          console.log('モーダルの表示を設定しました')
+        }
+
       } catch (err) {
         console.error('エラーの詳細:', err)
         setErrorMessage('サーバー参加処理中にエラーが発生しました')
@@ -209,25 +231,30 @@ export const InvitePage = () => {
     }
 
     handleInvite()
-    
+
     return () => {
       console.log('InvitePage がアンマウントされます')
       if (window.location.pathname === '/invite') {
         console.log('招待ページからホームに戻ります')
         redirectToHome()
       }
+      setIsComponentMounted(false)
     }
   }, [searchParams, user, dispatch, navigate])
+
+  useEffect(() => {
+    console.log('モーダルの状態が変更されました:', isSuccessModalOpen)
+  }, [isSuccessModalOpen])
 
   // useEffect(() => {
   //   console.log('状態変更を検知: isAlreadyJoinedModal =', isAlreadyJoinedModal);
   // }, []);
 
-  // console.log('現在の状態:', { 
-  //   isProcessing, 
-  //   errorMessage, 
-  //   isSuccessModalOpen, 
-  //   isAlreadyJoinedModal 
+  // console.log('現在の状態:', {
+  //   isProcessing,
+  //   errorMessage,
+  //   isSuccessModalOpen,
+  //   isAlreadyJoinedModal
   // })
 
   if (isProcessing) {
@@ -248,10 +275,7 @@ export const InvitePage = () => {
           <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
           <h2 className="mt-4 text-xl font-semibold">エラーが発生しました</h2>
           <p className="mt-2 text-gray-700">{errorMessage}</p>
-          <Button 
-            className="mt-6" 
-            onClick={redirectToHome}
-          >
+          <Button className="mt-6" onClick={redirectToHome}>
             ホームに戻る
           </Button>
         </div>
@@ -282,38 +306,50 @@ export const InvitePage = () => {
         </div>
       </div>
 
-      <Dialog 
-        open={isSuccessModalOpen} 
-        onOpenChange={(open) => {
-          setIsSuccessModalOpen(open)
-          if (!open) redirectToHome()
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">サーバー参加完了</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-6">
-            <CheckCircle className="h-16 w-16 text-green-500 mb-4" />
-            <p className="text-center text-lg">
-              <span className="font-bold">{joinedServerName}</span> に参加しました
-            </p>
-            {joinedChannelName && (
-              <p className="text-sm text-gray-500 mt-2">
-                チャンネル <span className="font-medium">{joinedChannelName}</span> が作成されました
+      {isSuccessModalOpen && (
+        <Dialog
+          open={isSuccessModalOpen}
+          onOpenChange={(open) => {
+            console.log('モーダル表示状態が変更されました:', open)
+            if (isComponentMounted) {
+              setIsSuccessModalOpen(open)
+              if (!open) {
+                console.log('モーダルが閉じられました、ホームに移動します')
+                redirectToHome()
+              }
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center">サーバー参加完了</DialogTitle>
+            </DialogHeader>
+            <div className="flex flex-col items-center justify-center py-6">
+              <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
+              <p className="text-center text-lg">
+                <span className="font-bold">{joinedServerName}</span> に参加しました
               </p>
-            )}
-          </div>
-          <DialogFooter>
-            <Button 
-              className="w-full" 
-              onClick={redirectToHome}
-            >
-              ホームに戻る
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              {joinedChannelName && (
+                <p className="mt-2 text-sm text-gray-500">
+                  チャンネル <span className="font-medium">{joinedChannelName}</span>{' '}
+                  が作成されました
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                className="w-full" 
+                onClick={() => {
+                  setIsSuccessModalOpen(false)
+                  redirectToHome()
+                }}
+              >
+                ホームに戻る
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   )
 }
