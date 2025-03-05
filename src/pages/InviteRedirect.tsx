@@ -1,9 +1,28 @@
+/**
+ * 招待リンクのリダイレクト処理を行うコンポーネント
+ * 
+ * @description
+ * このコンポーネントは、以下の機能を提供します:
+ * - URLパラメータから招待コードを取得
+ * - 招待コードの形式を正規化(複数のURL形式に対応)
+ * - 正規化した招待コードで/inviteページにリダイレクト
+ * 
+ * @example
+ * 以下のような複数のURL形式に対応:
+ * - /invite/ABCD123 
+ * - /invite?invite=ABCD123
+ * - /invite/http://example.com/invite?invite=ABCD123
+ * 
+ * @param {object} props - Reactコンポーネントのプロパティ(このコンポーネントは props を使用しません)
+ * @returns {JSX.Element} リダイレクト中の表示を行うJSX
+ */
 import { useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 
 export const InviteRedirect = () => {
-  const { inviteCode } = useParams()
-  const navigate = useNavigate()
+  // react-router-domのフック
+  const { inviteCode } = useParams() // URLパラメータから招待コードを取得
+  const navigate = useNavigate() // 画面遷移用のフック
 
   useEffect(() => {
     if (inviteCode) {
@@ -14,7 +33,11 @@ export const InviteRedirect = () => {
         const decodedCode = decodeURIComponent(inviteCode)
         console.log('デコードされた招待コード:', decodedCode)
         
-        // 招待コードを抽出する関数
+        /**
+         * 招待コードを抽出する関数
+         * @param {string} input - 処理する招待コード文字列
+         * @returns {string} 正規化された招待コード
+         */
         const extractInviteCode = (input: string): string => {
           // パターン1: URLに?invite=XXXが含まれる場合
           if (input.includes('?invite=')) {
@@ -57,6 +80,7 @@ export const InviteRedirect = () => {
         console.log('抽出された招待コード:', cleanCode)
         
         // クリーンな招待コードでリダイレクト
+        // replace: trueは履歴を置き換える(戻るボタンでこの画面に戻れないようにする)
         navigate(`/invite?invite=${cleanCode}`, { replace: true })
       } catch (e) {
         console.error('招待コードの処理中にエラーが発生しました:', e)
@@ -65,7 +89,7 @@ export const InviteRedirect = () => {
     } else {
       navigate('/', { replace: true })
     }
-  }, [inviteCode, navigate])
+  }, [inviteCode, navigate]) // inviteCodeまたはnavigateが変更されたときに再実行
 
   return (
     <div className="flex h-svh w-full items-center justify-center">

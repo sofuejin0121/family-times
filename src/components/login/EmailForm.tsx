@@ -1,14 +1,46 @@
+/**
+ * メールアドレスによるログイン/登録フォームコンポーネント
+ * @module EmailForm
+ * @description メールアドレスとパスワードを使用したログインまたはアカウント登録機能を提供するフォームコンポーネント。
+ * 
+ * @requires react - Reactライブラリ
+ * @requires react-router-dom - ルーティング機能
+ * @requires @/components/ui/* - UIコンポーネント
+ * @requires ./useAuth - 認証カスタムフック
+ */
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from './useAuth'
 
+/**
+ * EmailFormコンポーネントのProps型定義
+ * @typedef {Object} EmailFormProps
+ * @property {'login' | 'register'} mode - フォームの動作モード。'login'はログイン、'register'は新規登録
+ * @property {boolean} isLoading - ローディング状態を示すフラグ
+ */
 interface EmailFormProps {
   mode: 'login' | 'register'
   isLoading: boolean
 }
 
+/**
+ * メールアドレス認証フォームコンポーネント
+ * 
+ * @param {EmailFormProps} props - コンポーネントのプロパティ
+ * @returns {JSX.Element} メールアドレス認証フォームのJSX
+ * 
+ * @example
+ * ```tsx
+ * // ログインフォームとして使用
+ * <EmailForm mode="login" isLoading={false} />
+ * 
+ * // 登録フォームとして使用
+ * <EmailForm mode="register" isLoading={false} />
+ * ```
+ */
 export const EmailForm = ({
   mode,
   isLoading: parentLoading,
@@ -19,6 +51,10 @@ export const EmailForm = ({
 
   const { signInWithEmail, createAccount } = useAuth(navigate)
 
+  /**
+   * フォーム送信時の処理
+   * @param {React.FormEvent} e - フォームイベント
+   */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 

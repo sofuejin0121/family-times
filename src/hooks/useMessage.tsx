@@ -1,64 +1,64 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react'
 import {
   collection,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
-} from "firebase/firestore";
-import { db } from "../firebase";
-import { useAppSelector } from "../app/hooks";
+} from 'firebase/firestore'
+import { db } from '../firebase'
+import { useAppSelector } from '../app/hooks'
 
 interface Reaction {
-  emoji: string;
-  users: string[]; //リアクションしたユーザーのuid配列
+  emoji: string
+  users: string[] //リアクションしたユーザーのuid配列
 }
 
 interface Messages {
-  id: string;
-  photoId: string;
-  photoURL: string;
-  timestamp: Timestamp;
-  message: string;
-  imageWidth?: number;
-  imageHeight?: number;
-  latitude?: number;
-  longitude?: number;
+  id: string
+  photoId: string
+  photoURL: string
+  timestamp: Timestamp
+  message: string
+  imageWidth?: number
+  imageHeight?: number
+  latitude?: number
+  longitude?: number
   user: {
-    uid: string;
-    photo: string;
-    email: string;
-    displayName: string;
-  };
+    uid: string
+    photo: string
+    email: string
+    displayName: string
+  }
   reactions: {
-    [key: string]: Reaction; //絵文字をkeyとしたリアクションデータ
-  };
+    [key: string]: Reaction //絵文字をkeyとしたリアクションデータ
+  }
 }
 
 const useMessage = () => {
-  const [subDocuments, setSubDocuments] = useState<Messages[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const channelId = useAppSelector((state) => state.channel.channelId);
-  const serverId = useAppSelector((state) => state.server.serverId);
+  const [subDocuments, setSubDocuments] = useState<Messages[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const channelId = useAppSelector((state) => state.channel.channelId)
+  const serverId = useAppSelector((state) => state.server.serverId)
 
   useEffect(() => {
     if (serverId !== null && channelId !== null) {
-      setIsLoading(true);
+      setIsLoading(true)
       const collectionRef = collection(
         db,
-        "servers",
+        'servers',
         serverId,
-        "channels",
+        'channels',
         String(channelId),
-        "messages"
-      );
+        'messages'
+      )
       const collectionRefOrderBy = query(
         collectionRef,
-        orderBy("timestamp", "asc")
-      );
+        orderBy('timestamp', 'asc')
+      )
 
       const unsubscribe = onSnapshot(collectionRefOrderBy, (snapshot) => {
-        const results: Messages[] = [];
+        const results: Messages[] = []
         snapshot.docs.forEach((doc) => {
           results.push({
             id: doc.id,
@@ -72,17 +72,17 @@ const useMessage = () => {
             latitude: doc.data().latitude,
             longitude: doc.data().longitude,
             reactions: doc.data().reactions || {},
-          });
-        });
-        setSubDocuments(results);
-        setIsLoading(false);
-      });
-      
-      return () => unsubscribe();
+          })
+        })
+        setSubDocuments(results)
+        setIsLoading(false)
+      })
+
+      return () => unsubscribe()
     }
-  }, [channelId, serverId]);
+  }, [channelId, serverId])
 
-  return { subDocuments, isLoading };
-};
+  return { subDocuments, isLoading }
+}
 
-export default useMessage;
+export default useMessage

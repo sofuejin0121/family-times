@@ -38,7 +38,7 @@ interface MapDialogProps {
   }[]
 }
 
-// ZoomControlコンポーネントを作成
+// ZoomControlコンポーネントを作成：地図のズームコントロールを右下に配置するためのカスタムコンポーネント
 const ZoomControl = () => {
   const map = useMap()
   useEffect(() => {

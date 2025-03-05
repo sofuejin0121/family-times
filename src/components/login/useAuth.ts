@@ -54,10 +54,13 @@ export const useAuth = (navigate: NavigateFunction) => {
 
         // メール認証メールを再送信
         try {
+          // Firebase Authの機能を使用してメール認証メールを送信
           await sendEmailVerification(result.user, {
-            url: `${window.location.origin}/login`,
-            handleCodeInApp: false,
+            // 認証完了後にリダイレクトされるURL
+            url: `${window.location.origin}/login`, // 例：'http://localhost:3000/login'
+            handleCodeInApp: false, // アプリ内での認証コード処理を無効化
           })
+          // 送信成功時にユーザーに通知
           toast.info(
             'メールアドレス宛に認証リンクを送信しました。受信したメールのリンクをクリックしてください。'
           )
@@ -102,8 +105,9 @@ export const useAuth = (navigate: NavigateFunction) => {
       // メール認証リンクを送信
       try {
         await sendEmailVerification(newUser, {
-          url: `${window.location.origin}/login`,
-          handleCodeInApp: false,
+          // 認証完了後にリダイレクトされるURL
+          url: `${window.location.origin}/login`, // 例：'http://localhost:3000/login'
+          handleCodeInApp: false, // アプリ内での認証コード処理を無効化
         })
 
         toast.success(
@@ -137,6 +141,7 @@ export const useAuth = (navigate: NavigateFunction) => {
       await setDoc(
         doc(db, 'users', user.uid),
         {
+          //保存したいデータ
           uid: user.uid,
           photoURL: user.photoURL,
           email: user.email,
@@ -144,7 +149,7 @@ export const useAuth = (navigate: NavigateFunction) => {
           phoneNumber: user.phoneNumber,
           createdAt: new Date(),
         },
-        { merge: true }
+        { merge: true }// 既存データとマージする
       )
 
       return true

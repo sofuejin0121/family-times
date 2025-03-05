@@ -1,3 +1,19 @@
+/**
+ * @fileoverview 電話番号認証フォームコンポーネント
+ *
+ * このコンポーネントは以下の機能を提供します:
+ * - 電話番号入力フォーム
+ * - Firebase Phone Authenticationを使用した電話番号認証
+ * - 認証コード(OTP)入力フォーム
+ * - 認証成功後のユーザー情報保存
+ *
+ * @requires react - Reactライブラリ
+ * @requires react-router-dom - ルーティング用ライブラリ
+ * @requires firebase/auth - Firebase認証機能
+ * @requires @/components/ui/* - UIコンポーネント
+ * @requires sonner - トースト通知ライブラリ
+ */
+
 import { useState, useEffect } from 'react'
 import { NavigateFunction } from 'react-router-dom'
 import { auth } from '../../firebase'
@@ -12,24 +28,49 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { useAuth } from './useAuth'
 
+/**
+ * PhoneFormコンポーネントのProps型定義
+ * @typedef {Object} PhoneFormProps
+ * @property {NavigateFunction} navigate - ページ遷移用の関数
+ */
 interface PhoneFormProps {
   navigate: NavigateFunction
 }
 
+/**
+ * 電話番号認証フォームコンポーネント
+ *
+ * @param {PhoneFormProps} props - コンポーネントのプロパティ
+ * @returns {JSX.Element} 電話番号認証フォームのJSX
+ *
+ * @example
+ * ```tsx
+ * <PhoneForm navigate={navigate} />
+ * ```
+ */
 export const PhoneForm = ({ navigate }: PhoneFormProps) => {
+  // 電話番号関連のstate
   const [phoneNumber, setPhoneNumber] = useState('')
   const [formattedPhone, setFormattedPhone] = useState('')
+
+  // OTP(ワンタイムパスワード)関連のstate
   const [otpCode, setOtpCode] = useState(['', '', '', '', '', ''])
   const [showOTP, setShowOTP] = useState(false)
   const [phoneLoading, setPhoneLoading] = useState(false)
 
-  // 認証コード再送信のための待機時間を管理
+  // 再送信制御用のstate
   const [resendTimer, setResendTimer] = useState(0)
   const [canResend, setCanResend] = useState(true)
 
+  // カスタムフック
   const { saveUserToFirestore, handleSuccessfulLogin } = useAuth(navigate)
 
-  // 電話番号のフォーマット
+  /**
+   * 電話番号を国際形式にフォーマットする
+   *
+   * @param {string} value - 入力された電話番号
+   * @returns {string} フォーマットされた電話番号
+   */
   const formatPhoneNumber = (value: string) => {
     if (!value) return ''
 
@@ -43,15 +84,24 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     return value
   }
 
-  // 電話番号の入力処理
+  /**
+   * 電話番号入力時のハンドラー
+   *
+   * @param {React.ChangeEvent<HTMLInputElement>} e - 入力イベント
+   */
   const handlePhoneNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value
-    const value = rawValue.replace(/[^\d+]/g, '')
+    const value = rawValue.replace(/[^\d+]/g, '') // 数字と+記号以外を削除
     setPhoneNumber(value)
     setFormattedPhone(formatPhoneNumber(value))
   }
 
-  // OTPコードの入力処理
+  /**
+   * OTPコード入力時のハンドラー
+   *
+   * @param {number} index - 入力フィールドのインデックス
+   * @param {string} value - 入力された値
+   */
   const handleOtpChange = (index: number, value: string) => {
     if (value.length > 1) {
       value = value.charAt(0)
@@ -74,7 +124,12 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     }
   }
 
-  // OTP入力キーダウン処理
+  /**
+   * OTP入力フィールドのキーダウンハンドラー
+   *
+   * @param {number} index - 入力フィールドのインデックス
+   * @param {React.KeyboardEvent<HTMLInputElement>} e - キーボードイベント
+   */
   const handleOtpKeyDown = (
     index: number,
     e: React.KeyboardEvent<HTMLInputElement>
@@ -87,24 +142,31 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     }
   }
 
-  // reCAPTCHA初期化
+  /**
+   * reCAPTCHA初期化処理
+   *
+   * @returns {boolean} 初期化成功の場合true
+   */
   function setupRecaptcha() {
+    // ステップ1: reCAPTCHAが未設定の場合のみ処理を行う
+
     if (!window.recaptchaVerifier) {
       try {
         // reCAPTCHAコンテナが存在することを確認
+        // ステップ2: HTMLに必要な要素があるか確認
         const container = document.getElementById('recaptcha-container')
         if (!container) {
           return false
         }
-
-        // すでに要素が存在する場合はクリア
+        // ステップ3: 古いreCAPTCHAが存在する場合はクリーンアップ
         if (window.recaptchaVerifier) {
+          // すでに要素が存在する場合はクリア
           ;(
             window.recaptchaVerifier as unknown as { clear: () => void }
           ).clear()
           window.recaptchaVerifier = null
         }
-
+        // ステップ4: 新しいreCAPTCHAを設定
         // 新しいreCAPTCHAを作成
         window.recaptchaVerifier = new RecaptchaVerifier(
           auth,
@@ -124,13 +186,15 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     return true
   }
 
-  // タイマーを開始する関数
+  /**
+   * 再送信タイマーを開始する
+   */
   const startResendTimer = () => {
     setCanResend(false)
     setResendTimer(60) // 60秒（1分）のタイマーを設定
   }
 
-  // タイマー処理
+  // タイマー処理用のuseEffect
   useEffect(() => {
     if (resendTimer <= 0) return
 
@@ -148,7 +212,11 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     return () => clearInterval(interval)
   }, [resendTimer])
 
-  // 電話番号認証プロセス開始
+  /**
+   * 電話番号認証プロセスを開始する
+   *
+   * @param {React.FormEvent} e - フォームイベント
+   */
   function startPhoneAuth(e: React.FormEvent) {
     e.preventDefault()
 
@@ -211,7 +279,11 @@ export const PhoneForm = ({ navigate }: PhoneFormProps) => {
     }
   }
 
-  // OTP検証
+  /**
+   * OTPコードを検証する
+   *
+   * @param {React.FormEvent} e - フォームイベント
+   */
   function verifyOtp(e: React.FormEvent) {
     e.preventDefault()
 

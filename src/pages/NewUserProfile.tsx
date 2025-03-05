@@ -19,7 +19,7 @@ const NewUserProfile = () => {
   const location = useLocation()
   const [redirectPath, setRedirectPath] = useState('/')
 
-  // URLパラメーターからリダイレクト先を取得（修正）
+  // URLパラメーターからリダイレクト先を取得
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search)
     const redirectTo = searchParams.get('redirectTo')

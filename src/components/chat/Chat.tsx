@@ -28,7 +28,8 @@ interface ChatProps {
 }
 
 // 地図コンポーネントを動的にインポート
-const MapView = lazy(() => import('./MapView'))
+// 遅延インポート
+const MapView = lazy(() => import('./MapView')) // 必要になった時に読み込まれる(地図タブを開いた時に初めて読み込む)
 
 // ユーザー情報の型定義
 interface User {
@@ -55,8 +56,9 @@ const getImageLocation = async (
   file: File
 ): Promise<{ latitude: number; longitude: number } | null> => {
   return new Promise((resolve) => {
+    // 1. ファイルを読み込むためのFileReaderを作成
     const reader = new FileReader()
-
+    // 2. ファイル読み込み完了時の処理
     reader.onload = async function (e) {
       if (!e.target?.result) {
         resolve(null)
@@ -67,10 +69,10 @@ const getImageLocation = async (
         // EXIF-JSをインポート
         const exifr = await import('exifr')
 
-        // より信頼性の高いexifrライブラリを使用
+        // 4. 画像のGPS情報を取得
         const gps = await exifr.default.gps(file)
         console.log('EXIF GPS情報:', gps) // デバッグ用
-
+        // 5. 緯度・経度が存在する場合はその情報を返す
         if (gps && gps.latitude && gps.longitude) {
           resolve({
             latitude: gps.latitude,
@@ -85,11 +87,11 @@ const getImageLocation = async (
         resolve(null)
       }
     }
-
+    // ファイル読み込みエラー時の処理
     reader.onerror = function () {
       resolve(null)
     }
-
+    // ファイルの読み込みを開始
     reader.readAsArrayBuffer(file)
   })
 }
@@ -135,9 +137,11 @@ const Chat = ({
   ///画面の一番下までスクロールする関数
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
+      // 参照している要素まで画面をスクロール
       messagesEndRef.current.scrollIntoView({ behavior: 'auto' })
     }
   }, [])
+  // メッセージリストの読み込みが完了したら画面の一番下までスクロール
   useEffect(() => {
     if (!isLoading) {
       messagesEndRef?.current?.scrollIntoView()
@@ -146,11 +150,13 @@ const Chat = ({
 
   const clearSelectedFile = useCallback(() => {
     if (selectedFilePreview) {
+      // プレビュー用のURLを破棄
       URL.revokeObjectURL(selectedFilePreview)
     }
     setSelectedFile(null)
     setSelectedFilePreview(null)
     setFileImageDimensions(null)
+    // ファイル選択時の入力フィールドをクリア
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -159,8 +165,11 @@ const Chat = ({
   const sendMessage = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault()
-      
-      console.log('送信処理開始:', { テキスト: inputText, 画像: !!selectedFile })
+
+      console.log('送信処理開始:', {
+        テキスト: inputText,
+        画像: !!selectedFile,
+      })
 
       // テキストも画像も何もない場合は送信しない
       if (!inputText.trim() && !selectedFile) {
@@ -179,7 +188,7 @@ const Chat = ({
           let fileName = null
           let imageWidth = null
           let imageHeight = null
-
+          // 位置情報の取得（2つの方法
           // 位置情報の取得: 写真のEXIF位置情報を優先
           let locationData = imageLocation
 
@@ -196,6 +205,7 @@ const Chat = ({
               latitude: number
               longitude: number
             } | null>((resolve) => {
+              // ブラウザが位置情報を取得できる場合
               if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                   (position) => {
@@ -219,10 +229,10 @@ const Chat = ({
 
           // 画像がある場合はアップロード
           if (selectedFile) {
-            photoId = uuid4()
+            photoId = uuid4() //ユニークなIdを生成
             fileName = photoId + selectedFile.name
             const fileRef = ref(storage, fileName)
-
+            // ファイルをFirebase Storageにアップロード
             await uploadBytes(fileRef, selectedFile)
 
             if (fileImageDimensions) {
@@ -241,16 +251,16 @@ const Chat = ({
 
           // 画像サイズがある場合のみ追加
           if (imageWidth) {
-            messageData.imageWidth = imageWidth;
+            messageData.imageWidth = imageWidth
           }
           if (imageHeight) {
-            messageData.imageHeight = imageHeight;
+            messageData.imageHeight = imageHeight
           }
 
           // 位置情報がある場合は追加
           if (locationData) {
-            messageData.latitude = locationData.latitude;
-            messageData.longitude = locationData.longitude;
+            messageData.latitude = locationData.latitude
+            messageData.longitude = locationData.longitude
           }
 
           // Firestoreに保存
@@ -294,15 +304,17 @@ const Chat = ({
     ]
   )
 
-  // ファイル選択時の処理（修正版）
+  // ファイル選択時の処理
   const handleFileChange = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
+      // ファイルが選択された場合
       if (e.target.files && e.target.files.length > 0) {
         const file = e.target.files[0]
         console.log('選択されたファイル:', file.name, file.type, file.size)
-        
-        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
+        // ファイルサイズのチェック
+        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+        // ファイルサイズが5MBを超える場合はエラー
         if (file.size > MAX_FILE_SIZE) {
           toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
             duration: 3000,
@@ -334,7 +346,7 @@ const Chat = ({
           // 全メタデータを取得して確認（デバッグ用）
           const allMetadata = await exifr.default.parse(file)
           console.log('すべてのメタデータ:', allMetadata)
-          
+
           // 位置情報を取得
           const locationData = await getImageLocation(file)
           console.log('取得した位置情報:', locationData)
@@ -359,11 +371,13 @@ const Chat = ({
   )
 
   const filterMessages = messages.filter((message) => {
+    // 検索ワードが入力されている場合
     if (searchMessage !== '') {
       return message.message
         ?.toLowerCase()
         .includes(searchMessage.toLowerCase())
     } else {
+      // 検索ワードが入力されていない場合はすべてのメッセージを表示
       return true
     }
   })
@@ -569,7 +583,10 @@ const Chat = ({
                             // Enterキーで送信できるようにする（Shift+Enterは改行）
                             if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault()
-                              const formEvent = new Event('submit', { bubbles: true, cancelable: true }) as unknown as React.FormEvent
+                              const formEvent = new Event('submit', {
+                                bubbles: true,
+                                cancelable: true,
+                              }) as unknown as React.FormEvent
                               sendMessage(formEvent)
                             }
                           }}
@@ -666,9 +683,9 @@ const Chat = ({
           </div>
         </div>
       )}
-      
+
       {/* CreateServerコンポーネントをエクスポート */}
-      <CreateServer 
+      <CreateServer
         isOpen={isCreateServerOpen}
         onClose={() => setIsCreateServerOpen(false)}
       />

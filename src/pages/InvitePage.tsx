@@ -28,6 +28,7 @@ import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 export const InvitePage = () => {
   const dispatch = useAppDispatch()
   const user = useAppSelector((state) => state.user.user)
+  // URLパラメータを取得するためのフック
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -36,11 +37,11 @@ export const InvitePage = () => {
   // const [isAlreadyJoinedModal, setIsAlreadyJoinedModal] = useState(false)
   const [joinedServerName, setJoinedServerName] = useState('')
   const [joinedChannelName, setJoinedChannelName] = useState('')
+  //参加処理が進行中かどうかを示す(true => 処理中)
   const [isProcessing, setIsProcessing] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  //コンポーネントがマウントされているかどうかを示す
   const [isComponentMounted, setIsComponentMounted] = useState(true)
-
-  console.log('InvitePage コンポーネントがレンダリングされました')
 
   const redirectToHome = () => {
     console.log('redirectToHome関数が呼び出されました')
@@ -52,8 +53,9 @@ export const InvitePage = () => {
 
     const handleInvite = async () => {
       console.log('handleInvite 関数が開始されました')
-
+      // URLから招待コードを取得（例: ?invite=abc123）
       const inviteCode = searchParams.get('invite')
+
       console.log('取得した招待コード:', inviteCode)
       console.log('現在のユーザー:', user)
 
@@ -80,14 +82,16 @@ export const InvitePage = () => {
             : `${querySnapshot.size}件のサーバーが見つかりました`
         )
 
+        // 招待コードに一致するサーバーが見つからない場合
         if (querySnapshot.empty) {
           console.log('招待コードに該当するサーバーが見つかりませんでした')
           setErrorMessage('招待コードが見つかりませんでした')
           setIsProcessing(false)
           return
         }
-
+        // 最初に見つかったサーバードキュメント
         const serverDoc = querySnapshot.docs[0]
+        // サーバードキュメントのデータ
         const serverData = serverDoc.data()
         console.log('サーバー情報:', {
           id: serverDoc.id,
@@ -97,7 +101,10 @@ export const InvitePage = () => {
         const invite = serverData.invites[inviteCode]
         console.log('招待情報:', invite)
 
+        // 招待コードの有効期限が切れている場合
         if (new Date(invite.expiresAt.seconds * 1000) < new Date()) {
+          // Firestoreのタイムスタンプはsecondsフィールドを持つので、
+          // それをJavaScriptのDate形式に変換して現在時刻と比較
           console.log('招待コードの有効期限が切れています')
           setErrorMessage('招待コードの有効期限が切れています')
           setIsProcessing(false)
@@ -110,9 +117,12 @@ export const InvitePage = () => {
         const serverSnapshot = await runTransaction(db, async (transaction) => {
           return await transaction.get(serverRef)
         })
-
+        // トランザクションを使ってサーバー情報を取得
+        // トランザクションは複数の操作を一つの単位として実行する仕組み
         const serverMemberData = serverSnapshot.data()?.members || {}
         const isAlreadyJoined = !!serverMemberData[user.uid]
+        // ユーザーがすでにサーバーに参加しているかチェック
+        // !!演算子は値を真偽値に変換（存在すればtrue、存在しなければfalse）
         console.log(
           'ユーザーの参加状況:',
           isAlreadyJoined ? 'すでに参加済み' : '未参加'
@@ -143,9 +153,11 @@ export const InvitePage = () => {
           console.log('トランザクションを開始します')
 
           const serverSnapshot = await transaction.get(serverRef)
+          // トランザクション内でサーバー情報を取得
           const serverMemberData = serverSnapshot.data()?.members || {}
-          const isFirstJoin = !serverMemberData[user.uid]
 
+          const isFirstJoin = !serverMemberData[user.uid]
+          // 初回参加かどうか（ユーザーIDがメンバーリストに存在しなければ初回参加）
           if (isFirstJoin) {
             transaction.update(serverRef, {
               [`members.${user.uid}`]: {
@@ -183,6 +195,7 @@ export const InvitePage = () => {
           } else if (!channelSnapshot.empty) {
             channelId = channelSnapshot.docs[0].id
             channelName = channelSnapshot.docs[0].data().channelName
+            // 既存のチャンネル情報を取得
           }
 
           console.log('トランザクションが完了しました')
@@ -220,7 +233,6 @@ export const InvitePage = () => {
           setIsSuccessModalOpen(true)
           console.log('モーダルの表示を設定しました')
         }
-
       } catch (err) {
         console.error('エラーの詳細:', err)
         setErrorMessage('サーバー参加処理中にエラーが発生しました')
@@ -322,23 +334,27 @@ export const InvitePage = () => {
         >
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle className="text-center">サーバー参加完了</DialogTitle>
+              <DialogTitle className="text-center">
+                サーバー参加完了
+              </DialogTitle>
             </DialogHeader>
             <div className="flex flex-col items-center justify-center py-6">
               <CheckCircle className="mb-4 h-16 w-16 text-green-500" />
               <p className="text-center text-lg">
-                <span className="font-bold">{joinedServerName}</span> に参加しました
+                <span className="font-bold">{joinedServerName}</span>{' '}
+                に参加しました
               </p>
               {joinedChannelName && (
                 <p className="mt-2 text-sm text-gray-500">
-                  チャンネル <span className="font-medium">{joinedChannelName}</span>{' '}
+                  チャンネル{' '}
+                  <span className="font-medium">{joinedChannelName}</span>{' '}
                   が作成されました
                 </p>
               )}
             </div>
             <DialogFooter>
-              <Button 
-                className="w-full" 
+              <Button
+                className="w-full"
                 onClick={() => {
                   setIsSuccessModalOpen(false)
                   redirectToHome()

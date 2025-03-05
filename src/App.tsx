@@ -23,9 +23,9 @@ import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
 
 // エラーハンドリング用コンポーネント
+// URLが無効な形式の時に表示される画面
 const InvalidInvitePath = () => {
   const navigate = useNavigate() // ここではRouterの中なので使用可能
-
   return (
     <div className="flex h-svh w-full items-center justify-center">
       <div className="p-4 text-center">
@@ -33,6 +33,7 @@ const InvalidInvitePath = () => {
         <p className="mb-4 text-sm text-gray-500">
           正しい招待リンクを使用してください
         </p>
+        {/* replace: trueは履歴を置き換える(戻るボタンでこの画面に戻れないようにする) */}
         <Button onClick={() => navigate('/', { replace: true })}>
           ホームに戻る
         </Button>
@@ -41,15 +42,21 @@ const InvalidInvitePath = () => {
   )
 }
 
-// デープリンクをチェックするコンポーネント
+// ディープリンクをチェックするコンポーネント
+// URLの形式が正しくない場合に修正するためのコンポーネント
+// 例: '/invite/https://...' のような形式を '/invite?invite=...' に修正
 const DeepLinkChecker = () => {
   const navigate = useNavigate() // ここではRouterの中なので使用可能
-
+  // コンポーネントがマウントされた時に実行される
   useEffect(() => {
+    // 現在のURLパスとフルURLを取得
+    // URLのパス部分（ドメインの後の/から始まる部分）
     const path = window.location.pathname
+    //完全なURL全体を取得
     const fullUrl = window.location.href
 
     // 問題のある形式のURLパターンをチェック
+    // '/invite/http' で始まるURLは不正な形式
     if (path.startsWith('/invite/http')) {
       console.log('問題のあるディープリンクを検出:', path)
 
@@ -94,6 +101,7 @@ function App() {
   // タッチ開始時の処理
   const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     // スワイプ不可領域のチェック
+    // data-no-swipe属性がある要素ではスワイプを無効化
     if ((e.target as HTMLElement).closest('[data-no-swipe]')) {
       return
     }
@@ -225,7 +233,6 @@ function App() {
     )
   }
 
-  // 単一のBrowserRouterを使用する
   return (
     <BrowserRouter>
       {/* DeepLinkCheckerはすべての状態で利用可能にする */}

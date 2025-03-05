@@ -1,3 +1,17 @@
+/**
+ * チャットメッセージコンポーネント
+ * @module ChatMessage
+ * @description チャットメッセージを表示するコンポーネント。メッセージの表示、編集、削除、リアクション機能を提供します。
+ * 
+ * @requires firebase/firestore - Firestoreデータベース操作
+ * @requires firebase/storage - Firebase Storageファイル操作
+ * @requires react - Reactライブラリ
+ * @requires @mui/icons-material - Material UIアイコン
+ * @requires @/components/ui/* - UIコンポーネント
+ * @requires ../../hooks/useUsers - ユーザー情報取得カスタムフック
+ * @requires ../../app/hooks - Reduxカスタムフック
+ */
+
 import { deleteDoc, doc, runTransaction, updateDoc } from 'firebase/firestore'
 import { useAppSelector } from '../../app/hooks'
 import { db, storage } from '../../firebase'
@@ -24,13 +38,27 @@ import useUsers from '../../hooks/useUsers'
 // 固定の絵文字リアクションを定義
 const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
+/**
+ * リアクション情報の型定義
+ * @typedef {Object} Reaction
+ * @property {string} emoji - リアクションの絵文字
+ * @property {string[]} users - リアクションしたユーザーのID配列
+ * @property {number} [count] - リアクション数(オプション)
+ */
 interface Reaction {
   emoji: string
   users: string[]
   count?: number
 }
 
-// ユーザー情報の型定義
+/**
+ * ユーザー情報の型定義
+ * @typedef {Object} User
+ * @property {string} uid - ユーザーID
+ * @property {string} [email] - メールアドレス(オプション)
+ * @property {string} [photoURL] - プロフィール画像URL(オプション)
+ * @property {string} [displayName] - 表示名(オプション)
+ */
 interface User {
   uid: string
   email?: string
@@ -38,6 +66,22 @@ interface User {
   displayName?: string
 }
 
+/**
+ * ChatMessageコンポーネントのProps型定義
+ * @typedef {Object} Props
+ * @property {string} id - メッセージID
+ * @property {string | null} message - メッセージ本文
+ * @property {Timestamp} timestamp - 投稿日時
+ * @property {User} user - 投稿者情報
+ * @property {string | null} photoId - 添付画像のID
+ * @property {string} [photoURL] - 添付画像のURL(オプション)
+ * @property {number} [imageWidth] - 画像の幅(オプション)
+ * @property {number} [imageHeight] - 画像の高さ(オプション)
+ * @property {Object.<string, Reaction>} [reactions] - リアクション情報(オプション)
+ * @property {number} [latitude] - 位置情報の緯度(オプション)
+ * @property {number} [longitude] - 位置情報の経度(オプション)
+ * @property {function} setIsImageDialogOpen - 画像ダイアログの表示状態を制御する関数
+ */
 interface Props {
   id: string
   message: string | null
@@ -55,6 +99,23 @@ interface Props {
   setIsImageDialogOpen: (isOpen: boolean) => void
 }
 
+/**
+ * チャットメッセージを表示するコンポーネント
+ * @param {Props} props - コンポーネントのプロパティ
+ * @returns {JSX.Element} チャットメッセージのJSX
+ * 
+ * @example
+ * ```tsx
+ * <ChatMessage
+ *   id="message1"
+ *   message="こんにちは"
+ *   timestamp={new Timestamp(1234567890, 0)}
+ *   user={{ uid: "user1", displayName: "山田太郎" }}
+ *   photoId={null}
+ *   setIsImageDialogOpen={(isOpen) => {}}
+ * />
+ * ```
+ */
 const ChatMessage = ({
   timestamp,
   photoId,
@@ -195,20 +256,25 @@ const ChatMessage = ({
 
   // 絵文字リアクションパネルの表示/非表示を管理
   const [showReactionPanel, setShowReactionPanel] = useState<boolean>(false)
+  // パネルの要素をを参照するための変数
   const reactionPanelRef = useRef<HTMLDivElement>(null)
   
   // リアクションパネルの外側をクリックした時に閉じる処理
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
+        // パネルが存在していて(reactionPanelRef.current)
+        // かつ、クリックされた場所(event.target)がパネルの外側(reactionPanelRef.current.contains(event.target as Node))
         reactionPanelRef.current &&
         !reactionPanelRef.current.contains(event.target as Node)
       ) {
         setShowReactionPanel(false)
       }
     }
+    // ページ全体にクリックイベントのリスナー追加
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
+      // コンポーネントがアンマウントされた時にリスナーを削除
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
