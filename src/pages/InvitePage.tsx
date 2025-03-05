@@ -27,7 +27,7 @@ export const InvitePage = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
-  const [isAlreadyJoinedModal, setIsAlreadyJoinedModal] = useState(false)
+  // const [isAlreadyJoinedModal, setIsAlreadyJoinedModal] = useState(false)
   const [joinedServerName, setJoinedServerName] = useState('')
   const [joinedChannelName, setJoinedChannelName] = useState('')
   const [isProcessing, setIsProcessing] = useState(true)
@@ -35,9 +35,8 @@ export const InvitePage = () => {
 
   console.log('InvitePage コンポーネントがレンダリングされました')
 
-  // URLが確実に元に戻るようにするためのヘルパー関数を追加
   const redirectToHome = () => {
-    // replaceオプションを使用して履歴を置き換え、戻るボタンで招待ページに戻らないようにする
+    console.log('redirectToHome関数が呼び出されました');
     navigate('/', { replace: true })
   }
 
@@ -58,7 +57,6 @@ export const InvitePage = () => {
         return
       }
 
-      // 処理開始時にローディング状態をtrueに
       setIsProcessing(true)
       setErrorMessage(null)
 
@@ -93,7 +91,6 @@ export const InvitePage = () => {
 
         const serverRef = doc(db, 'servers', serverDoc.id)
 
-        // メンバー情報を確認
         console.log('サーバーのメンバー情報を確認します')
         const serverSnapshot = await runTransaction(db, async (transaction) => {
           return await transaction.get(serverRef)
@@ -103,53 +100,35 @@ export const InvitePage = () => {
         const isAlreadyJoined = !!serverMemberData[user.uid]
         console.log('ユーザーの参加状況:', isAlreadyJoined ? 'すでに参加済み' : '未参加')
 
-        // すでに参加している場合の処理を修正
         if (isAlreadyJoined) {
-          console.log('すでに参加済みの処理を実行します')
+          console.log('すでに参加済みのサーバーです');
           
-          // サーバー情報をセット
           dispatch(
             setServerInfo({
               serverId: serverDoc.id,
               serverName: serverData.name,
             })
-          )
+          );
           
-          setJoinedServerName(serverData.name)
+          setIsProcessing(false);
           
-          // 先にローディング状態を解除してからモーダルを表示
-          setIsProcessing(false)
-          
-          // すでに参加済みのモーダルを表示
-          setIsAlreadyJoinedModal(true)
-          console.log('参加済みモーダルを表示します')
-          
-          // タイムアウトのみをここで設定し、リダイレクトはモーダルの onOpenChange で処理
-          setTimeout(() => {
-            console.log('タイムアウト経過、ホームに移動します')
-            redirectToHome()
-          }, 2500) // 少し長めの時間に設定
-          
-          return // 必ずここでreturnする
+          redirectToHome();
+          return;
         }
 
         let channelId
         let channelName
 
-        // 新規参加の処理
         console.log('新規参加の処理を開始します')
         
-        // トランザクションでサーバーメンバー追加とチャンネル作成を実行
         await runTransaction(db, async (transaction) => {
           console.log('トランザクションを開始します')
           
-          // メンバー情報を取得して、初めての参加かどうかを確認
           const serverSnapshot = await transaction.get(serverRef)
           const serverMemberData = serverSnapshot.data()?.members || {}
           const isFirstJoin = !serverMemberData[user.uid]
 
           if (isFirstJoin) {
-            // メンバーとして追加
             transaction.update(serverRef, {
               [`members.${user.uid}`]: {
                 role: 'member',
@@ -158,10 +137,8 @@ export const InvitePage = () => {
             })
           }
           
-          // 自動で作成するテキストチャンネルにはプレフィックスにtimes-を付ける
           channelName = `times-${user.displayName}`
 
-          // ユーザーのチャンネルがすでに作成済みかチェック
           const channelsRef = collection(
             db,
             'servers',
@@ -174,7 +151,6 @@ export const InvitePage = () => {
           )
           const channelSnapshot = await getDocs(channelQuery)
 
-          // 初めての参加でチャンネルが存在しない場合のみ作成
           if (channelSnapshot.empty && isFirstJoin) {
             const newChannelRef = doc(
               collection(db, 'servers', serverDoc.id, 'channels')
@@ -187,7 +163,6 @@ export const InvitePage = () => {
 
             channelId = newChannelRef.id
           } else if (!channelSnapshot.empty) {
-            // チャンネルが既に存在する場合
             channelId = channelSnapshot.docs[0].id
             channelName = channelSnapshot.docs[0].data().channelName
           }
@@ -197,7 +172,6 @@ export const InvitePage = () => {
 
         console.log('チャンネル情報:', { id: channelId, name: channelName })
 
-        // サーバー名とチャンネル名を保存（モーダル表示用）
         setJoinedServerName(serverData.name)
         setJoinedChannelName(channelName || '')
 
@@ -218,11 +192,9 @@ export const InvitePage = () => {
           )
         }
 
-        // 成功モーダルを表示
         setIsSuccessModalOpen(true)
         console.log('参加成功モーダルを表示します')
         
-        // モーダル表示後、遅延してホームページへ移動
         setTimeout(() => {
           console.log('ホームページにリダイレクトします')
           redirectToHome()
@@ -230,18 +202,14 @@ export const InvitePage = () => {
       } catch (err) {
         console.error('エラーの詳細:', err)
         setErrorMessage('サーバー参加処理中にエラーが発生しました')
+        setIsProcessing(false)
       } finally {
-        // processAfterJoin関数内でisProcessingをfalseにしている場合は、ここではスキップ
-        if (isProcessing) {
-          console.log('処理が完了しました、ローディング状態をfalseに設定します')
-          setIsProcessing(false)
-        }
+        console.log('処理が完了しました')
       }
     }
 
     handleInvite()
     
-    // コンポーネントがアンマウントされる際に、URLが招待URLのままなら強制的にホームにリダイレクト
     return () => {
       console.log('InvitePage がアンマウントされます')
       if (window.location.pathname === '/invite') {
@@ -251,14 +219,17 @@ export const InvitePage = () => {
     }
   }, [searchParams, user, dispatch, navigate])
 
-  console.log('現在の状態:', { 
-    isProcessing, 
-    errorMessage, 
-    isSuccessModalOpen, 
-    isAlreadyJoinedModal 
-  })
+  // useEffect(() => {
+  //   console.log('状態変更を検知: isAlreadyJoinedModal =', isAlreadyJoinedModal);
+  // }, []);
 
-  // ローディング表示またはエラー表示を追加
+  // console.log('現在の状態:', { 
+  //   isProcessing, 
+  //   errorMessage, 
+  //   isSuccessModalOpen, 
+  //   isAlreadyJoinedModal 
+  // })
+
   if (isProcessing) {
     return (
       <div className="flex h-svh w-full items-center justify-center bg-white">
@@ -270,7 +241,6 @@ export const InvitePage = () => {
     )
   }
 
-  // エラーメッセージがある場合の表示
   if (errorMessage) {
     return (
       <div className="flex h-svh w-full flex-col items-center justify-center bg-white">
@@ -312,12 +282,10 @@ export const InvitePage = () => {
         </div>
       </div>
 
-      {/* 参加成功モーダル */}
       <Dialog 
         open={isSuccessModalOpen} 
         onOpenChange={(open) => {
           setIsSuccessModalOpen(open)
-          // モーダルが閉じられたときにURLを確実にリセット
           if (!open) redirectToHome()
         }}
       >
@@ -340,44 +308,6 @@ export const InvitePage = () => {
             <Button 
               className="w-full" 
               onClick={redirectToHome}
-            >
-              ホームに戻る
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      
-      {/* すでに参加済みモーダル */}
-      <Dialog 
-        open={isAlreadyJoinedModal} 
-        onOpenChange={(open) => {
-          setIsAlreadyJoinedModal(open)
-          // モーダルが閉じられたときにURLを確実にリセット
-          if (!open) {
-            console.log('参加済みモーダルが閉じられました、ホームにリダイレクトします')
-            redirectToHome()
-          }
-        }}
-      >
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center">サーバーに移動</DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col items-center justify-center py-6">
-            <p className="text-center text-lg">
-              あなたはすでに <span className="font-bold">{joinedServerName}</span> に参加しています
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              ホーム画面に移動します
-            </p>
-          </div>
-          <DialogFooter>
-            <Button 
-              className="w-full" 
-              onClick={() => {
-                console.log('ホームに戻るボタンがクリックされました')
-                setIsAlreadyJoinedModal(false) // これによりonOpenChangeも発火する
-              }}
             >
               ホームに戻る
             </Button>

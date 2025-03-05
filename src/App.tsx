@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from './app/hooks'
 import Login from './components/login/Login'
 import { auth } from './firebase'
 import { login, logout } from './features/userSlice'
-import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, Navigate, useNavigate } from 'react-router-dom'
 import { InvitePage } from './pages/InvitePage'
 import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/sidebar/AppSidebar'
@@ -15,8 +15,59 @@ import LoadingScreen from './components/loading/LoadingScreen'
 import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
+import { Button } from '@/components/ui/button'
 // import './styles/map.css' // 削除
 // import '@/components/ui/tabs.css' // 削除
+
+// エラーハンドリング用コンポーネント
+const InvalidInvitePath = () => {
+  const navigate = useNavigate(); // ここではRouterの中なので使用可能
+  
+  return (
+    <div className="flex h-svh w-full items-center justify-center">
+      <div className="text-center p-4">
+        <p className="text-xl mb-4">無効なURLフォーマットです</p>
+        <p className="text-sm text-gray-500 mb-4">正しい招待リンクを使用してください</p>
+        <Button onClick={() => navigate('/', { replace: true })}>
+          ホームに戻る
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+// デープリンクをチェックするコンポーネント
+const DeepLinkChecker = () => {
+  const navigate = useNavigate(); // ここではRouterの中なので使用可能
+  
+  useEffect(() => {
+    const path = window.location.pathname;
+    const fullUrl = window.location.href;
+    
+    // 問題のある形式のURLパターンをチェック
+    if (path.startsWith('/invite/http')) {
+      console.log('問題のあるディープリンクを検出:', path);
+      
+      // URLから招待コードを抽出
+      try {
+        const match = fullUrl.match(/[?&]invite=([^&]+)/);
+        if (match && match[1]) {
+          const inviteCode = match[1];
+          console.log('抽出された招待コード:', inviteCode);
+          navigate(`/invite?invite=${inviteCode}`, { replace: true });
+        } else {
+          // 招待コードが見つからない場合はホームにリダイレクト
+          navigate('/', { replace: true });
+        }
+      } catch (e) {
+        console.error('深いリンク処理エラー:', e);
+        navigate('/', { replace: true });
+      }
+    }
+  }, [navigate]);
+  
+  return null; // UIはレンダリングしない
+}
 
 function App() {
   const dispatch = useAppDispatch()
@@ -214,6 +265,9 @@ function App() {
         onTouchEnd={handleTouchEnd}
       >
         <BrowserRouter>
+          {/* ディープリンクチェッカーを追加 */}
+          <DeepLinkChecker />
+          
           <Routes>
             <Route
               path="/"
@@ -243,6 +297,9 @@ function App() {
             <Route path="/invite" element={<InvitePage />} />
             <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
             <Route path="/profile" element={<NewUserProfile />} />
+            
+            {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
+            <Route path="/invite/*" element={<InvalidInvitePath />} />
           </Routes>
           <Toaster />
         </BrowserRouter>

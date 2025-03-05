@@ -16,61 +16,56 @@ const NoServerView = ({ onCreateServer }: NoServerViewProps) => {
 
   const handleJoinServer = () => {
     if (inviteCode.trim()) {
-      let cleanCode = inviteCode.trim()
+      const cleanCode = inviteCode.trim()
+      let finalInviteCode = cleanCode
 
-      // URLから招待コードを抽出する処理を強化
       try {
-        // URL形式かチェック
-        if (cleanCode.includes('://') || cleanCode.startsWith('/')) {
-          // 完全なURLまたは相対パスの場合
-          let url
-
-          if (cleanCode.includes('://')) {
-            // 絶対URL（http://など）
-            url = new URL(cleanCode)
-          } else {
-            // 相対パス（/invite/など）
-            url = new URL(cleanCode, window.location.origin)
-          }
-
-          // inviteクエリパラメータがある場合
+        // 完全なURLが入力された場合の処理
+        if (cleanCode.includes('://')) {
+          // URLを解析
+          const url = new URL(cleanCode)
+          
+          // URLにinviteクエリパラメータがある場合
           if (url.searchParams.has('invite')) {
-            cleanCode = url.searchParams.get('invite') || ''
-          }
-          // パスが/invite/XXXの形式の場合
-          else if (url.pathname.startsWith('/invite/')) {
-            const pathParts = url.pathname.split('/')
-            if (pathParts.length >= 3 && pathParts[2]) {
-              cleanCode = pathParts[2]
+            finalInviteCode = url.searchParams.get('invite') || cleanCode
+            console.log('URLから抽出した招待コード:', finalInviteCode)
+          } 
+          // '/invite/' パス形式の場合
+          else if (url.pathname.includes('/invite/')) {
+            const pathParts = url.pathname.split('/invite/')
+            if (pathParts.length > 1 && pathParts[1]) {
+              // パスの後半部分を取得（クエリパラメータがある場合は除外）
+              finalInviteCode = pathParts[1].split(/[?#]/)[0]
+              console.log('パスから抽出した招待コード:', finalInviteCode)
             }
           }
         }
-        // クエリパラメータのみの形式（?invite=XXX）
+        // クエリパラメータだけが入力された場合
         else if (cleanCode.includes('?invite=')) {
-          const match = cleanCode.match(/\?invite=([^&]+)/)
+          const match = cleanCode.match(/[?&]invite=([^&]+)/)
           if (match && match[1]) {
-            cleanCode = match[1]
+            finalInviteCode = match[1]
+            console.log('クエリパラメータから抽出した招待コード:', finalInviteCode)
           }
         }
-        // /invite/XXX形式
+        // '/invite/' パス形式だけの場合
         else if (cleanCode.startsWith('/invite/')) {
-          const parts = cleanCode.split('/')
-          if (parts.length >= 3 && parts[2]) {
-            cleanCode = parts[2]
+          const pathParts = cleanCode.split('/invite/')
+          if (pathParts.length > 1 && pathParts[1]) {
+            finalInviteCode = pathParts[1].split(/[?#]/)[0]
+            console.log('パス文字列から抽出した招待コード:', finalInviteCode)
           }
         }
       } catch (e) {
-        console.error('URL解析エラー:', e)
-        // 解析に失敗した場合はそのまま使用
+        console.error('招待コード処理エラー:', e)
+        // エラーの場合は入力されたコードをそのまま使用
       }
 
-      // 最終的に抽出されたコードを使用（空でない場合のみ）
-      if (cleanCode) {
-        console.log('使用する招待コード:', cleanCode)
-        navigate(`/invite?invite=${cleanCode}`)
-        setIsJoinServerOpen(false)
-        setInviteCode('')
-      }
+      // 最終的に抽出されたコードを直接クエリパラメータとして使用
+      console.log('最終的に使用する招待コード:', finalInviteCode)
+      navigate(`/invite?invite=${finalInviteCode}`)
+      setIsJoinServerOpen(false)
+      setInviteCode('')
     }
   }
 
