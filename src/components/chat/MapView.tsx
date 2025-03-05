@@ -3,7 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
 import icon from 'leaflet/dist/images/marker-icon.png'
 import iconShadow from 'leaflet/dist/images/marker-shadow.png'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { storage } from '../../firebase'
@@ -74,7 +74,8 @@ const MapView = ({ messages }: MapViewProps) => {
   const [selectedLocation, setSelectedLocation] = useState<
     [number, number] | null
   >(null)
-  const [isPopupOpen, setIsPopupOpen] = useState(false)
+  const markerRefs = useRef<{ [key: string]: L.Marker }>({})
+  const mapRef = useRef<L.Map | null>(null)
 
   useEffect(() => {
     // コンポーネントのマウント時にLeafletのデフォルトアイコンを設定
@@ -141,14 +142,26 @@ const MapView = ({ messages }: MapViewProps) => {
         ]
       : [35.6895, 139.6917] // 東京
 
-  // Popupが開いたときのハンドラー
-  const handlePopupOpen = () => {
-    setIsPopupOpen(true)
-  }
+  const closePopupAndMove = async (
+    messageId: string,
+    latitude: number,
+    longitude: number
+  ) => {
+    if (!mapRef.current) return
 
-  // Popupが閉じたときのハンドラー
-  const handlePopupClose = () => {
-    setIsPopupOpen(false)
+    // まず地図上のすべてのポップアップを強制的に閉じる
+    mapRef.current.closePopup()
+
+    // 地図を移動
+    setSelectedLocation([latitude, longitude])
+
+    // 新しいマーカーのポップアップを開く
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
+    const targetMarker = markerRefs.current[messageId]
+    if (targetMarker) {
+      targetMarker.openPopup()
+    }
   }
 
   return geoMessages.length > 0 ? (
@@ -160,6 +173,12 @@ const MapView = ({ messages }: MapViewProps) => {
           className="z-0 h-full w-full rounded-lg shadow-md"
           style={{ minHeight: '300px' }}
           whenReady={() => setMapReady(true)}
+          ref={(map) => {
+            if (map) {
+              setMapReady(true)
+              mapRef.current = map
+            }
+          }}
         >
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -186,13 +205,13 @@ const MapView = ({ messages }: MapViewProps) => {
                       )
                     : createTextMarker()
                 }
+                ref={(markerRef) => {
+                  if (markerRef) {
+                    markerRefs.current[message.id] = markerRef
+                  }
+                }}
               >
-                <Popup
-                  eventHandlers={{
-                    add: handlePopupOpen,
-                    remove: handlePopupClose,
-                  }}
-                >
+                <Popup>
                   <div className="max-w-[250px] text-center">
                     {/* 投稿写真がある場合は表示 */}
                     {(message.photoURL ||
@@ -225,28 +244,39 @@ const MapView = ({ messages }: MapViewProps) => {
       </div>
 
       {/* サムネイル一覧を追加 */}
-      <div className="mt-2 flex h-24 gap-2 overflow-x-auto rounded-lg bg-gray-50 p-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="mt-2 flex h-24 touch-pan-x gap-2 overflow-x-auto rounded-lg bg-gray-50 p-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {geoMessages.map((message) => {
           const imageUrl =
             message.photoURL || (message.photoId && imageUrls[message.photoId])
           return (
             <div
               key={message.id}
-              className="flex-shrink-0 cursor-pointer transition-opacity hover:opacity-80"
-              onClick={() => {
+              className="flex-shrink-0 cursor-pointer touch-manipulation select-none"
+              onClick={(e) => {
+                e.preventDefault()//イベントのデフォルト動作を防止
+                e.stopPropagation()
                 if (mapReady && message.latitude && message.longitude) {
-                  if (isPopupOpen) {
-                    // Popupが開いている場合は閉じる
-                    const popups = document.getElementsByClassName(
-                      'leaflet-popup-close-button'
-                    )
-                    if (popups.length > 0) {
-                      ;(popups[0] as HTMLElement).click()
-                    }
-                  }
-                  setSelectedLocation([message.latitude, message.longitude])
+                  closePopupAndMove(
+                    message.id,
+                    message.latitude,
+                    message.longitude
+                  )
                 }
               }}
+              onTouchStart={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if(mapReady && message.latitude && message.longitude) {
+                  closePopupAndMove(
+                    message.id,
+                    message.latitude,
+                    message.longitude
+                  )
+                }
+              }}
+
+              role="button"
+              tabIndex={0}
             >
               {imageUrl ? (
                 <img
