@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from './app/hooks'
 import Login from './components/login/Login'
 import { auth } from './firebase'
@@ -21,6 +21,7 @@ import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
+import useServer from './hooks/useServer'
 
 // エラーハンドリング用コンポーネント
 // URLが無効な形式の時に表示される画面
@@ -48,7 +49,7 @@ const InvalidInvitePath = () => {
 const DeepLinkChecker = () => {
   const navigate = useNavigate() // ここではRouterの中なので使用可能
   // コンポーネントがマウントされた時に実行される
-  useEffect(() => {
+  useLayoutEffect(() => {
     // 現在のURLパスとフルURLを取得
     // URLのパス部分（ドメインの後の/から始まる部分）
     const path = window.location.pathname
@@ -85,6 +86,8 @@ function App() {
   const dispatch = useAppDispatch()
   const isAuthChecking = useAppSelector((state) => state.user.isAuthChecking)
   const user = useAppSelector((state) => state.user.user)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const { loading: serversLoading } = useServer()
   // モバイルでは初期状態で非表示に設定
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false)
@@ -164,10 +167,13 @@ function App() {
     setIsSwiping(false)
   }
 
-  // 追加：ログイン直後のフラグを管理
+  // App.tsxに新しい状態を追加
+  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
+
+  // ログイン直後のフラグを管理
   const [isJustLoggedIn, setIsJustLoggedIn] = useState(false)
 
-  // プロフィール設定が必要かどうかを判定（条件を少し調整）
+  // プロフィール設定が必要かどうかを判定
   const needsProfileSetup =
     user &&
     !isJustLoggedIn && // ログイン直後は判定しない
@@ -176,21 +182,16 @@ function App() {
     user.email &&
     !user.email.includes('gmail.com') // Googleログイン以外の場合
 
-  // App.tsxに新しい状態を追加
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
-
-  useEffect(() => {
-    // 認証状態確認開始
+  // 認証状態の確認を useLayoutEffect で行う
+  useLayoutEffect(() => {
     dispatch(startAuthCheck())
 
     const unsubscribe = auth.onAuthStateChanged((loginUser) => {
       if (loginUser) {
-        // ユーザーがメール認証済みかチェック
         if (
           !loginUser.emailVerified &&
           loginUser.providerData[0]?.providerId === 'password'
         ) {
-          // メール認証が完了していない場合は、ログイン状態にしない
           toast.error(
             'メールアドレスの認証が完了していません。受信したメールのリンクをクリックしてください。'
           )
@@ -198,7 +199,6 @@ function App() {
           return
         }
 
-        // ユーザーの表示名が設定されていない場合の対応
         const displayName =
           loginUser.displayName ||
           (loginUser.email ? loginUser.email.split('@')[0] : '名称未設定')
@@ -212,20 +212,19 @@ function App() {
           })
         )
 
-        // ログイン状態変更を検知したら一時的にフラグを立てる
         setIsJustLoggedIn(true)
-        // 少し遅延させてからフラグを戻す（画面ちらつき防止）
-        setTimeout(() => setIsJustLoggedIn(false), 1000)
+        setTimeout(() => setIsJustLoggedIn(false), 300)
       } else {
         dispatch(logout())
       }
+      setIsInitialized(true)
     })
 
     return () => unsubscribe()
   }, [dispatch])
 
-  // 認証状態確認中はローディング表示
-  if (isAuthChecking) {
+  // 初期化とサーバーデータのロードが完了するまでローディング画面を表示
+  if (!isInitialized || isAuthChecking || (user && serversLoading)) {
     return (
       <div className="flex h-svh w-full items-center justify-center">
         <LoadingScreen />
@@ -235,9 +234,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      {/* DeepLinkCheckerはすべての状態で利用可能にする */}
       <DeepLinkChecker />
-
       {!user ? (
         // 未ログイン状態
         <>
@@ -246,68 +243,48 @@ function App() {
           </Routes>
           <Toaster />
         </>
-      ) : needsProfileSetup ? (
-        // プロフィール設定が必要な状態
-        <>
-          <Routes>
-            {/* 招待コードページへのアクセスの場合はクエリパラメータも含めてリダイレクト */}
-            <Route
-              path="/invite"
-              element={
-                <Navigate
-                  to={`/profile?redirectTo=${encodeURIComponent(window.location.pathname + window.location.search)}`}
-                  replace
-                />
-              }
-            />
-            {/* プロフィール設定ページそのもの */}
-            <Route path="/profile" element={<NewUserProfile />} />
-            {/* その他のパスはデフォルトでプロフィール設定に */}
-            <Route path="*" element={<Navigate to="/profile" replace />} />
-          </Routes>
-          <Toaster />
-        </>
       ) : (
-        // 通常のログイン済み状態
+        // ログイン済み状態（プロフィール設定チェックを含む）
         <SidebarProvider>
-          <div
-            className="flex w-full items-center justify-center overflow-hidden"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
+          <div className="flex w-full items-center justify-center overflow-hidden"
+               onTouchStart={handleTouchStart}
+               onTouchMove={handleTouchMove}
+               onTouchEnd={handleTouchEnd}>
             <Routes>
-              <Route
-                path="/"
-                element={
-                  <div
-                    className="flex h-screen w-full overflow-hidden"
-                    style={{ width: '100%' }}
-                  >
-                    <AppSidebar
-                      isMobileMenuOpen={isMobileMenuOpen}
-                      setIsMobileMenuOpen={setIsMobileMenuOpen}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <Chat
-                        isMemberSidebarOpen={isMemberSidebarOpen}
-                        setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+              {needsProfileSetup ? (
+                <>
+                  <Route path="/profile" element={<NewUserProfile />} />
+                  <Route path="*" element={<Navigate to="/profile" replace />} />
+                </>
+              ) : (
+                <>
+                  <Route path="/" element={
+                    <div className="flex h-screen w-full overflow-hidden">
+                      <AppSidebar
                         isMobileMenuOpen={isMobileMenuOpen}
                         setIsMobileMenuOpen={setIsMobileMenuOpen}
-                        isMapMode={isMapMode}
-                        setIsMapMode={setIsMapMode}
-                        setIsImageDialogOpen={setIsImageDialogOpen}
                       />
+                      <div className="min-w-0 flex-1">
+                        <Chat
+                          isMemberSidebarOpen={isMemberSidebarOpen}
+                          setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                          isMobileMenuOpen={isMobileMenuOpen}
+                          setIsMobileMenuOpen={setIsMobileMenuOpen}
+                          isMapMode={isMapMode}
+                          setIsMapMode={setIsMapMode}
+                          setIsImageDialogOpen={setIsImageDialogOpen}
+                        />
+                      </div>
                     </div>
-                  </div>
-                }
-              />
-              <Route path="/invite" element={<InvitePage />} />
-              <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
-              <Route path="/profile" element={<NewUserProfile />} />
+                  } />
+                  <Route path="/invite" element={<InvitePage />} />
+                  <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
+                  <Route path="/profile" element={<NewUserProfile />} />
 
-              {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
-              <Route path="/invite/*" element={<InvalidInvitePath />} />
+                  {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
+                  <Route path="/invite/*" element={<InvalidInvitePath />} />
+                </>
+              )}
             </Routes>
             <Toaster />
           </div>

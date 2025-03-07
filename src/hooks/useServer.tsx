@@ -20,7 +20,9 @@ interface Server {
 const useServer = () => {
   //サーバー情報を格納するstate
   const [documents, setDocuments] = useState<Server[]>([]);
+  const [loading, setLoading] = useState(true); // ローディング状態を追加
   const user = useAppSelector((state) => state.user.user);
+  
   const collectionRef: Query<DocumentData> | null = useMemo(() => {
     if (user !== null) {
       return query(
@@ -30,20 +32,38 @@ const useServer = () => {
     }
     return null;
   }, [user]);
+
   useEffect(() => {
-    if (collectionRef === null) return;
-    onSnapshot(collectionRef, (querySnapshot) => {
-      const serverResults: Server[] = [];
-      querySnapshot.docs.forEach((doc) =>
-        serverResults.push({
-          id: doc.id,
-          docData: doc.data() as ServerDoc,
-        })
-      );
-      setDocuments(serverResults);
-    });
+    if (collectionRef === null) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true); // データ取得開始時にローディング状態をtrueに設定
+
+    const unsubscribe = onSnapshot(
+      collectionRef,
+      (querySnapshot) => {
+        const serverResults: Server[] = [];
+        querySnapshot.docs.forEach((doc) =>
+          serverResults.push({
+            id: doc.id,
+            docData: doc.data() as ServerDoc,
+          })
+        );
+        setDocuments(serverResults);
+        setLoading(false); // データ取得完了時にローディング状態をfalseに設定
+      },
+      (error) => {
+        console.error("Error fetching servers:", error);
+        setLoading(false); // エラー時もローディング状態をfalseに設定
+      }
+    );
+
+    return () => unsubscribe();
   }, [collectionRef]);
-  return { documents };
+
+  return { documents, loading }; // loadingステータスを返す
 };
 
 export default useServer;

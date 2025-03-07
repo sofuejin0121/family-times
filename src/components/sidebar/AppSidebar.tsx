@@ -1,6 +1,6 @@
 import { useAppSelector } from '../../app/hooks'
 import { auth } from '../../firebase'
-import { useState, useEffect } from 'react'
+import { useState, useLayoutEffect } from 'react'
 import useChannel from '../../hooks/useChannel'
 import useServer from '../../hooks/useServer'
 import { LogOut, LogIn } from 'lucide-react'
@@ -38,6 +38,7 @@ import { setServerInfo } from '../../features/serverSlice'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Input } from '../ui/input'
 import { toast } from 'sonner'
+import NoServerView from './NoServerView'
 
 interface AppSidebarProps {
   isMobileMenuOpen: boolean
@@ -51,7 +52,7 @@ export function AppSidebar({
   const user = useAppSelector((state) => state.user.user)
   const serverId = useAppSelector((state) => state.server.serverId)
   const { documents: channels } = useChannel()
-  const { documents: servers } = useServer()
+  const { documents: servers, loading: serversLoading } = useServer()
   const [isCreateServerOpen, setIsCreateServerOpen] = useState(false)
   const [isUserEditOpen, setIsUserEditOpen] = useState(false)
   const [isJoinServerOpen, setIsJoinServerOpen] = useState(false)
@@ -63,8 +64,8 @@ export function AppSidebar({
   const isServerSelected = Boolean(serverId)
 
   // サーバー一覧が取得されたら、最初のサーバーを自動選択
-  useEffect(() => {
-    if (servers.length > 0 && !serverId) {
+  useLayoutEffect(() => {
+    if (!serversLoading && servers.length > 0 && !serverId) {
       const firstServer = servers[0]
       dispatch(
         setServerInfo({
@@ -73,7 +74,17 @@ export function AppSidebar({
         })
       )
     }
-  }, [servers, serverId, dispatch])
+  }, [servers, serverId, dispatch, serversLoading])
+
+  // ローディング中は何も表示しない（チラ見え防止）
+  if (serversLoading) {
+    return null
+  }
+
+  // サーバーが存在しない場合のみNoServerViewを表示
+  if (servers.length === 0) {
+    return <NoServerView onCreateServer={() => setIsCreateServerOpen(true)} />
+  }
 
   // 招待コードを処理する関数
   const handleJoinServer = () => {
