@@ -439,13 +439,14 @@ const ChatMessage = ({
             </Dialog>
           ) : (
             imageWidth != null && imageHeight != null && (
-              <div
-                className="mt-3 w-full animate-pulse rounded bg-gray-200 md:w-4/5 lg:w-1/2"
-                style={{
-                  aspectRatio: `${imageWidth}/${imageHeight}`,
-                  maxWidth: `${imageWidth}px`,
-                }}
-              />
+              <div className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3">
+                <div
+                  className="w-full animate-pulse rounded bg-gray-200"
+                  style={{
+                    aspectRatio: `${imageWidth}/${imageHeight}`,
+                  }}
+                />
+              </div>
             )
           )}
           <div className="mt-2 flex flex-wrap gap-1">
