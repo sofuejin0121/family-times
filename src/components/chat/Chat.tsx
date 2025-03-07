@@ -2,7 +2,14 @@ import ChatHeader from './ChatHeader'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import ChatMessage from './ChatMessage'
 import { useAppSelector } from '../../app/hooks'
-import { useCallback, useRef, useState, lazy, Suspense, useLayoutEffect } from 'react'
+import {
+  useCallback,
+  useRef,
+  useState,
+  lazy,
+  Suspense,
+  useLayoutEffect,
+} from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
 import useMessage from '../../hooks/useMessage'
@@ -133,16 +140,26 @@ const Chat = ({
   const { isLoading } = useMessage()
 
   //メッセージリストのコンテナへの参照作成
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+
   // スクロール処理を最適化
   const scrollToBottom = useCallback(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: 'instant', // 'smooth'から'instant'に変更
-        block: 'end'
-      })
-    }
+    // nullチェックを行う
+    const messageEnd = messagesEndRef.current
+    if (!messageEnd) return
+
+    // モバイルデバイスでの遅延スクロールを追加
+    setTimeout(() => {
+      // 再度nullチェックを行う（タイムアウト中にnullになる可能性があるため）
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: 'instant',
+          block: 'end',
+        })
+        // スクロールが確実に行われるように、追加のスクロール処理
+        window.scrollTo(0, document.documentElement.scrollHeight)
+      }
+    }, 100)
   }, [])
 
   // メッセージリストの読み込みが完了したら画面の一番下までスクロール
@@ -507,7 +524,7 @@ const Chat = ({
                   className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col"
                 >
                   {/* チャットメッセージ表示エリア（既存のコード） */}
-                  <div className="chat-messages flex-1 overflow-y-auto p-4">
+                  <div className="chat-messages h-[calc(100svh-77px-56px)] flex-1 overflow-y-auto overscroll-none p-4">
                     {filterMessages.map((message, index) => (
                       <ChatMessage
                         id={message.id}
