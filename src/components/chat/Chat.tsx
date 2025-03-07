@@ -127,7 +127,6 @@ const Chat = ({
     latitude: number
     longitude: number
   } | null>(null)
-  const [useCurrentLocation, setUseCurrentLocation] = useState(true)
 
   const channelId = useAppSelector((state) => state.channel.channelId)
   const channelName = useAppSelector((state) => state.channel.channelName)
@@ -191,147 +190,88 @@ const Chat = ({
     }
   }, [selectedFilePreview])
 
-  const sendMessage = useCallback(
-    async (e: React.FormEvent) => {
-      e.preventDefault()
+  const sendMessage = async (e: FormEvent) => {
+    e.preventDefault()
 
-      console.log('送信処理開始:', {
-        テキスト: inputText,
-        画像: !!selectedFile,
-      })
+    try {
+      let photoId = null
+      let fileName = null
+      let imageWidth = null
+      let imageHeight = null
+      let locationData = null // EXIF位置情報用
 
-      // テキストも画像も何もない場合は送信しない
-      if (!inputText.trim() && !selectedFile) {
-        console.log('送信内容がありません')
-        return
-      }
+      // 画像がある場合のみ処理
+      if (selectedFile) {
+        photoId = uuid4()
+        fileName = photoId + selectedFile.name
+        const fileRef = ref(storage, fileName)
+        
+        // 画像のアップロード
+        await uploadBytes(fileRef, selectedFile)
 
-      if (serverId !== null && channelId !== null) {
-        try {
-          // アップロード処理開始時のローディング表示
-          if (selectedFile) {
-            setIsUploading(true)
+        // 画像サイズの取得
+        if (fileImageDimensions) {
+          imageWidth = fileImageDimensions.width
+          imageHeight = fileImageDimensions.height
+        }
+
+        // EXIF位置情報の取得（imageLocationにはEXIFから取得した位置情報が入っている）
+        if (imageLocation) {
+          locationData = {
+            latitude: imageLocation.latitude,
+            longitude: imageLocation.longitude
           }
-
-          let photoId = null
-          let fileName = null
-          let imageWidth = null
-          let imageHeight = null
-          // 位置情報の取得（2つの方法
-          // 位置情報の取得: 写真のEXIF位置情報を優先
-          let locationData = imageLocation
-
-          // 写真から位置情報が取得できない場合のみ、現在位置を使用
-          if (
-            !locationData &&
-            (
-              document.getElementById(
-                'use-current-location'
-              ) as HTMLInputElement
-            )?.checked
-          ) {
-            locationData = await new Promise<{
-              latitude: number
-              longitude: number
-            } | null>((resolve) => {
-              // ブラウザが位置情報を取得できる場合
-              if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                  (position) => {
-                    resolve({
-                      latitude: position.coords.latitude,
-                      longitude: position.coords.longitude,
-                    })
-                    toast.success('現在の位置情報を取得しました')
-                  },
-                  (error) => {
-                    console.error('位置情報の取得に失敗しました:', error)
-                    resolve(null)
-                  },
-                  { timeout: 10000, enableHighAccuracy: true }
-                )
-              } else {
-                resolve(null)
-              }
-            })
-          }
-
-          // 画像がある場合はアップロード
-          if (selectedFile) {
-            photoId = uuid4() //ユニークなIdを生成
-            fileName = photoId + selectedFile.name
-            const fileRef = ref(storage, fileName)
-            // ファイルをFirebase Storageにアップロード
-            await uploadBytes(fileRef, selectedFile)
-
-            if (fileImageDimensions) {
-              imageWidth = fileImageDimensions.width
-              imageHeight = fileImageDimensions.height
-            }
-          }
-
-          // Firestoreにメッセージを追加
-          const messageData: MessageData = {
-            message: inputText || null,
-            timestamp: serverTimestamp(),
-            user: user,
-            photoId: fileName,
-          }
-
-          // 画像サイズがある場合のみ追加
-          if (imageWidth) {
-            messageData.imageWidth = imageWidth
-          }
-          if (imageHeight) {
-            messageData.imageHeight = imageHeight
-          }
-
-          // 位置情報がある場合は追加
-          if (locationData) {
-            messageData.latitude = locationData.latitude
-            messageData.longitude = locationData.longitude
-          }
-
-          // Firestoreに保存
-          await addDoc(
-            collection(
-              db,
-              'servers',
-              serverId,
-              'channels',
-              String(channelId),
-              'messages'
-            ),
-            messageData
-          )
-
-          // 入力フィールドをクリア
-          setInputText('')
-          clearSelectedFile()
-          setImageLocation(null) // 位置情報もクリア
-
-          // 処理終了
-          setIsUploading(false)
-          scrollToBottom()
-        } catch (error) {
-          console.error('メッセージの送信に失敗しました:', error)
-          toast.error('メッセージの送信に失敗しました')
-          setIsUploading(false)
         }
       }
-    },
-    [
-      channelId,
-      inputText,
-      serverId,
-      user,
-      selectedFile,
-      fileImageDimensions,
-      clearSelectedFile,
-      scrollToBottom,
-      imageLocation, // 依存配列に追加
-    ]
-  )
+
+      // Firestoreにメッセージを追加
+      const messageData: MessageData = {
+        message: inputText || null,
+        timestamp: serverTimestamp(),
+        user: user,
+        photoId: fileName,
+      }
+
+      // 画像サイズがある場合のみ追加
+      if (imageWidth) {
+        messageData.imageWidth = imageWidth
+      }
+      if (imageHeight) {
+        messageData.imageHeight = imageHeight
+      }
+
+      // EXIF位置情報がある場合のみ追加
+      if (locationData) {
+        messageData.latitude = locationData.latitude
+        messageData.longitude = locationData.longitude
+      }
+
+      // Firestoreに保存
+      if (serverId && channelId) {
+        await addDoc(
+          collection(db, 'servers', serverId, 'channels', String(channelId), 'messages'),
+          messageData
+        )
+      } else {
+        console.error('サーバーIDまたはチャンネルIDが無効です')
+        toast.error('メッセージの保存に失敗しました')
+      }
+
+      // 入力フィールドをクリア
+      setInputText('')
+      clearSelectedFile()
+      setImageLocation(null)
+
+      // 処理終了
+      setIsUploading(false)
+      scrollToBottom()
+
+    } catch (error) {
+      console.error('メッセージの送信に失敗しました:', error)
+      toast.error('メッセージの送信に失敗しました')
+      setIsUploading(false)
+    }
+  }
 
   // ファイル選択時の処理
   const handleFileChange = useCallback(
@@ -579,22 +519,20 @@ const Chat = ({
                       <label
                         htmlFor="file-input"
                         className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${
-                          isUploading
-                            ? 'animate-pulse text-blue-500'
-                            : 'text-gray-500 hover:text-gray-700'
+                          isUploading 
+                            ? 'cursor-not-allowed opacity-50' 
+                            : selectedFile  // selectedFileの有無でスタイルを切り替え
+                              ? 'text-blue-500 hover:text-blue-600'  // ファイル選択時は青色
+                              : 'text-gray-500 hover:text-gray-700'  // 未選択時はグレー
                         }`}
                       >
                         <AddCircleOutlineIcon
-                          className={`text-2xl ${isUploading ? 'text-blue-500' : ''}`}
+                          className={`text-2xl ${isUploading ? 'opacity-50' : ''}`}
                         />
                       </label>
                       <form
                         className="flex flex-grow items-center"
-                        onSubmit={(e) => {
-                          e.preventDefault()
-                          console.log('フォーム送信:', inputText) // デバッグ用
-                          sendMessage(e)
-                        }}
+                        onSubmit={sendMessage}
                       >
                         <Input
                           id="message-input"
@@ -604,58 +542,24 @@ const Chat = ({
                               ? `${channelName}へメッセージを送信`
                               : 'メッセージを送信'
                           }
-                          onChange={(e) => {
-                            console.log('入力テキスト変更:', e.target.value) // デバッグ用
-                            setInputText(e.target.value)
-                          }}
-                          onKeyDown={(e) => {
-                            // Enterキーで送信できるようにする（Shift+Enterは改行）
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              const formEvent = new Event('submit', {
-                                bubbles: true,
-                                cancelable: true,
-                              }) as unknown as React.FormEvent
-                              sendMessage(formEvent)
-                            }
-                          }}
+                          onChange={(e) => setInputText(e.target.value)}
                           value={inputText}
-                          className="border border-gray-300 bg-white text-black"
+                          disabled={isUploading}
+                          className="border border-gray-300 bg-white text-black disabled:opacity-50"
                         />
                         <button
                           type="submit"
-                          className={`ml-2 ${inputText.trim() || selectedFile ? 'text-blue-500' : 'text-grey-400'}`}
-                          disabled={!inputText.trim() && !selectedFile}
+                          disabled={(!inputText.trim() && !selectedFile) || isUploading}
+                          className={`ml-2 transition-opacity duration-200 ${
+                            (!inputText.trim() && !selectedFile) || isUploading
+                              ? 'cursor-not-allowed opacity-50'
+                              : 'text-blue-500 hover:text-blue-600'
+                          }`}
                         >
                           <Send />
                         </button>
                       </form>
                     </div>
-                    {selectedFile && (
-                      <div className="mb-2 flex items-center px-4 text-xs text-gray-500">
-                        <div className="mr-2 flex items-center">
-                          <input
-                            type="checkbox"
-                            id="use-current-location"
-                            checked={useCurrentLocation}
-                            onChange={(e) =>
-                              setUseCurrentLocation(e.target.checked)
-                            }
-                            className="mr-1"
-                          />
-                          <label htmlFor="use-current-location">
-                            {imageLocation
-                              ? '写真の位置情報を使用'
-                              : '現在の位置情報を使用'}
-                          </label>
-                        </div>
-                        {imageLocation && (
-                          <span className="text-green-500">
-                            (写真から位置情報が取得されました)
-                          </span>
-                        )}
-                      </div>
-                    )}
                   </div>
                 </TabsContent>
 
