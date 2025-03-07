@@ -10,6 +10,7 @@ import {
   Suspense,
   useLayoutEffect,
   FormEvent,
+  useEffect,
 } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
@@ -141,33 +142,38 @@ const Chat = ({
 
   //メッセージリストのコンテナへの参照作成
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  // チャットコンテナの参照を追加
+  const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  // スクロール処理を最適化
+  // スクロール処理を最適化（モバイル対応）
+  useLayoutEffect(() => {
+    if (chatContainerRef.current && messages.length > 0) {
+      // 通常のスクロール
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+      
+      // モバイル用の追加対応
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+          // window全体のスクロールも制御
+          window.scrollTo(0, document.documentElement.scrollHeight)
+        }
+      })
+    }
+  }, [messages])
+
+  // 既存のscrollToBottom処理も維持
   const scrollToBottom = useCallback(() => {
-    // nullチェックを行う
     const messageEnd = messagesEndRef.current
     if (!messageEnd) return
 
-    // モバイルデバイスでの遅延スクロールを追加
-    setTimeout(() => {
-      // 再度nullチェックを行う（タイムアウト中にnullになる可能性があるため）
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({
-          behavior: 'instant',
-          block: 'end',
-        })
-        // スクロールが確実に行われるように、追加のスクロール処理
-        window.scrollTo(0, document.documentElement.scrollHeight)
-      }
-    }, 100)
+    messageEnd.scrollIntoView({
+      behavior: 'instant',
+      block: 'end',
+    })
+    // モバイル用の追加対応
+    window.scrollTo(0, document.documentElement.scrollHeight)
   }, [])
-
-  // メッセージリストの読み込みが完了したら画面の一番下までスクロール
-  useLayoutEffect(() => {
-    if (!isLoading) {
-      scrollToBottom()
-    }
-  }, [isLoading, scrollToBottom])
 
   // メッセージが更新されたときにもスクロール
   useLayoutEffect(() => {
@@ -175,6 +181,20 @@ const Chat = ({
       scrollToBottom()
     }
   }, [messages, scrollToBottom])
+
+  // 初期表示時にスクロール位置を最下部に設定
+  useLayoutEffect(() => {
+    if (chatContainerRef.current && messages.length > 0) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+    }
+  }, [messages])
+
+  // 画像アップロード完了時にスクロール
+  useEffect(() => {
+    if (!isUploading && messages.length > 0) {
+      scrollToBottom()
+    }
+  }, [isUploading, messages.length, scrollToBottom])
 
   const clearSelectedFile = useCallback(() => {
     if (selectedFilePreview) {
@@ -473,7 +493,10 @@ const Chat = ({
                   className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col"
                 >
                   {/* チャットメッセージ表示エリア（既存のコード） */}
-                  <div className="chat-messages h-[calc(100svh-77px-56px)] flex-1 overflow-y-auto overscroll-none p-4">
+                  <div
+                    ref={chatContainerRef}
+                    className="chat-messages h-[calc(100svh-77px-56px)] flex-1 overflow-y-auto overscroll-none p-4"
+                  >
                     {filterMessages.map((message, index) => (
                       <ChatMessage
                         id={message.id}
