@@ -9,6 +9,7 @@ import {
   lazy,
   Suspense,
   useLayoutEffect,
+  FormEvent,
 } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
@@ -702,15 +703,69 @@ const Chat = ({
         </div>
       )}
 
+      {/* 送信フォーム部分 */}
+      <div className="relative flex items-center gap-2 px-4 py-2">
+        <form className="flex w-full items-center gap-2" onSubmit={sendMessage}>
+          {selectedFile && (
+            <div className="relative mb-2 flex items-center gap-2">
+              <div className="relative">
+                <img
+                  src={URL.createObjectURL(selectedFile)}
+                  alt="選択された画像"
+                  className="h-20 w-20 rounded object-cover"
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center rounded bg-black/20">
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+          <Input
+            type="text"
+            placeholder={
+              selectedFile ? '画像とメッセージを送信...' : 'メッセージを入力...'
+            }
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                sendMessage(e as unknown as FormEvent)
+              }
+            }}
+            value={inputText}
+            className="border border-gray-300 bg-white text-black"
+          />
+          <button
+            type="submit"
+            className={`ml-2 ${
+              inputText.trim() || selectedFile
+                ? 'text-blue-500'
+                : 'text-grey-400'
+            }`}
+            disabled={!inputText.trim() && !selectedFile}
+          >
+            <Send />
+          </button>
+        </form>
+      </div>
       {/* 画面全体をカバーするスピナーオーバーレイ - ぼかし効果適用 */}
-      {isUploading && (
+      {/* {isUploading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
           <div className="flex flex-col items-center rounded-lg bg-white/90 p-6 shadow-lg backdrop-blur-md">
             <div className="mb-4 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
             <p className="text-gray-700">画像をアップロード中...</p>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* CreateServerコンポーネントをエクスポート */}
       <CreateServer
