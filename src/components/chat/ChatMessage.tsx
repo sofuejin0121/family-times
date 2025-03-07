@@ -169,8 +169,8 @@ const ChatMessage = ({
       // photoIdが存在し、空でない場合のみURLを取得
       if (photoId && photoId.trim() !== '') {
         try {
-          const photoURL = await getDownloadURL(ref(storage, photoId))
-          setFileURL(photoURL)
+          const baseURL = await getDownloadURL(ref(storage, photoId))
+          setFileURL(baseURL)
         } catch (error) {
           console.log('画像URLの取得に失敗しました:', error)
         }
@@ -404,38 +404,50 @@ const ChatMessage = ({
               }}
             >
               <DialogTrigger asChild>
-                <div className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3">
+                <div className="mt-3 w-full max-w-sm cursor-pointer md:w-3/5 lg:w-2/5 xl:w-1/3">
                   <img
                     src={fileURL}
-                    alt=""
-                    className="h-auto w-full cursor-pointer rounded"
+                    alt="メッセージ画像"
+                    className="h-auto w-full rounded object-contain"
                     onClick={() => setIsImagePreviewOpen(true)}
+                    loading="lazy"
+                    onLoad={() => {
+                      const messagesEnd = document.querySelector('[data-messages-end]')
+                      messagesEnd?.scrollIntoView({ behavior: 'instant', block: 'end' })
+                    }}
+                    srcSet={`
+                      ${fileURL}?w=480 480w,
+                      ${fileURL}?w=800 800w,
+                      ${fileURL} 1200w
+                    `}
+                    sizes="(max-width: 480px) 100vw,
+                           (max-width: 768px) 60vw,
+                           40vw"
+                    style={{
+                      aspectRatio: imageWidth && imageHeight ? `${imageWidth}/${imageHeight}` : 'auto',
+                    }}
                   />
                 </div>
               </DialogTrigger>
-              <DialogContent
-                variant="image"
-                hideCloseButton
-                data-no-swipe="true"
-              >
+              <DialogContent variant="image" hideCloseButton data-no-swipe="true">
                 <img
                   src={fileURL}
-                  alt=""
+                  alt="メッセージ画像（拡大表示）"
                   className="h-full w-full rounded object-contain"
                 />
               </DialogContent>
             </Dialog>
-          ) : imageWidth != null && imageHeight != null ? (
-            // 画像読み込み中のプレースホルダー
-            <div
-              className="mt-3 w-full animate-pulse rounded bg-gray-200 md:w-4/5 lg:w-1/2"
-              style={{
-                // アスペクト比を維持するためのスタイル
-                aspectRatio: `${imageWidth}/${imageHeight}`,
-                maxWidth: `${imageWidth}px`,
-              }}
-            />
-          ) : null}
+          ) : (
+            imageWidth != null && imageHeight != null && (
+              <div
+                className="mt-3 w-full animate-pulse rounded bg-gray-200 md:w-4/5 lg:w-1/2"
+                style={{
+                  aspectRatio: `${imageWidth}/${imageHeight}`,
+                  maxWidth: `${imageWidth}px`,
+                }}
+              />
+            )
+          )}
           <div className="mt-2 flex flex-wrap gap-1">
             {Object.entries(reactions || {}).map(([emoji, reaction]) => {
               const hasReacted = reaction.users.includes(userProps?.uid || '')
