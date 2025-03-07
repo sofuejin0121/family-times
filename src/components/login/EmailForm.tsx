@@ -2,7 +2,7 @@
  * メールアドレスによるログイン/登録フォームコンポーネント
  * @module EmailForm
  * @description メールアドレスとパスワードを使用したログインまたはアカウント登録機能を提供するフォームコンポーネント。
- * 
+ *
  * @requires react - Reactライブラリ
  * @requires react-router-dom - ルーティング機能
  * @requires @/components/ui/* - UIコンポーネント
@@ -28,15 +28,15 @@ interface EmailFormProps {
 
 /**
  * メールアドレス認証フォームコンポーネント
- * 
+ *
  * @param {EmailFormProps} props - コンポーネントのプロパティ
  * @returns {JSX.Element} メールアドレス認証フォームのJSX
- * 
+ *
  * @example
  * ```tsx
  * // ログインフォームとして使用
  * <EmailForm mode="login" isLoading={false} />
- * 
+ *
  * // 登録フォームとして使用
  * <EmailForm mode="register" isLoading={false} />
  * ```
@@ -79,6 +79,7 @@ export const EmailForm = ({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
+          autoComplete="email"
         />
         <Input
           type="password"
@@ -89,6 +90,7 @@ export const EmailForm = ({
           onChange={(e) => setPassword(e.target.value)}
           required
           minLength={mode === 'register' ? 8 : undefined}
+          autoComplete="current-password"
         />
       </div>
       <Button type="submit" disabled={parentLoading} className="w-full">

@@ -2,7 +2,7 @@
  * チャットメッセージコンポーネント
  * @module ChatMessage
  * @description チャットメッセージを表示するコンポーネント。メッセージの表示、編集、削除、リアクション機能を提供します。
- * 
+ *
  * @requires firebase/firestore - Firestoreデータベース操作
  * @requires firebase/storage - Firebase Storageファイル操作
  * @requires react - Reactライブラリ
@@ -34,9 +34,16 @@ import {
 import { Input } from '../ui/input'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import useUsers from '../../hooks/useUsers'
-
+import { Ellipsis } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu'
 // 固定の絵文字リアクションを定義
-const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
 /**
  * リアクション情報の型定義
@@ -103,7 +110,7 @@ interface Props {
  * チャットメッセージを表示するコンポーネント
  * @param {Props} props - コンポーネントのプロパティ
  * @returns {JSX.Element} チャットメッセージのJSX
- * 
+ *
  * @example
  * ```tsx
  * <ChatMessage
@@ -258,7 +265,7 @@ const ChatMessage = ({
   const [showReactionPanel, setShowReactionPanel] = useState<boolean>(false)
   // パネルの要素をを参照するための変数
   const reactionPanelRef = useRef<HTMLDivElement>(null)
-  
+
   // リアクションパネルの外側をクリックした時に閉じる処理
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -280,7 +287,7 @@ const ChatMessage = ({
   }, [])
 
   return (
-    <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white  text-black hover:bg-gray-100">
+    <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white text-black hover:bg-gray-100">
       <div className="flex-shrink-0">
         <Avatar className="h-11 w-11">
           <AvatarImage
@@ -298,85 +305,96 @@ const ChatMessage = ({
           </span>
         </h4>
         <div className="relative">
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center justify-between gap-2">
             <p className="m-0">{message}</p>
             {/* 編集・削除ボタンを送信者のみに表示 */}
             {isMessageOwner && (
-              <div className="flex gap-1 opacity-100 transition-all duration-200 ease-in-out md:invisible md:opacity-0 md:group-hover:visible md:group-hover:opacity-100">
-                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                  <DialogTrigger asChild>
-                    <button className="inline-fle ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
-                      <EditIcon fontSize="small" />
+              <div className="ml-auto flex gap-1 opacity-100 transition-all duration-200 ease-in-out md:invisible md:opacity-0 md:group-hover:visible md:group-hover:opacity-100">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
+                      <Ellipsis fontSize="small" />
                     </button>
-                  </DialogTrigger>
-                  <DialogContent className="border border-gray-200 bg-white text-black">
-                    <DialogHeader>
-                      <DialogTitle>メッセージを編集</DialogTitle>
-                    </DialogHeader>
-
-                    <Input
-                      value={editedMessage || ''}
-                      onChange={(e) => setEditedMessage(e.target.value)}
-                      className="w-full rounded border border-[#dcddde] bg-white p-2 text-sm focus:border-[#7983f5] focus:outline-none"
-                    />
-                    <DialogFooter>
-                      <Button
-                        variant="default"
-                        onClick={handleEdit}
-                        className="cursor-pointer bg-black text-white"
-                      >
-                        保存
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setEditDialogOpen(false)}
-                        className="cursor-pointer bg-white text-black"
-                      >
-                        キャンセル
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                <Dialog
-                  open={deleteDialogOpen}
-                  onOpenChange={setDeleteDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <button
-                      className="ring-offset-background focus-visible:ring-ring border-input bg-background hover:bg-accent hover:bg-opacity-10 inline-flex h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors hover:text-[#ed4245] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuLabel>メッセージ操作</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onClick={() => setEditDialogOpen(true)}
+                      className="hover:bg-accent cursor-pointer"
+                    >
+                      <EditIcon fontSize="small" />
+                      編集
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setDeleteDialogOpen(true)}
+                      className="hover:bg-accent cursor-pointer"
                     >
                       <DeleteIcon fontSize="small" />
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent className="border border-gray-200 bg-white text-black">
-                    <DialogHeader>
-                      <DialogTitle>メッセージを削除しますか？</DialogTitle>
-                      <DialogDescription>
-                        この操作は元に戻すことはできません。
-                      </DialogDescription>
-                    </DialogHeader>
-                    <DialogFooter>
-                      <Button
-                        variant="default"
-                        onClick={deleteMessage}
-                        className="cursor-pointer bg-black text-white"
-                      >
-                        削除する
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setDeleteDialogOpen(false)}
-                        className="cursor-pointer bg-white text-black"
-                      >
-                        戻る
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                      削除
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>
+
+          <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+            <DialogContent className="border border-gray-200 bg-white text-black">
+              <DialogHeader>
+                <DialogTitle>メッセージを編集</DialogTitle>
+              </DialogHeader>
+
+              <Input
+                value={editedMessage || ''}
+                onChange={(e) => setEditedMessage(e.target.value)}
+                className="w-full rounded border border-[#dcddde] bg-white p-2 text-sm focus:border-[#7983f5] focus:outline-none"
+              />
+              <DialogFooter>
+                <Button
+                  variant="default"
+                  onClick={handleEdit}
+                  className="cursor-pointer bg-black text-white"
+                >
+                  保存
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  className="cursor-pointer bg-white text-black"
+                >
+                  キャンセル
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+            <DialogContent className="border border-gray-200 bg-white text-black">
+              <DialogHeader>
+                <DialogTitle>メッセージを削除しますか？</DialogTitle>
+                <DialogDescription>
+                  この操作は元に戻すことはできません。
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="default"
+                  onClick={deleteMessage}
+                  className="cursor-pointer bg-black text-white"
+                >
+                  削除する
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDeleteDialogOpen(false)}
+                  className="cursor-pointer bg-white text-black"
+                >
+                  戻る
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
           {fileURL ? (
             <Dialog
               open={isImagePreviewOpen}
@@ -386,7 +404,7 @@ const ChatMessage = ({
               }}
             >
               <DialogTrigger asChild>
-                <div className="mt-3 w-full md:w-3/5 lg:w-2/5 xl:w-1/3 max-w-sm">
+                <div className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3">
                   <img
                     src={fileURL}
                     alt=""
@@ -403,7 +421,7 @@ const ChatMessage = ({
                 <img
                   src={fileURL}
                   alt=""
-                  className="h-full w-full   rounded object-contain"
+                  className="h-full w-full rounded object-contain"
                 />
               </DialogContent>
             </Dialog>
@@ -420,48 +438,45 @@ const ChatMessage = ({
           ) : null}
           <div className="mt-2 flex flex-wrap gap-1">
             {Object.entries(reactions || {}).map(([emoji, reaction]) => {
-              const hasReacted = reaction.users.includes(userProps?.uid || '');
+              const hasReacted = reaction.users.includes(userProps?.uid || '')
               return (
                 <button
                   key={emoji}
                   onClick={() => addReaction(emoji)}
-                  className={`
-                    flex cursor-pointer items-center gap-1 rounded-lg 
-                    border p-1 px-2 text-sm transition-all duration-200 ease-in-out 
-                    ${hasReacted
+                  className={`flex cursor-pointer items-center gap-1 rounded-lg border p-1 px-2 text-sm transition-all duration-200 ease-in-out ${
+                    hasReacted
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-transparent bg-[#f2f3f5] hover:bg-[#e3e5e8]'
-                    }
-                  `}
+                  } `}
                 >
                   <span className="text-base">{emoji}</span>
                   <span className="min-w-3 text-center text-xs text-[#4f545c]">
                     ({reaction.users.length})
                   </span>
                 </button>
-              );
+              )
             })}
           </div>
-          
+
           {/* 絵文字リアクションパネル */}
-          <div className="relative  flex">
+          <div className="relative flex">
             <button
-              className="cursor-pointer rounded border-none bg-transparent p-1 text-gray-700 opacity-80 transition-all duration-200 ease-in-out hover:bg-gray-200 hover:text-black "
+              className="cursor-pointer rounded border-none bg-transparent p-1 text-gray-700 opacity-80 transition-all duration-200 ease-in-out hover:bg-gray-200 hover:text-black"
               onClick={() => setShowReactionPanel(!showReactionPanel)}
             >
               <SentimentSatisfiedAltIcon />
             </button>
             {showReactionPanel && (
               <div
-                className="absolute bottom-10 left-0 z-10 flex flex-row gap-1 rounded-lg border border-gray-200 bg-white  shadow-md"
+                className="absolute bottom-10 left-0 z-10 flex flex-row gap-1 rounded-lg border border-gray-200 bg-white shadow-md"
                 ref={reactionPanelRef}
               >
                 {PRESET_REACTIONS.map((emoji) => (
                   <button
                     key={emoji}
                     onClick={() => {
-                      addReaction(emoji);
-                      setShowReactionPanel(false);
+                      addReaction(emoji)
+                      setShowReactionPanel(false)
                     }}
                     className="cursor-pointer rounded-md p-2 text-xl hover:bg-gray-100"
                   >

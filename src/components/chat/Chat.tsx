@@ -2,7 +2,7 @@ import ChatHeader from './ChatHeader'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import ChatMessage from './ChatMessage'
 import { useAppSelector } from '../../app/hooks'
-import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { useCallback, useRef, useState, lazy, Suspense, useLayoutEffect } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../../firebase'
 import useMessage from '../../hooks/useMessage'
@@ -134,19 +134,30 @@ const Chat = ({
 
   //メッセージリストのコンテナへの参照作成
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  ///画面の一番下までスクロールする関数
+  
+  // スクロール処理を最適化
   const scrollToBottom = useCallback(() => {
     if (messagesEndRef.current) {
-      // 参照している要素まで画面をスクロール
-      messagesEndRef.current.scrollIntoView({ behavior: 'auto' })
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: 'instant', // 'smooth'から'instant'に変更
+        block: 'end'
+      })
     }
   }, [])
+
   // メッセージリストの読み込みが完了したら画面の一番下までスクロール
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isLoading) {
-      messagesEndRef?.current?.scrollIntoView()
+      scrollToBottom()
     }
-  }, [isLoading])
+  }, [isLoading, scrollToBottom])
+
+  // メッセージが更新されたときにもスクロール
+  useLayoutEffect(() => {
+    if (messages.length > 0) {
+      scrollToBottom()
+    }
+  }, [messages, scrollToBottom])
 
   const clearSelectedFile = useCallback(() => {
     if (selectedFilePreview) {
