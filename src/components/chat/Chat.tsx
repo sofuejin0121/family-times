@@ -18,7 +18,7 @@ import MemberSidebar from '../sidebar/MemberSidebar'
 import { ref, uploadBytes } from 'firebase/storage'
 import { v4 as uuid4 } from 'uuid'
 import { Input } from '../ui/input'
-import { Send, X } from 'lucide-react'
+import { Send, X, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import LoadingScreen from '../loading/LoadingScreen'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -192,7 +192,7 @@ const Chat = ({
 
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault()
-
+    setIsUploading(true)
     try {
       let photoId = null
       let fileName = null
@@ -205,7 +205,7 @@ const Chat = ({
         photoId = uuid4()
         fileName = photoId + selectedFile.name
         const fileRef = ref(storage, fileName)
-        
+
         // 画像のアップロード
         await uploadBytes(fileRef, selectedFile)
 
@@ -219,7 +219,7 @@ const Chat = ({
         if (imageLocation) {
           locationData = {
             latitude: imageLocation.latitude,
-            longitude: imageLocation.longitude
+            longitude: imageLocation.longitude,
           }
         }
       }
@@ -249,7 +249,14 @@ const Chat = ({
       // Firestoreに保存
       if (serverId && channelId) {
         await addDoc(
-          collection(db, 'servers', serverId, 'channels', String(channelId), 'messages'),
+          collection(
+            db,
+            'servers',
+            serverId,
+            'channels',
+            String(channelId),
+            'messages'
+          ),
           messageData
         )
       } else {
@@ -265,10 +272,11 @@ const Chat = ({
       // 処理終了
       setIsUploading(false)
       scrollToBottom()
-
     } catch (error) {
       console.error('メッセージの送信に失敗しました:', error)
       toast.error('メッセージの送信に失敗しました')
+      setIsUploading(false)
+    } finally {
       setIsUploading(false)
     }
   }
@@ -519,11 +527,11 @@ const Chat = ({
                       <label
                         htmlFor="file-input"
                         className={`flex cursor-pointer items-center justify-center border-none bg-transparent px-4 transition-colors duration-200 ${
-                          isUploading 
-                            ? 'cursor-not-allowed opacity-50' 
-                            : selectedFile  // selectedFileの有無でスタイルを切り替え
-                              ? 'text-blue-500 hover:text-blue-600'  // ファイル選択時は青色
-                              : 'text-gray-500 hover:text-gray-700'  // 未選択時はグレー
+                          isUploading
+                            ? 'cursor-not-allowed opacity-50'
+                            : selectedFile // selectedFileの有無でスタイルを切り替え
+                              ? 'text-blue-500 hover:text-blue-600' // ファイル選択時は青色
+                              : 'text-gray-500 hover:text-gray-700' // 未選択時はグレー
                         }`}
                       >
                         <AddCircleOutlineIcon
@@ -549,14 +557,20 @@ const Chat = ({
                         />
                         <button
                           type="submit"
-                          disabled={(!inputText.trim() && !selectedFile) || isUploading}
+                          disabled={
+                            (!inputText.trim() && !selectedFile) || isUploading
+                          }
                           className={`ml-2 transition-opacity duration-200 ${
                             (!inputText.trim() && !selectedFile) || isUploading
                               ? 'cursor-not-allowed opacity-50'
                               : 'text-blue-500 hover:text-blue-600'
                           }`}
                         >
-                          <Send />
+                          {isUploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Send />
+                          )}
                         </button>
                       </form>
                     </div>
