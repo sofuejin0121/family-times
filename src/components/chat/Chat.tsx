@@ -28,7 +28,7 @@ import { CreateServer } from '../sidebar/CreateServer'
 import { setChannelInfo } from '@/features/channelSlice'
 import { setServerInfo } from '@/features/serverSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-
+import * as exifr from 'exifr'
 interface ChatProps {
   isMemberSidebarOpen: boolean
   setIsMemberSidebarOpen: (isOpen: boolean) => void
@@ -78,13 +78,43 @@ const getImageLocation = async (
       }
 
       try {
-        // EXIF-JSをインポート
-        const exifr = await import('exifr')
-
-        // 4. 画像のGPS情報を取得
+        console.log('ファイルタイプ:', file.type) // デバッグ用：ファイルタイプを確認
+        
+        // exifrライブラリでの読み取りを試みる
         const gps = await exifr.default.gps(file)
-        console.log('EXIF GPS情報:', gps) // デバッグ用
-        // 5. 緯度・経度が存在する場合はその情報を返す
+        console.log('EXIF GPS情報（一般）:', gps) // デバッグ用
+        
+        // AndroidのJPEGファイル用の追加チェック
+        if (!gps && file.type === 'image/jpeg') {
+          console.log('標準的な方法でGPS情報が取得できなかったため、別の方法を試みます')
+          // 完全なEXIFデータを取得して詳細を確認
+          const allMetadata = await exifr.default.parse(file, true)
+          console.log('すべてのメタデータ:', allMetadata)
+          
+          // 位置情報が異なるパスに格納されている可能性がある
+          if (allMetadata) {
+            // 可能性のある場所をチェック
+            const possibleLocations = [
+              { lat: allMetadata.latitude, lon: allMetadata.longitude },
+              { lat: allMetadata.GPSLatitude, lon: allMetadata.GPSLongitude },
+              { lat: allMetadata.gpsLatitude, lon: allMetadata.gpsLongitude }
+            ];
+            
+            // 有効な位置情報を探す
+            for (const loc of possibleLocations) {
+              if (loc.lat && loc.lon) {
+                console.log('代替方法で位置情報を発見:', loc)
+                resolve({
+                  latitude: loc.lat,
+                  longitude: loc.lon
+                });
+                return;
+              }
+            }
+          }
+        }
+        
+        // 通常のパスで見つかった位置情報を返す
         if (gps && gps.latitude && gps.longitude) {
           resolve({
             latitude: gps.latitude,
@@ -101,6 +131,7 @@ const getImageLocation = async (
     }
     // ファイル読み込みエラー時の処理
     reader.onerror = function () {
+      console.error('ファイル読み込みエラー')
       resolve(null)
     }
     // ファイルの読み込みを開始
@@ -367,7 +398,7 @@ const Chat = ({
         try {
           const exifr = await import('exifr')
           // 全メタデータを取得して確認（デバッグ用）
-          const allMetadata = await exifr.default.parse(file)
+          const allMetadata = await exifr.default.parse(file, true) // trueを追加して全てのデータを取得
           console.log('すべてのメタデータ:', allMetadata)
 
           // 位置情報を取得
@@ -380,10 +411,13 @@ const Chat = ({
           } else {
             setImageLocation(null)
             console.log('位置情報は取得できませんでした')
+            // 位置情報がない場合には通知を表示
+            toast.info('この写真には位置情報が含まれていません')
           }
         } catch (error) {
           console.error('メタデータ取得エラー:', error)
           setImageLocation(null)
+          toast.error('写真のメタデータ取得に失敗しました')
         }
 
         // 入力欄にフォーカスを当てる
