@@ -28,7 +28,6 @@ import { CreateServer } from '../sidebar/CreateServer'
 import { setChannelInfo } from '@/features/channelSlice'
 import { setServerInfo } from '@/features/serverSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import exifReadData from './exifReadData'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -62,133 +61,6 @@ interface MessageData {
   imageHeight?: number
   latitude?: number
   longitude?: number
-}
-
-// GPSデータの型定義を追加
-type GPSValue = string | number
-
-// EXIFデータから位置情報を抽出する関数
-const getImageLocation = async (
-  file: File
-): Promise<{ latitude: number; longitude: number } | null> => {
-  return new Promise((resolve) => {
-    console.log('ファイル解析開始:', file.name, file.type, file.size)
-
-    // exifReadDataを使用してEXIF情報を取得
-    exifReadData(file)
-      .then((exifData) => {
-        // 解析できない場合や情報がない場合
-        if (!exifData) {
-          console.log('EXIF情報が見つかりませんでした')
-          resolve(null)
-          return
-        }
-
-        console.log('取得したEXIF情報:', exifData)
-
-        // 1. まず直接計算された緯度経度を確認（メタデータに含まれている場合）
-        if (
-          typeof exifData.latitude === 'number' &&
-          typeof exifData.longitude === 'number'
-        ) {
-          console.log('直接計算された緯度経度を使用:', {
-            latitude: exifData.latitude,
-            longitude: exifData.longitude,
-          })
-
-          resolve({
-            latitude: exifData.latitude,
-            longitude: exifData.longitude,
-          })
-          return
-        }
-
-        // 2. GPS情報がある場合（標準的なGPSデータ）
-        if (exifData.GPS) {
-          const gps = exifData.GPS
-          console.log('GPS情報:', gps)
-
-          // GPSデータの変換関数
-          const convertDMSToDecimal = (dmsArray: GPSValue[]): number | null => {
-            if (!Array.isArray(dmsArray) || dmsArray.length < 3) return null
-
-            try {
-              // "x/y" 形式の文字列から数値に変換する関数
-              const parseRational = (rational: GPSValue): number => {
-                if (typeof rational !== 'string') return Number(rational) || 0
-                const parts = rational.split('/')
-                if (parts.length !== 2) return 0
-                const numerator = parseFloat(parts[0])
-                const denominator = parseFloat(parts[1])
-                return denominator !== 0 ? numerator / denominator : 0
-              }
-
-              // 度分秒を10進数に変換
-              const degrees = parseRational(dmsArray[0])
-              const minutes = parseRational(dmsArray[1])
-              const seconds = parseRational(dmsArray[2])
-
-              return degrees + minutes / 60 + seconds / 3600
-            } catch (error) {
-              console.error('DMS変換エラー:', error)
-              return null
-            }
-          }
-
-          // 標準形式のGPS情報をチェック
-          if (
-            gps.GPSLatitude &&
-            gps.GPSLongitude &&
-            Array.isArray(gps.GPSLatitude) &&
-            Array.isArray(gps.GPSLongitude)
-          ) {
-            const latitude = convertDMSToDecimal(gps.GPSLatitude)
-            const longitude = convertDMSToDecimal(gps.GPSLongitude)
-
-            // 南緯・西経の場合、値を反転
-            const latSign = gps.GPSLatitudeRef === 'S' ? -1 : 1
-            const lonSign = gps.GPSLongitudeRef === 'W' ? -1 : 1
-
-            if (latitude !== null && longitude !== null) {
-              const result = {
-                latitude: latitude * latSign,
-                longitude: longitude * lonSign,
-              }
-              console.log('DMS変換結果:', result)
-              resolve(result)
-              return
-            }
-          }
-        }
-
-        // 3. COMPUTED内のGPS情報をチェック
-        if (
-          exifData.COMPUTED &&
-          typeof exifData.COMPUTED.GPSLatitude !== 'undefined' &&
-          typeof exifData.COMPUTED.GPSLongitude !== 'undefined'
-        ) {
-          const latitude = parseFloat(String(exifData.COMPUTED.GPSLatitude))
-          const longitude = parseFloat(String(exifData.COMPUTED.GPSLongitude))
-
-          if (!isNaN(latitude) && !isNaN(longitude)) {
-            console.log('COMPUTED GPSデータを使用:', {
-              latitude,
-              longitude,
-            })
-            resolve({ latitude, longitude })
-            return
-          }
-        }
-
-        // 位置情報が見つからなかった場合
-        console.log('GPS情報が見つかりませんでした')
-        resolve(null)
-      })
-      .catch((error) => {
-        console.error('EXIF情報の読み取りに失敗しました:', error)
-        resolve(null)
-      })
-  })
 }
 
 const Chat = ({
@@ -468,18 +340,6 @@ const Chat = ({
           console.log('exifrから直接緯度経度を取得:', locationData)
           setImageLocation(locationData)
           toast.success('写真から位置情報を取得しました')
-        } else {
-          // 計算済みの緯度経度がない場合は、従来の方法で取得
-          const locationData = await getImageLocation(file)
-
-          if (locationData) {
-            console.log('getImageLocationから位置情報を取得:', locationData)
-            setImageLocation(locationData)
-            toast.success('写真から位置情報を取得しました')
-          } else {
-            setImageLocation(null)
-            console.log('位置情報は取得できませんでした')
-          }
         }
       } catch (error) {
         console.error('メタデータ取得エラー:', error)
