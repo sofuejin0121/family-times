@@ -6,6 +6,7 @@ import netlifyPlugin from '@netlify/vite-plugin-react-router' // Netlifyデプ�
 import { VitePWA } from 'vite-plugin-pwa' // Progressive Web App(PWA)機能を追加するプラグイン
 import fs from 'fs' // ファイルシステム操作のためのNode.jsモジュール
 import { Plugin } from 'vite' // Viteプラグインの型定義
+import { sentryVitePlugin } from '@sentry/vite-plugin'
 
 /**
  * Firebase Messaging Service Workerを処理するカスタムプラグイン
@@ -159,6 +160,11 @@ export default defineConfig(({ mode }) => {
         },
       }),
       firebaseMessagingSwPlugin(env), // 環境変数をFirebase Messaging SWプラグインに渡す
+      sentryVitePlugin({
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        org: 'cnn-lh',
+        project: 'javascript-react',
+      }),
     ],
     resolve: {
       alias: {
@@ -171,6 +177,7 @@ export default defineConfig(({ mode }) => {
           main: 'index.html', // ビルドのエントリーポイントを指定
         },
       },
+      sourcemap: true,
     },
   }
 })
