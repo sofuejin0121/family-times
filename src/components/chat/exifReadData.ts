@@ -12,19 +12,30 @@ type ExifValue =
 
 // ExifSection インターフェース
 interface ExifSection {
-  [key: string]: ExifValue | ThumbnailData | undefined;
-  Thumbnail?: ThumbnailData;
+  [key: string]: ExifValue | ThumbnailData | undefined
+  Thumbnail?: ThumbnailData
 }
 
 // ExifData インターフェース
 interface ExifData {
   [section: string]: ExifSection | undefined
   COMPUTED?: ExifSection
+  FILE?: ExifSection
+  IFD0?: ExifSection
+  EXIF?: ExifSection
+  GPS?: ExifSection
+  THUMBNAIL?: ExifSection
+  COMMENT?: ExifSection
+  WINXP?: ExifSection
 }
 
 // Thumbnailインターフェースを追加
 interface ThumbnailData {
   Data: Uint8Array
+  FileType?: number
+  MimeType?: string
+  Height?: number
+  Width?: number
 }
 
 /**
@@ -32,12 +43,14 @@ interface ThumbnailData {
  *
  * @param file - 画像ファイル (File オブジェクト) または URL 文字列
  * @param requiredSections - 結果に含めるセクションのカンマ区切りリスト
+ * @param asArrays - 各セクションを配列として返すかどうか
  * @param readThumbnail - サムネイル本体を読み込むかどうか
  * @returns - Promise オブジェクト。成功時は ExifData、失敗時はエラーを返す
  */
 function exifReadData(
   file: File | string,
   requiredSections: string | null = null,
+  asArrays: boolean = false,
   readThumbnail: boolean = false
 ): Promise<ExifData | false> {
   return new Promise((resolve, reject) => {
@@ -108,6 +121,12 @@ function exifReadData(
             exifData.COMPUTED.html = `width="${dimensions.width}" height="${dimensions.height}"`
             exifData.COMPUTED.IsColor = 1 // デフォルトでカラー画像と仮定
 
+            // サムネイルがある場合はサムネイル情報も追加
+            if (exifData.THUMBNAIL && exifData.THUMBNAIL.Thumbnail) {
+              exifData.COMPUTED['Thumbnail.FileType'] = 2 // JPEG
+              exifData.COMPUTED['Thumbnail.MimeType'] = 'image/jpeg'
+            }
+
             // 必要なセクションをフィルタリング
             if (requiredSections) {
               const sections = requiredSections.split(',').map((s) => s.trim())
@@ -127,7 +146,20 @@ function exifReadData(
 
               resolve(filteredResult)
             } else {
-              resolve(exifData)
+              // 各セクションを配列として返すかどうか
+              if (asArrays) {
+                // COMPUTED, THUMBNAIL, COMMENT は常に配列として返す
+                // 他のセクションも配列として返す
+                const result: ExifData = {}
+                for (const section in exifData) {
+                  if (exifData[section]) {
+                    result[section] = { ...exifData[section] }
+                  }
+                }
+                resolve(result)
+              } else {
+                resolve(exifData)
+              }
             }
           })
           .catch((error) => {
@@ -248,6 +280,8 @@ function readExifSegment(
     EXIF: {},
     GPS: {},
     COMPUTED: {},
+    COMMENT: {},
+    WINXP: {},
   }
 
   // IFD0 のエントリを読み込む
@@ -309,6 +343,81 @@ function readExifSegment(
         }
       }
     }
+  }
+
+  // コメントセクションの読み込み
+  try {
+    // JPEGファイルのコメントセクションを探す
+    let commentOffset = 2 // JPEGヘッダの後から
+    while (commentOffset < view.byteLength - 1) {
+      if (view.getUint8(commentOffset) === 0xff) {
+        const marker = view.getUint8(commentOffset + 1)
+        if (marker === 0xfe) {
+          // COMマーカー
+          const commentLength = view.getUint16(commentOffset + 2, false) - 2
+          const commentStart = commentOffset + 4
+          if (commentStart + commentLength <= view.byteLength) {
+            const commentText = getStringFromView(
+              view,
+              commentStart,
+              commentLength
+            )
+            if (!result.COMMENT) result.COMMENT = {}
+            const commentIndex = Object.keys(result.COMMENT).length
+            result.COMMENT[commentIndex] = commentText
+          }
+        }
+        // 次のマーカーへ
+        if (marker === 0xd9) break // EOIマーカー
+        if (marker >= 0xd0 && marker <= 0xd7) {
+          commentOffset += 2 // RSTマーカーはサイズフィールドを持たない
+        } else {
+          const segmentLength = view.getUint16(commentOffset + 2, false)
+          commentOffset += 2 + segmentLength
+        }
+      } else {
+        commentOffset++
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading JPEG comments:', e)
+  }
+
+  // Windows XP タグの読み込み
+  try {
+    if (result.IFD0) {
+      const winXpTags = [0x9c9b, 0x9c9c, 0x9c9d, 0x9c9e, 0x9c9f] // XPTitle, XPComment, XPAuthor, XPKeywords, XPSubject
+      let hasWinXpData = false
+
+      for (const tag of winXpTags) {
+        if (result.IFD0[tag]) {
+          if (!result.WINXP) result.WINXP = {}
+          const tagName = getTagName(tag) || tag.toString()
+          const rawValue = result.IFD0[tag]
+
+          // Windows XPタグはUTF-16LEでエンコードされている
+          if (rawValue instanceof Uint8Array) {
+            try {
+              const decoder = new TextDecoder('utf-16le')
+              const text = decoder.decode(rawValue).replace(/\0+$/, '') // 末尾のnull文字を削除
+              result.WINXP[tagName] = text
+              hasWinXpData = true
+            } catch {
+              result.WINXP[tagName] = rawValue
+            }
+          } else {
+            result.WINXP[tagName] = rawValue
+            hasWinXpData = true
+          }
+        }
+      }
+
+      if (!hasWinXpData) {
+        delete result.WINXP
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading Windows XP tags:', e)
   }
 
   // 追加の処理 (Copyright, UserComment など)
@@ -611,6 +720,38 @@ function parseSpecialTags(exifData: ExifData): void {
         exifData.COMPUTED.ApertureFNumber = `f/${fstop.toFixed(1)}`
       }
     }
+  }
+
+  // ShutterSpeedValue からの露出時間の計算
+  if (!exifData.COMPUTED?.ExposureTime && exifData.EXIF?.ShutterSpeedValue) {
+    if (!exifData.COMPUTED) {
+      exifData.COMPUTED = {}
+    }
+
+    const shutterSpeedValue = exifData.EXIF.ShutterSpeedValue
+    if (
+      typeof shutterSpeedValue === 'string' &&
+      shutterSpeedValue.includes('/')
+    ) {
+      const [numerator, denominator] = shutterSpeedValue.split('/').map(Number)
+      if (numerator && denominator) {
+        const apex = numerator / denominator
+        const shutter = Math.pow(2, -apex)
+        if (shutter >= 1) {
+          exifData.COMPUTED.ExposureTime = `${Math.round(shutter)}s`
+        } else {
+          exifData.COMPUTED.ExposureTime = `1/${Math.round(1 / shutter)}s`
+        }
+      }
+    }
+  }
+
+  // 画像の向きの処理
+  if (exifData.IFD0 && exifData.IFD0.Orientation) {
+    if (!exifData.COMPUTED) {
+      exifData.COMPUTED = {}
+    }
+    exifData.COMPUTED.Orientation = exifData.IFD0.Orientation
   }
 }
 

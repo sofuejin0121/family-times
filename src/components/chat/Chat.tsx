@@ -67,8 +67,7 @@ interface MessageData {
 // GPSデータの型定義を追加
 type GPSValue = string | number
 
-// EXIFデータ読み取り用の関数を修正
-// EXIFデータ読み取り用の関数をexifReadDataを使って実装
+// EXIFデータから位置情報を抽出する関数
 const getImageLocation = async (
   file: File
 ): Promise<{ latitude: number; longitude: number } | null> => {
@@ -87,7 +86,7 @@ const getImageLocation = async (
 
         console.log('取得したEXIF情報:', exifData)
 
-        // 1. GPS情報の抽出を試みる
+        // GPS情報がある場合
         if (exifData.GPS) {
           const gps = exifData.GPS
           console.log('GPS情報:', gps)
@@ -119,7 +118,7 @@ const getImageLocation = async (
             }
           }
 
-          // 標準的なGPS情報フォーマットをチェック
+          // 標準形式のGPS情報をチェック
           if (
             gps.GPSLatitude &&
             gps.GPSLongitude &&
@@ -134,7 +133,6 @@ const getImageLocation = async (
             const lonSign = gps.GPSLongitudeRef === 'W' ? -1 : 1
 
             if (latitude !== null && longitude !== null) {
-              console.log('標準方法で位置情報を取得しました')
               resolve({
                 latitude: latitude * latSign,
                 longitude: longitude * lonSign,
@@ -144,123 +142,22 @@ const getImageLocation = async (
           }
         }
 
-        // 2. COMPUTEDセクションにGPS情報がある可能性も確認
+        // COMPUTED内のGPS情報をチェック
         if (
           exifData.COMPUTED &&
-          exifData.COMPUTED.GPSLatitude &&
-          exifData.COMPUTED.GPSLongitude
+          typeof exifData.COMPUTED.GPSLatitude !== 'undefined' &&
+          typeof exifData.COMPUTED.GPSLongitude !== 'undefined'
         ) {
-          console.log('COMPUTED内でGPS情報を検出:', exifData.COMPUTED)
-
-          // 数値への変換を確実に行う
-          const latitude =
-            typeof exifData.COMPUTED.GPSLatitude === 'number'
-              ? exifData.COMPUTED.GPSLatitude
-              : parseFloat(String(exifData.COMPUTED.GPSLatitude))
-
-          const longitude =
-            typeof exifData.COMPUTED.GPSLongitude === 'number'
-              ? exifData.COMPUTED.GPSLongitude
-              : parseFloat(String(exifData.COMPUTED.GPSLongitude))
+          const latitude = parseFloat(String(exifData.COMPUTED.GPSLatitude))
+          const longitude = parseFloat(String(exifData.COMPUTED.GPSLongitude))
 
           if (!isNaN(latitude) && !isNaN(longitude)) {
-            resolve({
-              latitude,
-              longitude,
-            })
+            resolve({ latitude, longitude })
             return
           }
         }
 
-        // 3. さまざまな可能性のある形式をチェック
-        const findGPSData = () => {
-          // すべてのメタデータのキーをログに出力
-          const allKeys: string[] = []
-          Object.keys(exifData).forEach((section) => {
-            if (typeof exifData[section] === 'object') {
-              Object.keys(exifData[section]).forEach((key) => {
-                allKeys.push(`${section}.${key}`)
-              })
-            }
-          })
-          console.log('利用可能なメタデータキー:', allKeys)
-
-          // 可能性のある位置情報の格納場所をチェック
-          const possibleLocations = [
-            // 直接アクセス可能なプロパティ
-            {
-              lat: tryGetValue(exifData, 'latitude'),
-              lon: tryGetValue(exifData, 'longitude'),
-            },
-            {
-              lat: tryGetValue(exifData, 'GPSLatitude'),
-              lon: tryGetValue(exifData, 'GPSLongitude'),
-            },
-            {
-              lat: tryGetValue(exifData, 'gpsLatitude'),
-              lon: tryGetValue(exifData, 'gpsLongitude'),
-            },
-            // ネストされたプロパティ
-            {
-              lat: tryGetValue(exifData, 'EXIF.GPSLatitude'),
-              lon: tryGetValue(exifData, 'EXIF.GPSLongitude'),
-            },
-            {
-              lat: tryGetValue(exifData, 'GPS.Latitude'),
-              lon: tryGetValue(exifData, 'GPS.Longitude'),
-            },
-          ]
-
-          // 有効な位置情報を探す
-          for (const loc of possibleLocations) {
-            if (loc.lat != null && loc.lon != null) {
-              // nullとundefinedの両方をチェック
-              console.log('代替方法で位置情報を発見:', loc)
-              return {
-                latitude:
-                  typeof loc.lat === 'number'
-                    ? loc.lat
-                    : parseFloat(String(loc.lat)),
-                longitude:
-                  typeof loc.lon === 'number'
-                    ? loc.lon
-                    : parseFloat(String(loc.lon)),
-              }
-            }
-          }
-
-          return null
-        }
-
-        // ネストされたオブジェクトからプロパティを安全に取得
-        const tryGetValue = (
-          obj: Record<string, unknown>,
-          path: string
-        ): unknown => {
-          const parts = path.split('.')
-          let current: unknown = obj
-
-          for (const part of parts) {
-            if (
-              current === null ||
-              current === undefined ||
-              typeof current !== 'object'
-            ) {
-              return null
-            }
-            current = (current as Record<string, unknown>)[part]
-          }
-
-          return current
-        }
-
-        // 可能性のある場所をすべて探す
-        const gpsData = findGPSData()
-        if (gpsData) {
-          resolve(gpsData)
-          return
-        }
-
+        // 位置情報が見つからなかった場合
         console.log('GPS情報が見つかりませんでした')
         resolve(null)
       })
