@@ -28,6 +28,7 @@ import { CreateServer } from '../sidebar/CreateServer'
 import { setChannelInfo } from '@/features/channelSlice'
 import { setServerInfo } from '@/features/serverSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import * as Sentry from '@sentry/react'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -244,8 +245,32 @@ const Chat = ({
 
       // EXIF位置情報がある場合のみ追加
       if (locationData) {
-        messageData.latitude = locationData.latitude
-        messageData.longitude = locationData.longitude
+        // NaNチェックを追加
+        if (isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
+          // Sentryにエラーログを送信
+          Sentry.captureMessage('位置情報にNaNが含まれています', {
+            level: 'warning',
+            extra: {
+              locationData,
+              fileInfo: selectedFile
+                ? {
+                    name: selectedFile.name,
+                    type: selectedFile.type,
+                    size: selectedFile.size,
+                    lastModified: selectedFile.lastModified,
+                  }
+                : null,
+              userAgent: navigator.userAgent,
+              platform: navigator.platform,
+              isAndroid: /android/i.test(navigator.userAgent),
+            },
+          })
+          console.error('位置情報にNaNが含まれています:', locationData)
+          // NaNの場合は位置情報を追加しない
+        } else {
+          messageData.latitude = locationData.latitude
+          messageData.longitude = locationData.longitude
+        }
       }
 
       // Firestoreに保存
@@ -337,12 +362,57 @@ const Chat = ({
             latitude: allMetadata.latitude,
             longitude: allMetadata.longitude,
           }
-          console.log('exifrから直接緯度経度を取得:', locationData)
-          setImageLocation(locationData)
-          toast.success('写真から位置情報を取得しました')
+
+          // NaNチェックを追加
+          if (isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
+            // Sentryにエラーログを送信
+            Sentry.captureMessage(
+              'EXIFから取得した位置情報にNaNが含まれています',
+              {
+                level: 'warning',
+                extra: {
+                  locationData,
+                  allMetadata,
+                  fileInfo: {
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    lastModified: file.lastModified,
+                  },
+                  userAgent: navigator.userAgent,
+                  platform: navigator.platform,
+                  isAndroid: /android/i.test(navigator.userAgent),
+                },
+              }
+            )
+            console.error(
+              'EXIFから取得した位置情報にNaNが含まれています:',
+              locationData,
+              allMetadata
+            )
+            setImageLocation(null)
+          } else {
+            console.log('exifrから直接緯度経度を取得:', locationData)
+            setImageLocation(locationData)
+            toast.success('写真から位置情報を取得しました')
+          }
         }
       } catch (error) {
         console.error('メタデータ取得エラー:', error)
+        // Sentryにエラーログを送信
+        Sentry.captureException(error, {
+          extra: {
+            fileInfo: {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              lastModified: file.lastModified,
+            },
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+            isAndroid: /android/i.test(navigator.userAgent),
+          },
+        })
         setImageLocation(null)
       }
 
