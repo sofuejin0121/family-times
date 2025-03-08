@@ -21,7 +21,6 @@ import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
-import useServer from './hooks/useServer'
 
 // エラーハンドリング用コンポーネント
 // URLが無効な形式の時に表示される画面
@@ -87,7 +86,6 @@ function App() {
   const isAuthChecking = useAppSelector((state) => state.user.isAuthChecking)
   const user = useAppSelector((state) => state.user.user)
   const [isInitialized, setIsInitialized] = useState(false)
-  const { loading: serversLoading } = useServer()
   // モバイルでは初期状態で非表示に設定
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isMemberSidebarOpen, setIsMemberSidebarOpen] = useState(false)
@@ -224,7 +222,7 @@ function App() {
   }, [dispatch])
 
   // 初期化とサーバーデータのロードが完了するまでローディング画面を表示
-  if (!isInitialized || isAuthChecking || (user && serversLoading)) {
+  if (!isInitialized || isAuthChecking) {
     return (
       <div className="flex h-svh w-full items-center justify-center">
         <LoadingScreen />

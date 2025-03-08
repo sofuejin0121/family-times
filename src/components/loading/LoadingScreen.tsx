@@ -15,7 +15,7 @@ const LoadingScreen = () => {
 
   // ローディング表示のJSXを返す
   return (
-    <div className="w-hull flex h-full flex-col items-center justify-center lg:w-5/6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-80">
       <div className="h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-blue-500" />
     </div>
   )

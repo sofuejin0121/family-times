@@ -39,6 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Input } from '../ui/input'
 import { toast } from 'sonner'
 import NoServerView from './NoServerView'
+import LoadingScreen from '../loading/LoadingScreen'
 
 interface AppSidebarProps {
   isMobileMenuOpen: boolean
@@ -76,16 +77,6 @@ export function AppSidebar({
     }
   }, [servers, serverId, dispatch, serversLoading])
 
-  // ローディング中は何も表示しない（チラ見え防止）
-  if (serversLoading) {
-    return null
-  }
-
-  // サーバーが存在しない場合のみNoServerViewを表示
-  if (servers.length === 0) {
-    return <NoServerView onCreateServer={() => setIsCreateServerOpen(true)} />
-  }
-
   // 招待コードを処理する関数
   const handleJoinServer = () => {
     if (!inviteCode.trim()) {
@@ -102,6 +93,20 @@ export function AppSidebar({
     navigate(`/invite/${inviteCode.trim()}`)
     setIsJoinServerOpen(false)
     setInviteCode('')
+  }
+
+  // サーバーのロード状態と空の状態を管理
+  if (serversLoading) {
+    return (
+      <div className="flex h-svh w-full items-center justify-center">
+        <LoadingScreen />
+      </div>
+    )
+  }
+
+  // サーバーが存在しない場合のみNoServerViewを表示
+  if (servers.length === 0) {
+    return <NoServerView onCreateServer={() => setIsCreateServerOpen(true)} />
   }
 
   return (
@@ -127,7 +132,7 @@ export function AppSidebar({
         >
           <SidebarContent className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 max-h-screen overflow-y-auto p-3">
             <SidebarMenu className="space-y-3">
-              {servers.map((server) => (
+              {!serversLoading && servers.map((server) => (
                 <SidebarMenuItem
                   key={server.id}
                   className="flex justify-center"
