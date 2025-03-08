@@ -1,7 +1,7 @@
 import ChatHeader from './ChatHeader'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import ChatMessage from './ChatMessage'
-import { useAppSelector } from '../../app/hooks'
+import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   useCallback,
   useRef,
@@ -25,6 +25,9 @@ import LoadingScreen from '../loading/LoadingScreen'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import NoServerView from '../sidebar/NoServerView'
 import { CreateServer } from '../sidebar/CreateServer'
+import { setChannelInfo } from '@/features/channelSlice'
+import { setServerInfo } from '@/features/serverSlice'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -145,16 +148,39 @@ const Chat = ({
   // チャットコンテナの参照を追加
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
+  // URLパラメータからサーバーIDとチャンネルIDを取得する処理
+  useEffect(() => {
+    const urlServerId = searchParams.get('serverId')
+    const urlChannelId = searchParams.get('channelId')
+    const urlMessageId = searchParams.get('messageId')
+
+    if (urlServerId && urlChannelId) {
+      console.log('URLパラメータ:', { urlServerId, urlChannelId, urlMessageId })
+      dispatch(setServerInfo({ serverId: urlServerId }))
+      dispatch(setChannelInfo({ channelId: urlChannelId }))
+    }
+    // URLパラメータをクリア
+    // 他の処理が終わった後にURLを整理するために、少し遅延させる
+    setTimeout(() => {
+      navigate('/', { replace: true })
+    }, 500)
+  }, [dispatch, navigate, searchParams])
+
   // スクロール処理を最適化（モバイル対応）
   useLayoutEffect(() => {
     if (chatContainerRef.current && messages.length > 0) {
       // 通常のスクロール
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-      
+
       // モバイル用の追加対応
       requestAnimationFrame(() => {
         if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+          chatContainerRef.current.scrollTop =
+            chatContainerRef.current.scrollHeight
           // window全体のスクロールも制御
           window.scrollTo(0, document.documentElement.scrollHeight)
         }

@@ -10,6 +10,7 @@ import {
 import { db } from "../firebase";
 import { useAppSelector, useAppDispatch } from "../app/hooks";
 import { setChannelInfo } from '../features/channelSlice';
+import { store } from "../app/store";
 
 interface Channels {
   id: string;
@@ -38,14 +39,29 @@ const useChannel = () => {
         );
         setDocuments(channelsResults);
 
-        // サーバーが変更されたときに最初のチャンネルを選択
-        if (channelsResults.length > 0) {
+        // 現在選択中のチャンネルIDを取得
+        const currentChannelId = store.getState().channel.channelId;
+        
+        // サーバーが変更されたときに、チャンネルが選択されていない場合のみ
+        // 最初のチャンネルを選択する
+        if (channelsResults.length > 0 && !currentChannelId) {
           dispatch(
             setChannelInfo({
               channelId: channelsResults[0].id,
               channelName: channelsResults[0].channel.channelName,
             })
           );
+        } else if (currentChannelId) {
+          // 選択中のチャンネルIDに対応するチャンネル名を見つける
+          const selectedChannel = channelsResults.find(ch => ch.id === currentChannelId);
+          if (selectedChannel) {
+            dispatch(
+              setChannelInfo({
+                channelId: currentChannelId,
+                channelName: selectedChannel.channel.channelName,
+              })
+            );
+          }
         }
       });
     }

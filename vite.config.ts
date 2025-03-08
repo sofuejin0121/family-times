@@ -1,18 +1,25 @@
 import path from 'path'
-import { defineConfig, loadEnv } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import netlifyPlugin from '@netlify/vite-plugin-react-router'
-import { VitePWA } from 'vite-plugin-pwa'
-import fs from 'fs'
-import { Plugin } from 'vite'
+import { defineConfig, loadEnv } from 'vite' // Viteの設定を定義するための関数とenv変数を読み込むための関数
+import react from '@vitejs/plugin-react' // ReactをサポートするViteプラグイン
+import tailwindcss from '@tailwindcss/vite' // TailwindCSSをサポートするViteプラグイン
+import netlifyPlugin from '@netlify/vite-plugin-react-router' // Netlifyデプロイ用のReact Routerプラグイン
+import { VitePWA } from 'vite-plugin-pwa' // Progressive Web App(PWA)機能を追加するプラグイン
+import fs from 'fs' // ファイルシステム操作のためのNode.jsモジュール
+import { Plugin } from 'vite' // Viteプラグインの型定義
 
-// Firebase Messaging SWを処理するカスタムプラグイン
+/**
+ * Firebase Messaging Service Workerを処理するカスタムプラグイン
+ * このプラグインは環境変数をService Workerファイルに注入します
+ *
+ * @param env - 環境変数のオブジェクト
+ * @returns Viteプラグインオブジェクト
+ */
 function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
   return {
-    name: 'vite-plugin-firebase-messaging-sw',
+    name: 'vite-plugin-firebase-messaging-sw', // プラグイン名
     configureServer(server) {
-      // 開発サーバーでService Workerを提供
+      // 開発サーバー実行時の設定
+      // ミドルウェアを追加してService Workerファイルへのリクエストを処理
       server.middlewares.use((req, res, next) => {
         if (req.url === '/firebase-messaging-sw.js') {
           try {
@@ -22,38 +29,43 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
               'utf-8'
             )
 
-            // 環境変数マッピング
+            // 環境変数とプレースホルダーのマッピング
+            // これらのプレースホルダーはService Workerファイル内で実際の値に置き換えられます
             const envReplacements = {
-              FIREBASE_API_KEY_PLACEHOLDER: env.VITE_apiKey,
-              FIREBASE_AUTH_DOMAIN_PLACEHOLDER: env.VITE_authDomain,
-              FIREBASE_PROJECT_ID_PLACEHOLDER: env.VITE_projectId,
-              FIREBASE_STORAGE_BUCKET_PLACEHOLDER: env.VITE_storageBucket,
+              FIREBASE_API_KEY_PLACEHOLDER: env.VITE_apiKey, // Firebase APIキー
+              FIREBASE_AUTH_DOMAIN_PLACEHOLDER: env.VITE_authDomain, // Firebase認証ドメイン
+              FIREBASE_PROJECT_ID_PLACEHOLDER: env.VITE_projectId, // FirebaseプロジェクトID
+              FIREBASE_STORAGE_BUCKET_PLACEHOLDER: env.VITE_storageBucket, // Firebaseストレージバケット
               FIREBASE_MESSAGING_SENDER_ID_PLACEHOLDER:
-                env.VITE_messagingSenderId,
-              FIREBASE_APP_ID_PLACEHOLDER: env.VITE_appId,
+                env.VITE_messagingSenderId, // Firebaseメッセージング送信者ID
+              FIREBASE_APP_ID_PLACEHOLDER: env.VITE_appId, // FirebaseアプリID
             }
 
-            // 環境変数を置換
-            for (const [placeholder, value] of Object.entries(envReplacements)) {
+            // 環境変数をService Workerファイル内のプレースホルダーに置換
+            for (const [placeholder, value] of Object.entries(
+              envReplacements
+            )) {
               swSource = swSource.replace(
-                new RegExp(placeholder, 'g'),
-                value || ''
+                new RegExp(placeholder, 'g'), // グローバルフラグで全ての一致を置換
+                value || '' // 値がない場合は空文字列を使用
               )
             }
 
+            // レスポンスヘッダーを設定してJavaScriptとして送信
             res.setHeader('Content-Type', 'application/javascript')
             res.end(swSource)
           } catch (error) {
             console.error('Service Worker提供エラー:', error)
-            next(error)
+            next(error) // エラーが発生した場合は次のミドルウェアに処理を委譲
           }
         } else {
-          next()
+          next() // Service Worker以外のリクエストは次のミドルウェアに処理を委譲
         }
       })
     },
+    // ビルド完了時の処理
     closeBundle: {
-      sequential: true,
+      sequential: true, // 順次実行を保証
       handler: async () => {
         try {
           console.log('Firebase Messaging Service Workerの処理を開始します')
@@ -64,7 +76,7 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
             'utf-8'
           )
 
-          // 環境変数マッピング
+          // 環境変数マッピング（開発サーバーと同じ設定）
           const envReplacements = {
             FIREBASE_API_KEY_PLACEHOLDER: env.VITE_apiKey,
             FIREBASE_AUTH_DOMAIN_PLACEHOLDER: env.VITE_authDomain,
@@ -87,11 +99,12 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
             )
           }
 
-          // 出力ディレクトリに書き込む
+          // 出力ディレクトリが存在しない場合は作成
           if (!fs.existsSync('dist')) {
-            fs.mkdirSync('dist', { recursive: true })
+            fs.mkdirSync('dist', { recursive: true }) // recursive: trueで親ディレクトリも必要に応じて作成
           }
 
+          // 処理したService Workerファイルを出力ディレクトリに書き込む
           fs.writeFileSync('dist/firebase-messaging-sw.js', swOutput)
           console.log('Firebase Messaging Service Workerの処理が完了しました')
         } catch (error) {
@@ -105,25 +118,29 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
   }
 }
 
-// configを関数形式に変更して環境変数にアクセスできるようにする
+/**
+ * Vite設定を定義
+ * 関数形式を使用することで、環境変数にアクセスできるようになります
+ */
 export default defineConfig(({ mode }) => {
-  // 環境変数をロード
+  // 現在の実行モード（development/production）に基づいて環境変数をロード
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
     plugins: [
-      react(),
-      tailwindcss(),
-      netlifyPlugin(),
+      react(), // Reactサポートを有効化
+      tailwindcss(), // TailwindCSSサポートを有効化
+      netlifyPlugin(), // Netlifyデプロイサポートを有効化
       VitePWA({
-        registerType: 'autoUpdate',
-        injectRegister: 'auto',
+        registerType: 'autoUpdate', // Service Workerの自動更新を有効化
+        injectRegister: 'auto', // Service Worker登録スクリプトを自動挿入
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-          // firebase-messaging-sw.jsを無視する - 別処理
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'], // キャッシュするファイルパターン
+          // firebase-messaging-sw.jsは独自に処理するため、Workboxの処理から除外
           globIgnores: ['**/firebase-messaging-sw.js'],
         },
         manifest: {
+          // PWAのマニフェスト設定（アプリのアイコンなど）
           icons: [
             {
               src: '/homeicon_512.png',
@@ -138,20 +155,20 @@ export default defineConfig(({ mode }) => {
           ],
         },
         devOptions: {
-          enabled: true,
+          enabled: true, // 開発モードでもPWA機能を有効化
         },
       }),
-      firebaseMessagingSwPlugin(env), // 環境変数をプラグインに渡す
+      firebaseMessagingSwPlugin(env), // 環境変数をFirebase Messaging SWプラグインに渡す
     ],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src'),
+        '@': path.resolve(__dirname, './src'), // @エイリアスをsrcディレクトリに設定（インポート時に@/componentsのように使用可能）
       },
     },
     build: {
       rollupOptions: {
         input: {
-          main: 'index.html',
+          main: 'index.html', // ビルドのエントリーポイントを指定
         },
       },
     },
