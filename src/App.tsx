@@ -140,6 +140,9 @@ function App() {
 
   // タッチ終了時の処理
   const handleTouchEnd = () => {
+    // モバイルデバッグ用のログを追加
+    console.log('TouchEnd - isSwiping:', isSwiping, 'isMapMode:', isMapMode, 'isImageDialogOpen:', isImageDialogOpen)
+    
     // スワイプ動作がない場合や無効化条件の場合は処理しない
     if (!isSwiping || isMapMode || isImageDialogOpen) return
 
@@ -166,6 +169,8 @@ function App() {
     }
 
     // タッチ終了後に状態をリセット
+    setTouchStart({ x: 0, y: 0 })
+    setTouchEnd({ x: 0, y: 0 })
     setIsSwiping(false)
   }
 
@@ -237,6 +242,12 @@ function App() {
   return (
     <BrowserRouter>
       <DeepLinkChecker />
+      {/* モバイルデバッグ用のメッセージを追加 */}
+      {process.env.NODE_ENV !== 'production' && 
+        <div className="fixed top-0 left-0 z-50 bg-black/50 text-white text-xs p-1">
+          {`Mobile: ${window.innerWidth}x${window.innerHeight}`}
+        </div>
+      }
       {!user ? (
         // 未ログイン状態
         <>
