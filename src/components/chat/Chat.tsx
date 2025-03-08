@@ -598,7 +598,7 @@ const Chat = ({
                         id="file-input"
                         ref={fileInputRef}
                         onChange={handleFileChange}
-                        accept="image/*"
+                        accept="image/*;capture=camera"
                         disabled={isUploading}
                       />
                       <label
