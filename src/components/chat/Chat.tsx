@@ -86,7 +86,24 @@ const getImageLocation = async (
 
         console.log('取得したEXIF情報:', exifData)
 
-        // GPS情報がある場合
+        // 1. まず直接計算された緯度経度を確認（メタデータに含まれている場合）
+        if (
+          typeof exifData.latitude === 'number' &&
+          typeof exifData.longitude === 'number'
+        ) {
+          console.log('直接計算された緯度経度を使用:', {
+            latitude: exifData.latitude,
+            longitude: exifData.longitude,
+          })
+
+          resolve({
+            latitude: exifData.latitude,
+            longitude: exifData.longitude,
+          })
+          return
+        }
+
+        // 2. GPS情報がある場合（標準的なGPSデータ）
         if (exifData.GPS) {
           const gps = exifData.GPS
           console.log('GPS情報:', gps)
@@ -133,16 +150,18 @@ const getImageLocation = async (
             const lonSign = gps.GPSLongitudeRef === 'W' ? -1 : 1
 
             if (latitude !== null && longitude !== null) {
-              resolve({
+              const result = {
                 latitude: latitude * latSign,
                 longitude: longitude * lonSign,
-              })
+              }
+              console.log('DMS変換結果:', result)
+              resolve(result)
               return
             }
           }
         }
 
-        // COMPUTED内のGPS情報をチェック
+        // 3. COMPUTED内のGPS情報をチェック
         if (
           exifData.COMPUTED &&
           typeof exifData.COMPUTED.GPSLatitude !== 'undefined' &&
@@ -152,6 +171,10 @@ const getImageLocation = async (
           const longitude = parseFloat(String(exifData.COMPUTED.GPSLongitude))
 
           if (!isNaN(latitude) && !isNaN(longitude)) {
+            console.log('COMPUTED GPSデータを使用:', {
+              latitude,
+              longitude,
+            })
             resolve({ latitude, longitude })
             return
           }
@@ -321,12 +344,13 @@ const Chat = ({
           imageHeight = fileImageDimensions.height
         }
 
-        // EXIF位置情報の取得（imageLocationにはEXIFから取得した位置情報が入っている）
+        // 位置情報の取得（imageLocationにはEXIFから取得した位置情報が入っている）
         if (imageLocation) {
           locationData = {
             latitude: imageLocation.latitude,
             longitude: imageLocation.longitude,
           }
+          console.log('メッセージに位置情報を追加:', locationData)
         }
       }
 
@@ -339,10 +363,10 @@ const Chat = ({
       }
 
       // 画像サイズがある場合のみ追加
-      if (imageWidth) {
+      if (imageWidth !== null) {
         messageData.imageWidth = imageWidth
       }
-      if (imageHeight) {
+      if (imageHeight !== null) {
         messageData.imageHeight = imageHeight
       }
 
@@ -365,6 +389,7 @@ const Chat = ({
           ),
           messageData
         )
+        console.log('メッセージを保存しました:', messageData)
       } else {
         console.error('サーバーIDまたはチャンネルIDが無効です')
         toast.error('メッセージの保存に失敗しました')
@@ -388,70 +413,83 @@ const Chat = ({
   }
 
   // ファイル選択時の処理
-  const handleFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      // ファイルが選択された場合
-      if (e.target.files && e.target.files.length > 0) {
-        const file = e.target.files[0]
-        console.log('選択されたファイル:', file.name, file.type, file.size)
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // ファイルが選択された場合
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0]
+      console.log('選択されたファイル:', file.name, file.type, file.size)
 
-        // ファイルサイズのチェック
-        const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
-        // ファイルサイズが5MBを超える場合はエラー
-        if (file.size > MAX_FILE_SIZE) {
-          toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
-            duration: 3000,
-          })
-          e.target.value = ''
-          return
-        }
+      // ファイルサイズのチェック
+      const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
+      // ファイルサイズが5MBを超える場合はエラー
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
+          duration: 3000,
+        })
+        e.target.value = ''
+        return
+      }
 
-        // 選択したファイルを状態に保存
-        setSelectedFile(file)
+      // 選択したファイルを状態に保存
+      setSelectedFile(file)
 
-        // プレビュー用のURLを作成
-        const previewURL = URL.createObjectURL(file)
-        setSelectedFilePreview(previewURL)
+      // プレビュー用のURLを作成
+      const previewURL = URL.createObjectURL(file)
+      setSelectedFilePreview(previewURL)
 
-        // 画像のサイズを取得
-        const img = new Image()
-        img.onload = () => {
-          setFileImageDimensions({
-            width: img.width,
-            height: img.height,
-          })
-        }
-        img.src = previewURL
+      // 画像のサイズを取得
+      const img = new Image()
+      img.onload = () => {
+        setFileImageDimensions({
+          width: img.width,
+          height: img.height,
+        })
+      }
+      img.src = previewURL
 
-        // ファイルの詳細情報をログに出力
-        try {
-          const exifr = await import('exifr')
-          // 全メタデータを取得して確認（デバッグ用）
-          const allMetadata = await exifr.default.parse(file)
-          console.log('すべてのメタデータ:', allMetadata)
+      // メタデータ処理を改善
+      try {
+        // exifrライブラリをインポート
+        const exifr = await import('exifr')
 
-          // 位置情報を取得
+        // 全メタデータを取得
+        const allMetadata = await exifr.default.parse(file, { gps: true })
+        console.log('すべてのメタデータ:', allMetadata)
+
+        // 既に計算された緯度経度がメタデータに含まれている場合、それを直接使用
+        if (
+          typeof allMetadata?.latitude === 'number' &&
+          typeof allMetadata?.longitude === 'number'
+        ) {
+          const locationData = {
+            latitude: allMetadata.latitude,
+            longitude: allMetadata.longitude,
+          }
+          console.log('exifrから直接緯度経度を取得:', locationData)
+          setImageLocation(locationData)
+          toast.success('写真から位置情報を取得しました')
+        } else {
+          // 計算済みの緯度経度がない場合は、従来の方法で取得
           const locationData = await getImageLocation(file)
-          console.log('取得した位置情報:', locationData)
 
           if (locationData) {
+            console.log('getImageLocationから位置情報を取得:', locationData)
             setImageLocation(locationData)
             toast.success('写真から位置情報を取得しました')
           } else {
             setImageLocation(null)
             console.log('位置情報は取得できませんでした')
           }
-        } catch (error) {
-          console.error('メタデータ取得エラー:', error)
-          setImageLocation(null)
         }
-
-        // 入力欄にフォーカスを当てる
-        document.getElementById('message-input')?.focus()
+      } catch (error) {
+        console.error('メタデータ取得エラー:', error)
+        setImageLocation(null)
       }
-    },
-    []
-  )
+
+      // 入力欄にフォーカスを当てる
+      document.getElementById('message-input')?.focus()
+    }
+  }
 
   const filterMessages = messages.filter((message) => {
     // 検索ワードが入力されている場合
