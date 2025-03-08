@@ -63,14 +63,12 @@ interface MessageData {
   longitude?: number
 }
 
-// EXIFデータ読み取り用の関数を修正
+// EXIFデータ読み取り用の関数をさらに改善
 const getImageLocation = async (
   file: File
 ): Promise<{ latitude: number; longitude: number } | null> => {
   return new Promise((resolve) => {
-    // 1. ファイルを読み込むためのFileReaderを作成
     const reader = new FileReader()
-    // 2. ファイル読み込み完了時の処理
     reader.onload = async function (e) {
       if (!e.target?.result) {
         resolve(null)
@@ -78,63 +76,90 @@ const getImageLocation = async (
       }
 
       try {
-        console.log('ファイルタイプ:', file.type) // デバッグ用：ファイルタイプを確認
+        console.log('ファイル解析開始:', file.name, file.type, file.size)
         
-        // exifrライブラリでの読み取りを試みる
+        // 1. まず標準的なGPS情報の取得を試みる
         const gps = await exifr.default.gps(file)
-        console.log('EXIF GPS情報（一般）:', gps) // デバッグ用
+        console.log('標準EXIF GPS情報:', gps)
         
-        // AndroidのJPEGファイル用の追加チェック
-        if (!gps && file.type === 'image/jpeg') {
-          console.log('標準的な方法でGPS情報が取得できなかったため、別の方法を試みます')
-          // 完全なEXIFデータを取得して詳細を確認
-          const allMetadata = await exifr.default.parse(file, true)
-          console.log('すべてのメタデータ:', allMetadata)
-          
-          // 位置情報が異なるパスに格納されている可能性がある
-          if (allMetadata) {
-            // 可能性のある場所をチェック
-            const possibleLocations = [
-              { lat: allMetadata.latitude, lon: allMetadata.longitude },
-              { lat: allMetadata.GPSLatitude, lon: allMetadata.GPSLongitude },
-              { lat: allMetadata.gpsLatitude, lon: allMetadata.gpsLongitude }
-            ];
-            
-            // 有効な位置情報を探す
-            for (const loc of possibleLocations) {
-              if (loc.lat && loc.lon) {
-                console.log('代替方法で位置情報を発見:', loc)
-                resolve({
-                  latitude: loc.lat,
-                  longitude: loc.lon
-                });
-                return;
-              }
-            }
-          }
-        }
-        
-        // 通常のパスで見つかった位置情報を返す
         if (gps && gps.latitude && gps.longitude) {
+          console.log('標準方法で位置情報を取得しました')
           resolve({
             latitude: gps.latitude,
             longitude: gps.longitude,
           })
-        } else {
-          console.log('GPS情報が見つかりませんでした')
-          resolve(null)
+          return
         }
+        
+        // 2. 標準方法で取得できなかった場合、詳細なパースを試みる
+        console.log('標準方法でGPS情報が取得できなかったため、詳細パースを試みます')
+        const options = { 
+          gps: true,      // GPS情報を取得
+          exif: true,     // EXIF情報を取得
+          xmp: true,      // XMPメタデータを取得
+          iptc: true,     // IPTCメタデータを取得
+          icc: true,      // ICCプロファイルを取得
+          tiff: true,     // TIFFヘッダーを解析
+          jfif: true,     // JFIFセグメントを解析
+          ihdr: true,     // PNGのIHDRチャンクを解析
+          all: true       // すべてのデータを取得
+        }
+        
+        // 完全なEXIFデータを取得
+        const allMetadata = await exifr.default.parse(file, options)
+        console.log('詳細メタデータ:', allMetadata)
+        
+        // 3. さまざまな可能性のある場所をチェック
+        if (allMetadata) {
+          // Androidデバイスで一般的な位置情報の格納場所
+          const possibleLocations = [
+            { lat: allMetadata.latitude, lon: allMetadata.longitude },
+            { lat: allMetadata.GPSLatitude, lon: allMetadata.GPSLongitude },
+            { lat: allMetadata.gpsLatitude, lon: allMetadata.gpsLongitude },
+            // 追加: より深い階層のプロパティもチェック
+            { lat: allMetadata?.exif?.GPSLatitude, lon: allMetadata?.exif?.GPSLongitude },
+            { lat: allMetadata?.gps?.Latitude, lon: allMetadata?.gps?.Longitude },
+            // 緯度経度が度分秒形式で保存されている可能性もある
+            { lat: allMetadata?.GPSLatitudeRef === 'S' ? -allMetadata?.GPSLatitude : allMetadata?.GPSLatitude, 
+              lon: allMetadata?.GPSLongitudeRef === 'W' ? -allMetadata?.GPSLongitude : allMetadata?.GPSLongitude }
+          ];
+          
+          // すべてのメタデータのキーをログに出力
+          console.log('利用可能なメタデータキー:', Object.keys(allMetadata));
+          
+          // 有効な位置情報を探す
+          for (const loc of possibleLocations) {
+            if (loc.lat && loc.lon) {
+              console.log('代替方法で位置情報を発見:', loc)
+              resolve({
+                latitude: loc.lat,
+                longitude: loc.lon
+              });
+              return;
+            }
+          }
+          
+          // 4. メタデータから直接GPSデータを探す試み
+          if (allMetadata.tags) {
+            console.log('タグ内を検索:', allMetadata.tags);
+            // タグ内にGPS情報があるか確認
+          }
+        }
+        
+        console.log('GPS情報が見つかりませんでした')
+        resolve(null)
       } catch (error) {
         console.error('EXIF情報の読み取りに失敗しました:', error)
         resolve(null)
       }
     }
-    // ファイル読み込みエラー時の処理
+    
     reader.onerror = function () {
       console.error('ファイル読み込みエラー')
       resolve(null)
     }
-    // ファイルの読み込みを開始
+    
+    // ArrayBufferとして読み込み
     reader.readAsArrayBuffer(file)
   })
 }
