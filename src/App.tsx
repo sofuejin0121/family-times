@@ -1,7 +1,7 @@
-import { useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useAppDispatch, useAppSelector } from './app/hooks'
 import Login from './components/login/Login'
-import { auth } from './firebase'
+import { auth, setupFCMListener } from './firebase'
 import { login, logout } from './features/userSlice'
 import {
   BrowserRouter,
@@ -82,6 +82,10 @@ const DeepLinkChecker = () => {
 }
 
 function App() {
+  useEffect(() => {
+    // FCMのリスナーのみ初期化
+    setupFCMListener()
+  }, [])
   const dispatch = useAppDispatch()
   const isAuthChecking = useAppSelector((state) => state.user.isAuthChecking)
   const user = useAppSelector((state) => state.user.user)
@@ -244,39 +248,50 @@ function App() {
       ) : (
         // ログイン済み状態（プロフィール設定チェックを含む）
         <SidebarProvider>
-          <div className="flex w-full items-center justify-center overflow-hidden"
-               onTouchStart={handleTouchStart}
-               onTouchMove={handleTouchMove}
-               onTouchEnd={handleTouchEnd}>
+          <div
+            className="flex w-full items-center justify-center overflow-hidden"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             <Routes>
               {needsProfileSetup ? (
                 <>
                   <Route path="/profile" element={<NewUserProfile />} />
-                  <Route path="*" element={<Navigate to="/profile" replace />} />
+                  <Route
+                    path="*"
+                    element={<Navigate to="/profile" replace />}
+                  />
                 </>
               ) : (
                 <>
-                  <Route path="/" element={
-                    <div className="flex h-screen w-full overflow-hidden">
-                      <AppSidebar
-                        isMobileMenuOpen={isMobileMenuOpen}
-                        setIsMobileMenuOpen={setIsMobileMenuOpen}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <Chat
-                          isMemberSidebarOpen={isMemberSidebarOpen}
-                          setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                  <Route
+                    path="/"
+                    element={
+                      <div className="flex h-screen w-full overflow-hidden">
+                        <AppSidebar
                           isMobileMenuOpen={isMobileMenuOpen}
                           setIsMobileMenuOpen={setIsMobileMenuOpen}
-                          isMapMode={isMapMode}
-                          setIsMapMode={setIsMapMode}
-                          setIsImageDialogOpen={setIsImageDialogOpen}
                         />
+                        <div className="min-w-0 flex-1">
+                          <Chat
+                            isMemberSidebarOpen={isMemberSidebarOpen}
+                            setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                            isMobileMenuOpen={isMobileMenuOpen}
+                            setIsMobileMenuOpen={setIsMobileMenuOpen}
+                            isMapMode={isMapMode}
+                            setIsMapMode={setIsMapMode}
+                            setIsImageDialogOpen={setIsImageDialogOpen}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  } />
+                    }
+                  />
                   <Route path="/invite" element={<InvitePage />} />
-                  <Route path="/invite/:inviteCode" element={<InviteRedirect />} />
+                  <Route
+                    path="/invite/:inviteCode"
+                    element={<InviteRedirect />}
+                  />
                   <Route path="/profile" element={<NewUserProfile />} />
 
                   {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}

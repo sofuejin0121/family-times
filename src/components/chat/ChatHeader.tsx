@@ -1,11 +1,11 @@
 import { Input } from '../ui/input'
 // import { Button } from '../ui/button'
 // import { Menu } from 'lucide-react'
-import { Users } from 'lucide-react'
+import { Users, MapPin, MessageCircleMore, Bell } from 'lucide-react'
 import { useAppSelector } from '../../app/hooks'
-import { MapPin } from 'lucide-react'
-import { MessageCircleMore } from 'lucide-react'
-import React from 'react'
+import React, { useState } from 'react'
+import { requestNotificationPermission } from '../../firebase'
+import { Button } from '../ui/button'
 
 interface Props {
   channelName: string | null
@@ -29,11 +29,19 @@ const ChatHeader = (props: Props) => {
   } = props
   const serverId = useAppSelector((state) => state.server.serverId)
   const isServerSelected = Boolean(serverId)
+  const [notificationEnabled, setNotificationEnabled] = useState(
+    Notification.permission === 'granted'
+  )
 
   const handleMemberSidebarToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
     onToggleMemberSidebar()
+  }
+
+  const handleNotificationRequest = async () => {
+    const granted = await requestNotificationPermission()
+    setNotificationEnabled(granted)
   }
 
   return (
@@ -64,7 +72,7 @@ const ChatHeader = (props: Props) => {
       {isServerSelected ? (
         <div className="flex items-center gap-[13px] pr-[15px] text-gray-600">
           {/* チャットボタン */}
-          <button
+          <Button
             className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
               activeTab === 'chat'
                 ? 'bg-gray-800 text-white'
@@ -74,10 +82,10 @@ const ChatHeader = (props: Props) => {
             title="チャットを表示"
           >
             <MessageCircleMore className="h-5 w-5" />
-          </button>
+          </Button>
 
           {/* マップボタン */}
-          <button
+          <Button
             className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
               activeTab === 'map'
                 ? 'bg-gray-800 text-white'
@@ -87,7 +95,18 @@ const ChatHeader = (props: Props) => {
             title="地図を表示"
           >
             <MapPin className="h-5 w-5" />
-          </button>
+          </Button>
+
+          {/* 通知許可ボタン */}
+          {!notificationEnabled && (
+            <Button
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
+              onClick={handleNotificationRequest}
+              title="通知を有効にする"
+            >
+              <Bell className="h-5 w-5" />
+            </Button>
+          )}
 
           {/* 検索入力欄 */}
           <div className="flex items-center rounded bg-gray-100 p-[3px]">
@@ -101,8 +120,7 @@ const ChatHeader = (props: Props) => {
 
           {/* モバイル用メンバーリストトグルボタン */}
           <div className="md:hidden">
-            <button
-              type="button"
+            <Button
               className="flex h-10 w-10 items-center justify-center rounded-full bg-transparent hover:bg-gray-100"
               onClick={handleMemberSidebarToggle}
               style={{
@@ -112,7 +130,7 @@ const ChatHeader = (props: Props) => {
               }}
             >
               <Users className="h-5 w-5 text-gray-600" />
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
