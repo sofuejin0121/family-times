@@ -836,15 +836,6 @@ const Chat = ({
           </button>
         </form>
       </div>
-      {/* 画面全体をカバーするスピナーオーバーレイ - ぼかし効果適用 */}
-      {/* {isUploading && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/30 backdrop-blur-sm">
-          <div className="flex flex-col items-center rounded-lg bg-white/90 p-6 shadow-lg backdrop-blur-md">
-            <div className="mb-4 h-12 w-12 animate-spin rounded-full border-t-2 border-b-2 border-blue-500"></div>
-            <p className="text-gray-700">画像をアップロード中...</p>
-          </div>
-        </div>
-      )} */}
 
       {/* CreateServerコンポーネントをエクスポート */}
       <CreateServer

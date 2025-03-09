@@ -187,6 +187,7 @@ const MapView = ({ messages }: MapViewProps) => {
           className="z-0 h-full w-full rounded-lg shadow-md"
           style={{ minHeight: '300px' }}
           whenReady={() => setMapReady(true)} // マップが準備できたらマップの準備が完了したことを示す
+          preferCanvas={true}
           ref={(map) => {
             if (map) {
               setMapReady(true) // マップが準備できたらマップの準備が完了したことを示す
