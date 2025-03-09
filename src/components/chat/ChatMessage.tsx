@@ -305,35 +305,38 @@ const ChatMessage = ({
     }
   }, [])
 
-  // スワイプ関連のステート追加
+  // スワイプ距離を追跡するstate
+  const [swipeDistance, setSwipeDistance] = useState(0)
   const [touchStartX, setTouchStartX] = useState(0)
   const [touchStartY, setTouchStartY] = useState(0)
-  const [isSwipingLeft, setIsSwipingLeft] = useState(false)
-  
+
   // タッチ処理関数
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX)
     setTouchStartY(e.touches[0].clientY)
+    setSwipeDistance(0)
   }
-  
+
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartX === 0) return
-    
+
     const currentX = e.touches[0].clientX
     const currentY = e.touches[0].clientY
     const diffX = touchStartX - currentX
-    const diffY = touchStartY - currentY
-    
-    // 右から左へのスワイプを検出（30px以上の移動で検出）
+    const diffY = Math.abs(touchStartY - currentY)
+
+    // 横方向の移動が縦方向より大きい場合のみスワイプと判定
     if (diffX > 30 && diffX > diffY * 2) {
-      setIsSwipingLeft(true)
+      // スワイプ距離を更新 (最大100pxまで)
+      setSwipeDistance(Math.min(diffX, 100))
     } else {
-      setIsSwipingLeft(false)
+      setSwipeDistance(0)
     }
   }
-  
+
   const handleTouchEnd = () => {
-    if (isSwipingLeft && onReply && userDisplayName) {
+    // スワイプ距離が50px以上の場合のみリプライを実行
+    if (swipeDistance > 50 && onReply && userDisplayName) {
       onReply(
         id,
         message || '', // メッセージがnullの場合は空文字列を渡す
@@ -341,32 +344,35 @@ const ChatMessage = ({
         photoId || ''
       )
     }
-    
+
     // 状態をリセット
     setTouchStartX(0)
     setTouchStartY(0)
-    setIsSwipingLeft(false)
+    setSwipeDistance(0)
   }
 
   return (
     <div
       id={`message-${id}`}
-      className={`group relative flex items-start gap-4 border-b border-gray-200 bg-white text-black hover:bg-gray-100 ${
-        isSwipingLeft ? 'bg-blue-50' : ''
-      } ${
+      className={`group relative flex items-start gap-4 border-b border-gray-200 bg-white text-black transition-colors hover:bg-gray-100 ${
         isReplied ? 'border-l-4 border-l-blue-500 bg-blue-50 pl-2' : ''
       }`}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      style={{
+        transform: `translateX(${-swipeDistance}px)`,
+        transition: swipeDistance === 0 ? 'transform 0.2s ease-in-out' : 'none',
+      }}
     >
       {/* スワイプインジケーター */}
       <div
-        className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-200 ${
-          isSwipingLeft ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="absolute top-0 bottom-0 left-0 w-1 bg-blue-500 transition-opacity duration-200"
+        style={{
+          opacity: swipeDistance > 0 ? swipeDistance / 100 : 0,
+        }}
       />
-      
+
       <div className="flex-shrink-0">
         <Avatar className="h-11 w-11">
           <AvatarImage
@@ -376,7 +382,7 @@ const ChatMessage = ({
           />
         </Avatar>
       </div>
-      
+
       <div className="flex-1 overflow-hidden p-2.5">
         <h4 className="mb-2 flex items-center gap-2.5">
           {userDisplayName}
@@ -384,7 +390,7 @@ const ChatMessage = ({
             {new Date(timestamp?.toDate()).toLocaleString()}
           </span>
         </h4>
-        
+
         <div className="relative">
           {/* 返信情報の表示 */}
           {replyTo && (
@@ -396,30 +402,39 @@ const ChatMessage = ({
               <span className="font-medium text-gray-600">
                 {replyTo.displayName || '不明なユーザー'}
               </span>
-              <button 
-                className="text-blue-500 hover:underline line-clamp-1 max-w-[200px] overflow-hidden text-ellipsis"
+              <button
+                className="line-clamp-1 max-w-[200px] overflow-hidden text-ellipsis text-blue-500 hover:underline"
                 onClick={() => {
                   // 返信元メッセージへスクロール
-                  const originalMessage = document.getElementById(`message-${replyTo.messageId}`);
+                  const originalMessage = document.getElementById(
+                    `message-${replyTo.messageId}`
+                  )
                   if (originalMessage) {
-                    originalMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    originalMessage.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center',
+                    })
                     // ハイライト効果
-                    originalMessage.classList.add('bg-blue-50');
+                    originalMessage.classList.add('bg-blue-50')
                     setTimeout(() => {
-                      originalMessage.classList.remove('bg-blue-50');
-                    }, 2000);
+                      originalMessage.classList.remove('bg-blue-50')
+                    }, 2000)
                   }
                 }}
               >
-                {replyTo.message ? `${replyTo.message}` : (replyTo.photoId ? '「画像」' : '')}
+                {replyTo.message
+                  ? `${replyTo.message}`
+                  : replyTo.photoId
+                    ? '「画像」'
+                    : ''}
               </button>
             </div>
           )}
-          
+
           {/* メッセージ本文と右端の操作ボタン */}
           <div className="relative flex items-center justify-between gap-2">
             <p className="m-0">{message}</p>
-            
+
             {/* 右端のボタン領域 - 編集/削除と返信ボタン */}
             <div className="ml-auto flex gap-1">
               {/* 返信ボタン - PCのみ表示 */}
@@ -438,7 +453,7 @@ const ChatMessage = ({
               >
                 <Reply className="h-5 w-5" />
               </button>
-              
+
               {/* 編集・削除ボタンを送信者のみに表示 - モバイルでは常に表示 */}
               {isMessageOwner && (
                 <DropdownMenu>
@@ -468,7 +483,7 @@ const ChatMessage = ({
               )}
             </div>
           </div>
-          
+
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
             <DialogContent className="border border-gray-200 bg-white text-black">
               <DialogHeader>
@@ -535,7 +550,7 @@ const ChatMessage = ({
               }}
             >
               <DialogTrigger asChild>
-                <div 
+                <div
                   className="mt-3 w-full max-w-sm cursor-pointer md:w-3/5 lg:w-2/5 xl:w-1/3"
                   onTouchStart={handleTouchStart}
                   onTouchMove={handleTouchMove}
@@ -548,8 +563,13 @@ const ChatMessage = ({
                     onClick={() => setIsImagePreviewOpen(true)}
                     loading="lazy"
                     onLoad={() => {
-                      const messagesEnd = document.querySelector('[data-messages-end]')
-                      messagesEnd?.scrollIntoView({ behavior: 'instant', block: 'end' })
+                      const messagesEnd = document.querySelector(
+                        '[data-messages-end]'
+                      )
+                      messagesEnd?.scrollIntoView({
+                        behavior: 'instant',
+                        block: 'end',
+                      })
                     }}
                     srcSet={`
                       ${fileURL}?w=480 480w,
@@ -560,12 +580,19 @@ const ChatMessage = ({
                            (max-width: 768px) 60vw,
                            40vw"
                     style={{
-                      aspectRatio: imageWidth && imageHeight ? `${imageWidth}/${imageHeight}` : 'auto',
+                      aspectRatio:
+                        imageWidth && imageHeight
+                          ? `${imageWidth}/${imageHeight}`
+                          : 'auto',
                     }}
                   />
                 </div>
               </DialogTrigger>
-              <DialogContent variant="image" hideCloseButton data-no-swipe="true">
+              <DialogContent
+                variant="image"
+                hideCloseButton
+                data-no-swipe="true"
+              >
                 <img
                   src={fileURL}
                   alt="メッセージ画像（拡大表示）"
@@ -574,8 +601,9 @@ const ChatMessage = ({
               </DialogContent>
             </Dialog>
           ) : (
-            imageWidth != null && imageHeight != null && (
-              <div 
+            imageWidth != null &&
+            imageHeight != null && (
+              <div
                 className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
