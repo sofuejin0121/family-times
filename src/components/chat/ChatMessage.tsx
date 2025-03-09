@@ -329,8 +329,13 @@ const ChatMessage = ({
   }
   
   const handleTouchEnd = () => {
-    if (isSwipingLeft && onReply && message && userDisplayName) {
-      onReply(id, message, userDisplayName, photoId || '')
+    if (isSwipingLeft && onReply && userDisplayName) {
+      onReply(
+        id,
+        message || '', // メッセージがnullの場合は空文字列を渡す
+        userDisplayName,
+        photoId || ''
+      )
     }
     
     // 状態をリセット
@@ -416,9 +421,13 @@ const ChatMessage = ({
               <button
                 onClick={() =>
                   onReply &&
-                  message &&
                   userDisplayName &&
-                  onReply(id, message, userDisplayName, photoId || '')
+                  onReply(
+                    id,
+                    message || '', // メッセージがnullの場合は空文字列を渡す
+                    userDisplayName,
+                    photoId || ''
+                  )
                 }
                 className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground hidden h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 md:block md:opacity-0 md:transition-all md:duration-200 md:ease-in-out md:group-hover:opacity-100"
               >
@@ -521,7 +530,12 @@ const ChatMessage = ({
               }}
             >
               <DialogTrigger asChild>
-                <div className="mt-3 w-full max-w-sm cursor-pointer md:w-3/5 lg:w-2/5 xl:w-1/3">
+                <div 
+                  className="mt-3 w-full max-w-sm cursor-pointer md:w-3/5 lg:w-2/5 xl:w-1/3"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
                   <img
                     src={fileURL}
                     alt="メッセージ画像"
@@ -556,7 +570,12 @@ const ChatMessage = ({
             </Dialog>
           ) : (
             imageWidth != null && imageHeight != null && (
-              <div className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3">
+              <div 
+                className="mt-3 w-full max-w-sm md:w-3/5 lg:w-2/5 xl:w-1/3"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+              >
                 <div
                   className="w-full animate-pulse rounded bg-gray-200"
                   style={{

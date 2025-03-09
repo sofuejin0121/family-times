@@ -640,12 +640,15 @@ const Chat = ({
                             <Reply className="mr-1 h-3.5 w-3.5" />
                             <span>返信先: </span>
                           </div>
-                          <span className="font-medium text-gray-700">{replyingTo.displayName}</span>
+                          <span className="font-medium text-gray-700">
+                            {replyingTo.displayName}
+                          </span>
                           <span className="line-clamp-1 max-w-[200px] overflow-hidden text-ellipsis text-gray-500">
-                            {replyingTo.message || (replyingTo.photoId ? '「画像」' : '')}
+                            {replyingTo.message ||
+                              (replyingTo.photoId ? '「画像」' : '')}
                           </span>
                         </div>
-                        <button 
+                        <button
                           onClick={cancelReply}
                           className="rounded-full p-1 hover:bg-gray-200"
                         >
