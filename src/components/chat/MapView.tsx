@@ -7,38 +7,44 @@ import { useEffect, useState, useRef } from 'react'
 import { Timestamp } from 'firebase/firestore'
 import { getDownloadURL, ref } from 'firebase/storage'
 import { storage } from '../../firebase'
-// 画像付きマーカーの作成関数
-const createImageMarkerIcon = (imageUrl: string) => {
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
+// 画像付きマーカーの作成関数（枚数表示付き）
+const createImageMarkerIcon = (imageUrl: string, count: number = 1) => {
   // 画像URLをエンコード
   const encodedUrl = encodeURI(imageUrl)
   // マーカーアイコンのHTMLを生成
   return L.divIcon({
     html: `
-      <div style="width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: 2px solid white; box-shadow: 0 1px 5px rgba(0,0,0,0.3); background-color: white;">
-        <img src="${encodedUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: none;" alt="" onerror="this.style.display='none';" />
+      <div style="position: relative; width: 40px; height: 40px;">
+        ${count > 1 ? `<div style="position: absolute; top: -4px; right: -4px; z-index: 2; background-color: #ff4757; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">${count}</div>` : ''}
+        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 2px solid white; box-shadow: 0 1px 5px rgba(0,0,0,0.3); background-color: white;">
+          <img src="${encodedUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: none;" alt="" onerror="this.style.display='none';" />
+        </div>
       </div>
     `,
-    className: 'photo-marker', // CSSクラス名を追加
-    iconSize: [40, 40], //アイコンのサイズ
-    iconAnchor: [20, 20], // 画像の中心を基準点に
-    popupAnchor: [0, -20], // ポップアップの位置調整
+    className: 'photo-marker',
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
   })
 }
 
-// テキストメッセージ用の洗練されたマーカー
-const createTextMarker = () => {
+// テキストメッセージ用のマーカー（枚数表示付き）
+const createTextMarker = (count: number = 1) => {
   return L.divIcon({
     html: `
-      <div style="width: 36px; height: 36px; border-radius: 50%; background-color: #f0f0f0; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
+      <div style="position: relative; width: 36px; height: 36px; border-radius: 50%; background-color: #f0f0f0; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #666;">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
+        ${count > 1 ? `<div style="position: absolute; top: -8px; right: -8px; background-color: #ff4757; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">${count}</div>` : ''}
       </div>
     `,
-    className: 'text-marker', // CSSクラス名を追加
-    iconSize: [36, 36], //アイコンのサイズ
-    iconAnchor: [18, 18], //アイコンの中心点
-    popupAnchor: [0, -18], //ポップアップの位置調整
+    className: 'text-marker',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -18],
   })
 }
 
@@ -59,45 +65,67 @@ interface MapViewProps {
 
 // 地図制御用のコンポーネント
 const MapController = ({ lat, lng }: { lat: number; lng: number }) => {
-  // 地図を制御するためのReact LeafletのuseMapフックを使用
   const map = useMap()
-  // 緯度と経度が変更されたときに地図を更新
   useEffect(() => {
     if (map) {
-      // 地図の表示位置を指定の緯度経度に変更し、ズームレベルを15に設定
       map.setView([lat, lng], 15)
     }
   }, [lat, lng, map])
   return null
 }
 
+// 位置情報をキーとしてメッセージをグループ化する関数
+const groupMessagesByLocation = (messages: MapViewProps['messages']) => {
+  const groups: { [key: string]: MapViewProps['messages'] } = {}
+
+  messages.forEach((message) => {
+    if (message.latitude && message.longitude) {
+      // 小数点以下4桁（約10m）から3桁（約100m）に精度を下げる
+      const locationKey = `${message.latitude.toFixed(3)},${message.longitude.toFixed(3)}`
+      if (!groups[locationKey]) {
+        groups[locationKey] = []
+      }
+      groups[locationKey].push(message)
+    }
+  })
+
+  // 各グループ内でメッセージを日時順にソート（最新が先頭）
+  Object.keys(groups).forEach((key) => {
+    groups[key].sort((a, b) => {
+      const timeA = a.timestamp?.toMillis() || 0
+      const timeB = b.timestamp?.toMillis() || 0
+      return timeB - timeA // 降順（最新が先頭）
+    })
+  })
+
+  return groups
+}
+
 const MapView = ({ messages }: MapViewProps) => {
-  // MapContainerが表示された後にマーカーが正しく表示されるよう対応
-  // マップが準備できたかどうかの状態
   const [mapReady, setMapReady] = useState(false)
-  // 画像URLをキャッシュするためのstate（同じ画像を何度も読み込まないため）
   const [imageUrls, setImageUrls] = useState<{ [key: string]: string }>({})
-  // 選択された位置を保存するstate(マップの中心に表示する場所)
   const [selectedLocation, setSelectedLocation] = useState<
     [number, number] | null
   >(null)
-  // マーカーの参照を保存するためのref
   const markerRefs = useRef<{ [key: string]: L.Marker }>({})
-  // 地図の参照を保存するためのref
   const mapRef = useRef<L.Map | null>(null)
 
+  // スライドショー用の状態
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0)
+  const [activeLocationMessages, setActiveLocationMessages] = useState<
+    MapViewProps['messages']
+  >([])
+
   useEffect(() => {
-    // コンポーネントのマウント時にLeafletのデフォルトアイコンを設定
     L.Icon.Default.mergeOptions({
-      iconUrl: icon, // デフォルトのアイコンURL
-      shadowUrl: iconShadow, // シャドウのURL
-      iconSize: [25, 41], // アイコンのサイズ
-      iconAnchor: [12, 41], // アイコンの中心点
+      iconUrl: icon,
+      shadowUrl: iconShadow,
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
     })
 
-    // マップを表示したらすぐにマーカーも表示できるよう少し遅延させる
     const timer = setTimeout(() => {
-      setMapReady(true) // マップが準備できたことを示す
+      setMapReady(true)
     }, 300)
 
     return () => clearTimeout(timer)
@@ -108,9 +136,11 @@ const MapView = ({ messages }: MapViewProps) => {
     (message) => message.latitude && message.longitude
   )
 
+  // 位置情報でメッセージをグループ化
+  const locationGroups = groupMessagesByLocation(geoMessages)
+
   // 画像URLを取得する関数
   const getImageUrl = async (photoId: string) => {
-    // すでにURLをキャッシュしている場合はそれを返す
     if (imageUrls[photoId]) {
       return imageUrls[photoId]
     }
@@ -118,7 +148,6 @@ const MapView = ({ messages }: MapViewProps) => {
     try {
       const imageRef = ref(storage, photoId)
       const url = await getDownloadURL(imageRef)
-      // URLをキャッシュに追加
       setImageUrls((prev) => ({ ...prev, [photoId]: url }))
       return url
     } catch (error) {
@@ -129,18 +158,14 @@ const MapView = ({ messages }: MapViewProps) => {
 
   // メッセージに画像URLを読み込む
   useEffect(() => {
-    // 画像URLを読み込む関数
     const loadImages = async () => {
-      //位置情報付きメッセージ（geoMessages配列）の各メッセージを1つずつ処理
       for (const message of geoMessages) {
-        // 画像IDがある場合は画像URLを読み込む
         if (message.photoId) {
           await getImageUrl(message.photoId)
         }
       }
     }
 
-    // マップが準備できたら画像URLを読み込む
     if (mapReady) {
       loadImages()
     }
@@ -150,48 +175,65 @@ const MapView = ({ messages }: MapViewProps) => {
   const defaultCenter =
     geoMessages.length > 0
       ? [
-          geoMessages[geoMessages.length - 1].latitude, // 最新のメッセージの緯度
-          geoMessages[geoMessages.length - 1].longitude, // 最新のメッセージの経度
+          geoMessages[geoMessages.length - 1].latitude,
+          geoMessages[geoMessages.length - 1].longitude,
         ]
       : [35.6895, 139.6917] // 東京
 
   // ポップアップを閉じて地図を移動する関数
-  const closePopupAndMove = async (
-    messageId: string, // メッセージのID
-    latitude: number, // 緯度
-    longitude: number // 経度
+  const openLocationPopup = async (
+    locationKey: string,
+    latitude: number,
+    longitude: number
   ) => {
-    if (!mapRef.current) return // マップが準備できていない場合は何もしない
+    if (!mapRef.current) return
 
-    // まず地図上のすべてのポップアップを強制的に閉じる
+    // 地図上のすべてのポップアップを閉じる
     mapRef.current.closePopup()
 
     // 地図を移動
     setSelectedLocation([latitude, longitude])
 
-    // 新しいマーカーのポップアップを開く(移動が完了するのを待つ)
-    await new Promise((resolve) => setTimeout(resolve, 150)) // 150ミリ秒待ってからポップアップを開く
-    // 指定されたメッセージのマーカーを取得し、ポップアップを開く
-    const targetMarker = markerRefs.current[messageId] // メッセージIDに対応するマーカーを取得
+    // 現在の位置のメッセージグループを設定
+    setActiveLocationMessages(locationGroups[locationKey])
+    setCurrentSlideIndex(0)
+
+    // 新しいマーカーのポップアップを開く
+    await new Promise((resolve) => setTimeout(resolve, 150))
+    const targetMarker = markerRefs.current[locationKey]
     if (targetMarker) {
-      targetMarker.openPopup() // マーカーのポップアップを開く
+      targetMarker.openPopup()
     }
+  }
+
+  // スライドを次へ移動
+  const nextSlide = () => {
+    setCurrentSlideIndex((prev) =>
+      prev < activeLocationMessages.length - 1 ? prev + 1 : 0
+    )
+  }
+
+  // スライドを前へ移動
+  const prevSlide = () => {
+    setCurrentSlideIndex((prev) =>
+      prev > 0 ? prev - 1 : activeLocationMessages.length - 1
+    )
   }
 
   return geoMessages.length > 0 ? (
     <div className="relative flex h-full w-full flex-col">
       <div className="flex-grow">
         <MapContainer
-          center={defaultCenter as [number, number]} // マップの中心位置を設定
-          zoom={13} // マップのズームレベルを設定
+          center={defaultCenter as [number, number]}
+          zoom={13}
           className="z-0 h-full w-full rounded-lg shadow-md"
           style={{ minHeight: '300px' }}
-          whenReady={() => setMapReady(true)} // マップが準備できたらマップの準備が完了したことを示す
+          whenReady={() => setMapReady(true)}
           preferCanvas={true}
           ref={(map) => {
             if (map) {
-              setMapReady(true) // マップが準備できたらマップの準備が完了したことを示す
-              mapRef.current = map // マップの参照を保存
+              setMapReady(true)
+              mapRef.current = map
             }
           }}
         >
@@ -199,139 +241,205 @@ const MapView = ({ messages }: MapViewProps) => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
-          {/* 選択された位置がある場合は地図を移動 */}
           {selectedLocation && (
             <MapController
-              lat={selectedLocation[0]} // 選択された位置の緯度
-              lng={selectedLocation[1]} // 選択された位置の経度
+              lat={selectedLocation[0]}
+              lng={selectedLocation[1]}
             />
           )}
-          {/* マップが準備できている場合はマーカーを表示 */}
+
+          {/* グループ化されたマーカーを表示 */}
           {mapReady &&
-            geoMessages.map((message) => (
-              <Marker
-                key={message.id}
-                position={[message.latitude!, message.longitude!]} // マーカーの位置を設定
-                icon={
-                  // 投稿写真がある場合は画像付きマーカーを表示
-                  message.photoURL ||
-                  (message.photoId && imageUrls[message.photoId!])
-                    ? createImageMarkerIcon(
-                        message.photoURL ||
-                          (message.photoId && imageUrls[message.photoId!]) ||
-                          ''
-                      )
-                    : createTextMarker() // 投稿写真がない場合はテキストマーカーを表示
-                }
-                ref={(markerRef) => {
-                  if (markerRef) {
-                    markerRefs.current[message.id] = markerRef // マーカーの参照を保存
-                  }
-                }}
-              >
-                {/* マーカーをクリックしたときにポップアップを表示 */}
-                <Popup>
-                  <div className="max-w-[250px] text-center">
-                    {/* 投稿写真がある場合は表示 */}
-                    {(message.photoURL ||
-                      (message.photoId && imageUrls[message.photoId!])) && (
-                      <img
-                        src={
-                          message.photoURL ||
-                          (message.photoId && imageUrls[message.photoId!]) ||
-                          ''
-                        }
-                        alt=""
-                        className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
-                        loading="lazy" //画像を遅延読み込み
-                      />
-                    )}
-                    <p className="text-sm">
-                      {message.message || '画像が投稿されました'}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {message.user?.displayName || '匿名ユーザー'} -{' '}
-                      {message.timestamp?.toDate?.()
-                        ? message.timestamp.toDate().toLocaleString()
-                        : ''}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            ))}
+            Object.entries(locationGroups).map(
+              ([locationKey, messagesAtLocation]) => {
+                const [lat, lng] = locationKey.split(',').map(Number)
+                const count = messagesAtLocation.length
+                const latestMessage = messagesAtLocation[0] // 最新のメッセージ
+
+                // 最新メッセージの画像URL
+                const imageUrl =
+                  latestMessage.photoURL ||
+                  (latestMessage.photoId && imageUrls[latestMessage.photoId]) ||
+                  ''
+
+                // 画像があるかどうか
+                const hasImage = Boolean(
+                  latestMessage.photoURL ||
+                    (latestMessage.photoId && imageUrls[latestMessage.photoId])
+                )
+
+                return (
+                  <Marker
+                    key={locationKey}
+                    position={[lat, lng]}
+                    icon={
+                      hasImage
+                        ? createImageMarkerIcon(imageUrl, count)
+                        : createTextMarker(count)
+                    }
+                    ref={(markerRef) => {
+                      if (markerRef) {
+                        markerRefs.current[locationKey] = markerRef
+                      }
+                    }}
+                    eventHandlers={{
+                      click: () => {
+                        setActiveLocationMessages(messagesAtLocation)
+                        setCurrentSlideIndex(0)
+                      },
+                    }}
+                  >
+                    <Popup>
+                      {activeLocationMessages.length > 0 && (
+                        <div className="max-w-[250px] text-center">
+                          {/* スライドショー */}
+                          <div className="relative">
+                            {/* 現在のスライドの画像またはメッセージ */}
+                            {activeLocationMessages[currentSlideIndex]
+                              .photoId &&
+                            imageUrls[
+                              activeLocationMessages[currentSlideIndex].photoId!
+                            ] ? (
+                              <img
+                                src={
+                                  imageUrls[
+                                    activeLocationMessages[currentSlideIndex]
+                                      .photoId!
+                                  ]
+                                }
+                                alt=""
+                                className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="mb-2 flex h-[150px] w-full items-center justify-center rounded bg-gray-100">
+                                <p className="text-gray-500">画像なし</p>
+                              </div>
+                            )}
+
+                            {/* メッセージ内容 */}
+                            <p className="text-sm">
+                              {activeLocationMessages[currentSlideIndex]
+                                .message || '画像が投稿されました'}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-500">
+                              {activeLocationMessages[currentSlideIndex].user
+                                ?.displayName || '匿名ユーザー'}{' '}
+                              -{' '}
+                              {activeLocationMessages[
+                                currentSlideIndex
+                              ].timestamp?.toDate?.()
+                                ? activeLocationMessages[
+                                    currentSlideIndex
+                                  ].timestamp
+                                    .toDate()
+                                    .toLocaleString()
+                                : ''}
+                            </p>
+
+                            {/* 複数画像がある場合のナビゲーションボタン */}
+                            {activeLocationMessages.length > 1 && (
+                              <div className="mt-2 flex items-center justify-between">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    prevSlide()
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                                >
+                                  <ChevronLeft size={16} />
+                                </button>
+                                <span className="text-xs text-gray-500">
+                                  {currentSlideIndex + 1} /{' '}
+                                  {activeLocationMessages.length}
+                                </span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    nextSlide()
+                                  }}
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                                >
+                                  <ChevronRight size={16} />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </Popup>
+                  </Marker>
+                )
+              }
+            )}
         </MapContainer>
       </div>
 
-      {/* サムネイル一覧を追加 */}
+      {/* サムネイル一覧 - 位置ごとにグループ化 */}
       <div className="mt-2 flex h-24 touch-pan-x gap-2 overflow-x-auto rounded-lg bg-gray-50 p-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {geoMessages.map((message) => {
-          // 表示する画像のURLを決定
-          const imageUrl =
-            message.photoURL || (message.photoId && imageUrls[message.photoId])
-          return (
-            <div
-              key={message.id}
-              className="flex-shrink-0 cursor-pointer touch-manipulation select-none"
-              onClick={(e) => {
-                e.preventDefault() //イベントのデフォルト動作を防止
-                e.stopPropagation() //イベントの親要素への伝播を防止
-                // クリックされたメッセージの位置にマップを移動
-                if (mapReady && message.latitude && message.longitude) {
-                  closePopupAndMove(
-                    message.id,
-                    message.latitude,
-                    message.longitude
-                  )
-                }
-              }}
-              onTouchStart={(e) => {
-                e.preventDefault() //イベントのデフォルト動作を防止
-                e.stopPropagation() //イベントの親要素への伝播を防止
-                // タッチされたメッセージの位置にマップを移動
-                if (mapReady && message.latitude && message.longitude) {
-                  closePopupAndMove(
-                    message.id,
-                    message.latitude,
-                    message.longitude
-                  )
-                }
-              }}
-              role="button" //ボタンの役割を指定
-              tabIndex={0} //フォーカス可能な要素にする(キーボード操作可能)
-            >
-              {/* 画像がある場合は画像サムネイル、ない場合はテキストアイコン */}
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt=""
-                  className="h-20 w-20 rounded-lg border-2 border-white object-cover shadow-sm"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex h-20 w-20 items-center justify-center rounded-lg border-2 border-white bg-gray-200 shadow-sm">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="text-gray-400"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </div>
-              )}
-            </div>
-          )
-        })}
+        {Object.entries(locationGroups).map(
+          ([locationKey, messagesAtLocation]) => {
+            const [lat, lng] = locationKey.split(',').map(Number)
+            const latestMessage = messagesAtLocation[0]
+            const count = messagesAtLocation.length
+
+            // 表示する画像のURL
+            const imageUrl =
+              latestMessage.photoURL ||
+              (latestMessage.photoId && imageUrls[latestMessage.photoId])
+
+            return (
+              <div
+                key={locationKey}
+                className="relative flex-shrink-0 cursor-pointer touch-manipulation select-none"
+                onClick={() => openLocationPopup(locationKey, lat, lng)}
+                role="button"
+                tabIndex={0}
+              >
+                {imageUrl ? (
+                  <>
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="h-20 w-20 rounded-lg border-2 border-white object-cover shadow-sm"
+                      loading="lazy"
+                    />
+                    {count > 1 && (
+                      <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white">
+                        {count}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-lg border-2 border-white bg-gray-200 shadow-sm">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="text-gray-400"
+                    >
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    {count > 1 && (
+                      <div className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white ring-2 ring-white">
+                        {count}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          }
+        )}
       </div>
     </div>
   ) : (
-    // 位置情報付きの投稿がない場合はメッセージを表示
     <div className="flex h-full items-center justify-center">
       <p className="text-gray-500">位置情報付きの投稿がありません</p>
     </div>
