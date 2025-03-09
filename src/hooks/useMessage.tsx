@@ -33,6 +33,12 @@ interface Messages {
   reactions: {
     [key: string]: Reaction //絵文字をkeyとしたリアクションデータ
   }
+  replyTo?: {
+    messageId: string
+    message: string | null
+    displayName: string | null
+    photoId: string | null
+  }
 }
 
 const useMessage = () => {
@@ -72,6 +78,7 @@ const useMessage = () => {
             latitude: doc.data().latitude,
             longitude: doc.data().longitude,
             reactions: doc.data().reactions || {},
+            replyTo: doc.data().replyTo || null,
           })
         })
         setSubDocuments(results)

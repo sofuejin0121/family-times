@@ -34,7 +34,7 @@ import {
 import { Input } from '../ui/input'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import useUsers from '../../hooks/useUsers'
-import { Ellipsis } from 'lucide-react'
+import { Ellipsis, Reply } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -88,6 +88,9 @@ interface User {
  * @property {number} [latitude] - 位置情報の緯度(オプション)
  * @property {number} [longitude] - 位置情報の経度(オプション)
  * @property {function} setIsImageDialogOpen - 画像ダイアログの表示状態を制御する関数
+ * @property {function} onReply - リプライ機能の関数
+ * @property {boolean} isReplied - リプライ対象かどうか
+ * @property {Object} replyTo - リプライ先の情報
  */
 interface Props {
   id: string
@@ -104,6 +107,19 @@ interface Props {
   latitude?: number
   longitude?: number
   setIsImageDialogOpen: (isOpen: boolean) => void
+  onReply?: (
+    messageId: string,
+    message: string | null,
+    displayName: string | null,
+    photoId: string | null
+  ) => void
+  isReplied?: boolean
+  replyTo?: {
+    messageId: string
+    message: string | null
+    displayName: string | null
+    photoId: string | null
+  }
 }
 
 /**
@@ -133,6 +149,9 @@ const ChatMessage = ({
   imageWidth,
   imageHeight,
   setIsImageDialogOpen,
+  onReply,
+  isReplied,
+  replyTo,
 }: Props) => {
   const [fileURL, setFileURL] = useState<string>()
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false)
@@ -286,17 +305,68 @@ const ChatMessage = ({
     }
   }, [])
 
+  // スワイプ関連のステート追加
+  const [touchStartX, setTouchStartX] = useState(0)
+  const [isSwipingLeft, setIsSwipingLeft] = useState(false)
+  
+  // タッチ処理関数
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX)
+  }
+  
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartX === 0) return
+    
+    const currentX = e.touches[0].clientX
+    const diff = touchStartX - currentX
+    
+    // 右から左へのスワイプを検出（30px以上の移動で検出）
+    if (diff > 30) {
+      setIsSwipingLeft(true)
+    } else {
+      setIsSwipingLeft(false)
+    }
+  }
+  
+  const handleTouchEnd = () => {
+    if (isSwipingLeft && onReply && message && userDisplayName) {
+      onReply(id, message, userDisplayName, photoId || '')
+    }
+    
+    // 状態をリセット
+    setTouchStartX(0)
+    setIsSwipingLeft(false)
+  }
+
   return (
-    <div className="group relative flex items-start gap-4 border-b border-gray-200 bg-white text-black hover:bg-gray-100">
+    <div
+      id={`message-${id}`}
+      className={`group relative flex items-start gap-4 border-b border-gray-200 bg-white text-black hover:bg-gray-100 ${
+        isSwipingLeft ? 'bg-blue-50' : ''
+      } ${
+        isReplied ? 'border-l-4 border-l-blue-500 bg-blue-50 pl-2' : ''
+      }`}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {/* スワイプインジケーター */}
+      <div
+        className={`absolute left-0 top-0 bottom-0 w-1 bg-blue-500 transition-opacity duration-200 ${
+          isSwipingLeft ? 'opacity-100' : 'opacity-0'
+        }`}
+      />
+      
       <div className="flex-shrink-0">
         <Avatar className="h-11 w-11">
           <AvatarImage
             src={userPhoto}
             className="object-cover"
-            key={userPhoto} // キーを追加して強制的に再レンダリング
+            key={userPhoto}
           />
         </Avatar>
       </div>
+      
       <div className="flex-1 overflow-hidden p-2.5">
         <h4 className="mb-2 flex items-center gap-2.5">
           {userDisplayName}
@@ -304,15 +374,62 @@ const ChatMessage = ({
             {new Date(timestamp?.toDate()).toLocaleString()}
           </span>
         </h4>
+        
         <div className="relative">
+          {/* 返信情報の表示 */}
+          {replyTo && (
+            <div className="mb-1.5 flex items-center gap-1.5 text-sm">
+              <div className="flex items-center text-gray-500">
+                <Reply className="mr-1 h-3.5 w-3.5" />
+                <span>返信先:</span>
+              </div>
+              <span className="font-medium text-gray-600">
+                {replyTo.displayName || '不明なユーザー'}
+              </span>
+              <button 
+                className="text-blue-500 hover:underline line-clamp-1 max-w-[200px] overflow-hidden text-ellipsis"
+                onClick={() => {
+                  // 返信元メッセージへスクロール
+                  const originalMessage = document.getElementById(`message-${replyTo.messageId}`);
+                  if (originalMessage) {
+                    originalMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // ハイライト効果
+                    originalMessage.classList.add('bg-blue-50');
+                    setTimeout(() => {
+                      originalMessage.classList.remove('bg-blue-50');
+                    }, 2000);
+                  }
+                }}
+              >
+                {replyTo.message ? `${replyTo.message}` : (replyTo.photoId ? '「画像」' : '')}
+              </button>
+            </div>
+          )}
+          
+          {/* メッセージ本文と右端の操作ボタン */}
           <div className="relative flex items-center justify-between gap-2">
             <p className="m-0">{message}</p>
-            {/* 編集・削除ボタンを送信者のみに表示 */}
-            {isMessageOwner && (
-              <div className="ml-auto flex gap-1 opacity-100 transition-all duration-200 ease-in-out md:invisible md:opacity-0 md:group-hover:visible md:group-hover:opacity-100">
+            
+            {/* 右端のボタン領域 - 編集/削除と返信ボタン */}
+            <div className="ml-auto flex gap-1">
+              {/* 返信ボタン - PCのみ表示 */}
+              <button
+                onClick={() =>
+                  onReply &&
+                  message &&
+                  userDisplayName &&
+                  onReply(id, message, userDisplayName, photoId || '')
+                }
+                className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground hidden h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 md:block md:opacity-0 md:transition-all md:duration-200 md:ease-in-out md:group-hover:opacity-100"
+              >
+                <Reply className="h-5 w-5" />
+              </button>
+              
+              {/* 編集・削除ボタンを送信者のみに表示 - モバイルでは常に表示 */}
+              {isMessageOwner && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
+                    <button className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 md:opacity-0 md:transition-all md:duration-200 md:ease-in-out md:group-hover:opacity-100">
                       <Ellipsis fontSize="small" />
                     </button>
                   </DropdownMenuTrigger>
@@ -334,10 +451,10 @@ const ChatMessage = ({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-
+          
           <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
             <DialogContent className="border border-gray-200 bg-white text-black">
               <DialogHeader>

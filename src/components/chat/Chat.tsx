@@ -19,7 +19,7 @@ import MemberSidebar from '../sidebar/MemberSidebar'
 import { ref, uploadBytes } from 'firebase/storage'
 import { v4 as uuid4 } from 'uuid'
 import { Input } from '../ui/input'
-import { Send, X, Loader2 } from 'lucide-react'
+import { Send, X, Loader2, Reply } from 'lucide-react'
 import { toast } from 'sonner'
 import LoadingScreen from '../loading/LoadingScreen'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -63,6 +63,12 @@ interface MessageData {
   imageHeight?: number
   latitude?: number
   longitude?: number
+  replyTo?: {
+    messageId: string
+    message: string | null
+    displayName: string | null
+    photoId: string | null
+  }
 }
 
 const Chat = ({
@@ -194,6 +200,40 @@ const Chat = ({
     }
   }, [selectedFilePreview])
 
+  const [replyingTo, setReplyingTo] = useState<{
+    messageId: string
+    message: string | null
+    displayName: string | null
+    photoId: string | null
+  } | null>(null)
+
+  const [repliedMessageId, setRepliedMessageId] = useState<string | null>(null)
+
+  const cancelReply = useCallback(() => {
+    setReplyingTo(null)
+    setRepliedMessageId(null)
+  }, [])
+
+  const handleReply = useCallback(
+    (
+      messageId: string,
+      message: string | null,
+      displayName: string | null,
+      photoId: string | null
+    ) => {
+      setReplyingTo({
+        messageId,
+        message,
+        displayName,
+        photoId,
+      })
+      setRepliedMessageId(messageId)
+      // 入力フィールドにフォーカスを当てる
+      document.getElementById('message-input')?.focus()
+    },
+    []
+  )
+
   const sendMessage = async (e: FormEvent) => {
     e.preventDefault()
     setIsUploading(true)
@@ -275,6 +315,16 @@ const Chat = ({
         }
       }
 
+      // リプライ情報がある場合は追加
+      if (replyingTo) {
+        messageData.replyTo = {
+          messageId: replyingTo.messageId,
+          message: replyingTo.message,
+          displayName: replyingTo.displayName,
+          photoId: replyingTo.photoId,
+        }
+      }
+
       // Firestoreに保存
       if (serverId && channelId) {
         await addDoc(
@@ -298,6 +348,10 @@ const Chat = ({
       setInputText('')
       clearSelectedFile()
       setImageLocation(null)
+
+      // リプライ情報をクリア
+      setReplyingTo(null)
+      setRepliedMessageId(null)
 
       // 処理終了
       setIsUploading(false)
@@ -548,7 +602,7 @@ const Chat = ({
                   value="chat"
                   className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col"
                 >
-                  {/* チャットメッセージ表示エリア（既存のコード） */}
+                  {/* チャットメッセージ表示エリアから削除 */}
                   <div
                     ref={chatContainerRef}
                     className="chat-messages h-[calc(100svh-77px-56px)] flex-1 overflow-y-auto overscroll-none p-4"
@@ -568,13 +622,38 @@ const Chat = ({
                         latitude={message.latitude}
                         longitude={message.longitude}
                         setIsImageDialogOpen={setIsImageDialogOpen}
+                        onReply={handleReply}
+                        replyTo={message.replyTo}
+                        isReplied={message.id === repliedMessageId}
                       />
                     ))}
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* チャット入力エリア（既存のコード） */}
+                  {/* チャット入力エリアの上部にリプライ情報を追加 */}
                   <div className="mx-4 mb-4 flex flex-col rounded-lg text-gray-400">
+                    {/* リプライ情報 */}
+                    {replyingTo && (
+                      <div className="mb-2 flex items-center justify-between rounded-t-md bg-gray-100 p-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center text-gray-500">
+                            <Reply className="mr-1 h-3.5 w-3.5" />
+                            <span>返信先: </span>
+                          </div>
+                          <span className="font-medium text-gray-700">{replyingTo.displayName}</span>
+                          <span className="line-clamp-1 max-w-[200px] overflow-hidden text-ellipsis text-gray-500">
+                            {replyingTo.message || (replyingTo.photoId ? '「画像」' : '')}
+                          </span>
+                        </div>
+                        <button 
+                          onClick={cancelReply}
+                          className="rounded-full p-1 hover:bg-gray-200"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* 選択した画像のプレビュー */}
                     {selectedFilePreview && (
                       <div className="relative m-2 inline-block max-w-full">
