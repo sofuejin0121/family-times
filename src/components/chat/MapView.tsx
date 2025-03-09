@@ -14,12 +14,58 @@ const createImageMarkerIcon = (imageUrl: string, count: number = 1) => {
   // 画像URLをエンコード
   const encodedUrl = encodeURI(imageUrl)
   // マーカーアイコンのHTMLを生成
+  // 直接HTMLとインラインスタイルを文字列として渡す必要がある
   return L.divIcon({
     html: `
       <div style="position: relative; width: 40px; height: 40px;">
-        ${count > 1 ? `<div style="position: absolute; top: -4px; right: -4px; z-index: 2; background-color: #ff4757; color: white; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.3);">${count}</div>` : ''}
-        <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; border: 2px solid white; box-shadow: 0 1px 5px rgba(0,0,0,0.3); background-color: white;">
-          <img src="${encodedUrl}" style="width: 100%; height: 100%; object-fit: cover; filter: none;" alt="" onerror="this.style.display='none';" />
+        ${
+          count > 1
+            ? `
+          <div style="
+            position: absolute;     
+            top: -4px;             
+            right: -4px;           
+            z-index: 2;            /* 重なり順：数字を前面に */
+            background-color: #ff4757;  /* 背景色：赤 */
+            color: white;          
+            border-radius: 50%;    
+            width: 22px;           
+            height: 22px;          
+            display: flex;         
+            align-items: center;   
+            justify-content: center; 
+            font-size: 12px;       
+            font-weight: bold;     
+            border: 2px solid white; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3); 
+          ">${count}</div>
+        `
+            : ''
+        }
+
+        <div style="
+          position: absolute;     
+          top: 0;                /* 上端に配置 */
+          left: 0;               /* 左端に配置 */
+          width: 100%;           
+          height: 100%;         
+          border-radius: 50%;    
+          overflow: hidden;      /* はみ出た部分を隠す */
+          border: 2px solid white; 
+          box-shadow: 0 1px 5px rgba(0,0,0,0.3); 
+          background-color: white; 
+        ">
+          <img 
+            src="${encodedUrl}"   /* 画像のURL */
+            style="
+              width: 100%;        
+              height: 100%;       
+              object-fit: cover;  
+              filter: none;       
+            " 
+            alt=""               
+            onerror="this.style.display='none';"  
+          />
         </div>
       </div>
     `,
@@ -80,7 +126,7 @@ const groupMessagesByLocation = (messages: MapViewProps['messages']) => {
 
   messages.forEach((message) => {
     if (message.latitude && message.longitude) {
-      // 小数点以下4桁（約10m）から3桁（約100m）に精度を下げる
+      // 小数点3桁（約100m）に精度を下げる
       const locationKey = `${message.latitude.toFixed(3)},${message.longitude.toFixed(3)}`
       if (!groups[locationKey]) {
         groups[locationKey] = []
@@ -292,9 +338,27 @@ const MapView = ({ messages }: MapViewProps) => {
                     <Popup>
                       {activeLocationMessages.length > 0 && (
                         <div className="max-w-[250px] text-center">
-                          {/* スライドショー */}
-                          <div className="relative">
-                            {/* 現在のスライドの画像またはメッセージ */}
+                          <div 
+                            className="relative touch-pan-y"
+                            onTouchStart={(e) => {
+                              const touch = e.touches[0];
+                              e.currentTarget.dataset.touchStartX = touch.clientX.toString();
+                            }}
+                            onTouchEnd={(e) => {
+                              const touchEnd = e.changedTouches[0];
+                              const touchStartX = Number(e.currentTarget.dataset.touchStartX || 0);
+                              const diffX = touchEnd.clientX - touchStartX;
+                              
+                              if (Math.abs(diffX) > 50) {
+                                if (diffX > 0) {
+                                  prevSlide();
+                                } else {
+                                  nextSlide();
+                                }
+                                e.stopPropagation();
+                              }
+                            }}
+                          >
                             {activeLocationMessages[currentSlideIndex]
                               .photoId &&
                             imageUrls[
@@ -317,7 +381,6 @@ const MapView = ({ messages }: MapViewProps) => {
                               </div>
                             )}
 
-                            {/* メッセージ内容 */}
                             <p className="text-sm">
                               {activeLocationMessages[currentSlideIndex]
                                 .message || '画像が投稿されました'}
@@ -336,35 +399,33 @@ const MapView = ({ messages }: MapViewProps) => {
                                     .toLocaleString()
                                 : ''}
                             </p>
-
-                            {/* 複数画像がある場合のナビゲーションボタン */}
-                            {activeLocationMessages.length > 1 && (
-                              <div className="mt-2 flex items-center justify-between">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    prevSlide()
-                                  }}
-                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
-                                >
-                                  <ChevronLeft size={16} />
-                                </button>
-                                <span className="text-xs text-gray-500">
-                                  {currentSlideIndex + 1} /{' '}
-                                  {activeLocationMessages.length}
-                                </span>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    nextSlide()
-                                  }}
-                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
-                                >
-                                  <ChevronRight size={16} />
-                                </button>
-                              </div>
-                            )}
                           </div>
+
+                          {activeLocationMessages.length > 1 && (
+                            <div className="mt-2 flex items-center justify-between" onClick={e => e.stopPropagation()}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  prevSlide();
+                                }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                              >
+                                <ChevronLeft size={16} />
+                              </button>
+                              <span className="text-xs text-gray-500">
+                                {currentSlideIndex + 1} / {activeLocationMessages.length}
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  nextSlide();
+                                }}
+                                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                              >
+                                <ChevronRight size={16} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </Popup>
