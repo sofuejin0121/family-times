@@ -44,7 +44,7 @@ const useChannel = () => {
         
         // サーバーが変更されたときに、チャンネルが選択されていない場合のみ
         // 最初のチャンネルを選択する
-        if (channelsResults.length > 0 && !currentChannelId) {
+        if (channelsResults.length > 0) {
           dispatch(
             setChannelInfo({
               channelId: channelsResults[0].id,
