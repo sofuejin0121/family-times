@@ -160,8 +160,8 @@ exports.sendMessageNotification = onDocumentCreated(
                   err.message.includes('404') || // 404エラー
                   err.message.includes('Not Found') // Not Foundエラー
                 ) {
-                  logger.log(`Removing invalid token for user ${uid}`)
-
+                  logger.error(`[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, エラーコード: ${err.code}, トークン: ${userData.fcmToken?.substring(0, 10)}...`)
+                  
                   // エラー情報追加：日時とエラーコードを記録
                   await firestore
                     .collection('users')
@@ -172,6 +172,8 @@ exports.sendMessageNotification = onDocumentCreated(
                       tokenErrorCode: err.code || 'unknown', // エラーコード
                       tokenErrorMessage: err.message, // エラーメッセージ
                     })
+                  
+                  logger.error(`[FCMError] ユーザーのトークンをクリア済み - ${uid}`)
 
                   // 別のデバイスが使っているトークンがあれば確認
                   if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
@@ -179,10 +181,14 @@ exports.sendMessageNotification = onDocumentCreated(
                     const updatedTokens = userData.fcmTokens.filter(
                       (token) => token !== userData.fcmToken
                     )
-
+                    
+                    logger.error(`[FCMError] 代替トークン検索 - ユーザー: ${uid}, 候補数: ${updatedTokens.length}`)
+                    
                     // 有効なトークンがあれば試行
                     for (const alternativeToken of updatedTokens) {
                       try {
+                        logger.error(`[FCMError] 代替トークン試行 - ユーザー: ${uid}, トークン: ${alternativeToken.substring(0, 10)}...`)
+                        
                         await getMessaging().send({
                           token: alternativeToken,
                           ...payload,
@@ -195,11 +201,11 @@ exports.sendMessageNotification = onDocumentCreated(
                           lastTokenUpdate: new Date(),
                         })
 
-                        logger.log(`通知を代替トークンで送信しました: ${uid}`)
+                        logger.error(`[FCMError] 代替トークンで成功 - ユーザー: ${uid}`)
                         break // 成功したらループを抜ける
                       } catch (altErr) {
                         // この代替トークンも無効な場合は次へ
-                        logger.log(`代替トークンも無効: ${alternativeToken}`)
+                        logger.error(`[FCMError] 代替トークンも無効 - ユーザー: ${uid}, エラー: ${altErr.code}`)
                       }
                     }
                   }
@@ -229,35 +235,36 @@ exports.cleanupInvalidFCMTokens = onSchedule(
   },
   async (event) => {
     try {
+      logger.error(`[TokenCleanup] 定期クリーンアップ開始: ${new Date().toISOString()}`)
+      
       // 最後のトークンエラーから24時間以上経過したユーザーを検索
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-
+      
       // エラーフラグがあり、トークンがnullのユーザーを取得
       const usersWithErrors = await firestore
         .collection('users')
         .where('lastTokenError', '!=', null)
         .where('fcmToken', '==', null)
         .get()
-
-      logger.log(
-        `${usersWithErrors.size}人のユーザーにトークンエラーがあります`
-      )
-
+      
+      logger.error(`[TokenCleanup] トークンエラーユーザー数: ${usersWithErrors.size}人`)
+      
       // 各ユーザーを処理
       const batch = firestore.batch()
       usersWithErrors.docs.forEach((doc) => {
+        logger.error(`[TokenCleanup] ユーザー更新フラグを設定: ${doc.id}`)
         batch.update(doc.ref, {
           needTokenRefresh: true, // クライアント側で検出するフラグ
           lastTokenRefreshRequest: new Date(),
         })
       })
-
+      
       await batch.commit()
-      logger.log('トークン更新フラグを設定しました')
-
+      logger.error(`[TokenCleanup] 完了: ${usersWithErrors.size}人のトークン更新フラグを設定しました`)
+      
       return null
     } catch (error) {
-      logger.error('無効トークンのクリーンアップに失敗:', error)
+      logger.error('[TokenCleanup] クリーンアップ処理でエラー発生:', error)
       return null
     }
   }
