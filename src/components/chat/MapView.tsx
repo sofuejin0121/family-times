@@ -287,94 +287,103 @@ const MapView = ({ messages }: MapViewProps) => {
               closeOnClick={false}
               onClose={() => setPopupInfo(null)}
               maxWidth="300px"
+              closeButton={false}
             >
-              <div className="max-w-[250px] text-center">
-                <div
-                  className="relative touch-pan-y"
-                  onTouchStart={(e) => {
-                    const touch = e.touches[0]
-                    e.currentTarget.dataset.touchStartX =
-                      touch.clientX.toString()
-                  }}
-                  onTouchEnd={(e) => {
-                    const touchEnd = e.changedTouches[0]
-                    const touchStartX = Number(
-                      e.currentTarget.dataset.touchStartX || 0
-                    )
-                    const diffX = touchEnd.clientX - touchStartX
-
-                    if (Math.abs(diffX) > 50) {
-                      if (diffX > 0) {
-                        prevSlide()
-                      } else {
-                        nextSlide()
-                      }
-                      e.stopPropagation()
-                    }
-                  }}
+              <div className="relative">
+                <button
+                  onClick={() => setPopupInfo(null)}
+                  className="absolute -right-2 -top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-xl text-gray-700 shadow-md transition-all hover:bg-gray-100 hover:text-gray-800 hover:scale-110"
                 >
-                  {popupInfo.messages[currentSlideIndex].photoId &&
-                  imageUrls[popupInfo.messages[currentSlideIndex].photoId!] ? (
-                    <img
-                      src={
-                        imageUrls[
-                          popupInfo.messages[currentSlideIndex].photoId!
-                        ]
+                  ×
+                </button>
+                <div className="pt-4">
+                  <div
+                    className="relative touch-pan-y"
+                    onTouchStart={(e) => {
+                      const touch = e.touches[0]
+                      e.currentTarget.dataset.touchStartX =
+                        touch.clientX.toString()
+                    }}
+                    onTouchEnd={(e) => {
+                      const touchEnd = e.changedTouches[0]
+                      const touchStartX = Number(
+                        e.currentTarget.dataset.touchStartX || 0
+                      )
+                      const diffX = touchEnd.clientX - touchStartX
+
+                      if (Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                          prevSlide()
+                        } else {
+                          nextSlide()
+                        }
+                        e.stopPropagation()
                       }
-                      alt=""
-                      className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="mb-2 flex h-[150px] w-full items-center justify-center rounded bg-gray-100">
-                      <p className="text-gray-500">画像なし</p>
+                    }}
+                  >
+                    {popupInfo.messages[currentSlideIndex].photoId &&
+                    imageUrls[popupInfo.messages[currentSlideIndex].photoId!] ? (
+                      <img
+                        src={
+                          imageUrls[
+                            popupInfo.messages[currentSlideIndex].photoId!
+                          ]
+                        }
+                        alt=""
+                        className="mb-2 h-auto max-h-[200px] w-full rounded object-contain"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="mb-2 flex h-[150px] w-full items-center justify-center rounded bg-gray-100">
+                        <p className="text-gray-500">画像なし</p>
+                      </div>
+                    )}
+
+                    <p className="text-sm">
+                      {popupInfo.messages[currentSlideIndex].message ||
+                        '画像が投稿されました'}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {popupInfo.messages[currentSlideIndex].user?.displayName ||
+                        '匿名ユーザー'}{' '}
+                      -{' '}
+                      {popupInfo.messages[currentSlideIndex].timestamp?.toDate?.()
+                        ? popupInfo.messages[currentSlideIndex].timestamp
+                            .toDate()
+                            .toLocaleString()
+                        : ''}
+                    </p>
+                  </div>
+
+                  {popupInfo.messages.length > 1 && (
+                    <div
+                      className="mt-2 flex items-center justify-between"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          prevSlide()
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      <span className="text-xs text-gray-500">
+                        {currentSlideIndex + 1} / {popupInfo.messages.length}
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          nextSlide()
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
                     </div>
                   )}
-
-                  <p className="text-sm">
-                    {popupInfo.messages[currentSlideIndex].message ||
-                      '画像が投稿されました'}
-                  </p>
-                  <p className="mt-1 text-xs text-gray-500">
-                    {popupInfo.messages[currentSlideIndex].user?.displayName ||
-                      '匿名ユーザー'}{' '}
-                    -{' '}
-                    {popupInfo.messages[currentSlideIndex].timestamp?.toDate?.()
-                      ? popupInfo.messages[currentSlideIndex].timestamp
-                          .toDate()
-                          .toLocaleString()
-                      : ''}
-                  </p>
                 </div>
-
-                {popupInfo.messages.length > 1 && (
-                  <div
-                    className="mt-2 flex items-center justify-between"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        prevSlide()
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
-                    >
-                      <ChevronLeft size={16} />
-                    </button>
-                    <span className="text-xs text-gray-500">
-                      {currentSlideIndex + 1} / {popupInfo.messages.length}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        nextSlide()
-                      }}
-                      className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 hover:bg-gray-300"
-                    >
-                      <ChevronRight size={16} />
-                    </button>
-                  </div>
-                )}
               </div>
             </Popup>
           )}
