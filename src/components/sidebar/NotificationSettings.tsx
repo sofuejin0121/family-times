@@ -100,7 +100,7 @@ export const NotificationSettings = () => {
             <Button
               onClick={handleRequestPermission}
               disabled={isLoading}
-              variant="outline"
+              variant="default"
               className="w-full cursor-pointer"
             >
               <Bell className="mr-2 h-4 w-4" />
@@ -116,7 +116,7 @@ export const NotificationSettings = () => {
             <Button
               onClick={handleRefreshToken}
               disabled={isLoading}
-              variant="outline"
+              variant="default"
               className="w-full cursor-pointer"
             >
               <RefreshCw
