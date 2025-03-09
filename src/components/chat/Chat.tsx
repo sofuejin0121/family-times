@@ -41,6 +41,7 @@ interface ChatProps {
 }
 
 // 地図コンポーネントを動的にインポート
+
 // 遅延インポート
 const MapView = lazy(() => import('./MapView')) // 必要になった時に読み込まれる(地図タブを開いた時に初めて読み込む)
 
@@ -120,6 +121,7 @@ const Chat = ({
       dispatch(setChannelInfo({ channelId: urlChannelId }))
     }
     // URLパラメータをクリア
+
     // 他の処理が終わった後にURLを整理するために、少し遅延させる
     setTimeout(() => {
       navigate('/', { replace: true })

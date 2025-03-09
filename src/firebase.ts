@@ -16,6 +16,7 @@ import {
   onMessage,
 } from 'firebase/messaging' // プッシュ通知関連
 import { User } from 'firebase/auth' // ユーザー型定義
+import * as Sentry from '@sentry/react'
 
 /**
  * Firebaseの設定情報
@@ -47,20 +48,37 @@ const messaging = getMessaging(app) // メッセージングサービスへの�
  */
 export const refreshFCMToken = async (user: User, forceRefresh = false) => {
   try {
-    console.log(`FCMトークン再取得開始 - ユーザー: ${user.uid}, 強制更新: ${forceRefresh}`)
-    
+    console.log(
+      `FCMトークン再取得開始 - ユーザー: ${user.uid}, 強制更新: ${forceRefresh}`
+    )
+
     // ServiceWorker登録を取得
     const swRegistration = await getServiceWorkerRegistration()
-    
+
     // 既存のトークンを削除（強制更新の場合）
     if (forceRefresh) {
       try {
-        console.log(`[TokenRefresh] トークン強制更新を実行 - ユーザー: ${user.uid}`)
+        console.log(
+          `[TokenRefresh] トークン強制更新を実行 - ユーザー: ${user.uid}`
+        )
       } catch (err) {
-        console.error(`[TokenRefresh] トークン処理エラー - ユーザー: ${user.uid}`, err)
+        console.error(
+          `[TokenRefresh] トークン処理エラー - ユーザー: ${user.uid}`,
+          err
+        )
+        // Sentryにエラーを記録
+        Sentry.captureException(err, {
+          tags: {
+            operation: 'tokenForceRefresh',
+            userId: user.uid,
+          },
+          extra: {
+            userId: user.uid,
+          },
+        })
       }
     }
-    
+
     // 新しいトークンを取得（この処理が実質的に古いトークンを無効化する）
     console.log('新しいトークンの取得を試みます...')
     const token = await getToken(messaging, {
@@ -69,7 +87,9 @@ export const refreshFCMToken = async (user: User, forceRefresh = false) => {
     })
 
     if (token) {
-      console.error(`[TokenRefresh] 新しいFCMトークン取得成功 - ユーザー: ${user.uid}, トークン: ${token.substring(0, 10)}...`)
+      console.log(
+        `[TokenRefresh] 新しいFCMトークン取得成功 - ユーザー: ${user.uid}, トークン: ${token.substring(0, 10)}...`
+      )
       // ユーザードキュメントにトークンを保存
       await updateDoc(doc(db, 'users', user.uid), {
         fcmToken: token,
@@ -78,11 +98,36 @@ export const refreshFCMToken = async (user: User, forceRefresh = false) => {
       })
       return token
     } else {
-      console.error(`[TokenRefresh] FCMトークンの取得に失敗 - ユーザー: ${user.uid}`)
+      const error = new Error(
+        `[TokenRefresh] FCMトークンの取得に失敗 - ユーザー: ${user.uid}`
+      )
+      console.error(error.message)
+      // Sentryにエラーを記録
+      Sentry.captureException(error, {
+        tags: {
+          operation: 'tokenRetrieval',
+          userId: user.uid,
+        },
+        extra: {
+          userId: user.uid,
+          result: 'null_token',
+        },
+      })
       return null
     }
   } catch (error) {
     console.error(`[TokenRefresh] 重大エラー - ユーザー: ${user.uid}`, error)
+    // Sentryに重大エラーを記録
+    Sentry.captureException(error, {
+      tags: {
+        operation: 'refreshFCMToken',
+        userId: user.uid,
+      },
+      extra: {
+        userId: user.uid,
+        forceRefresh,
+      },
+    })
     return null
   }
 }
@@ -95,35 +140,41 @@ export const refreshFCMToken = async (user: User, forceRefresh = false) => {
  */
 export const initFCM = async (user: User) => {
   try {
-    console.error(`[FCM初期化] 開始 - ユーザー: ${user.uid}`)
-    
+    console.log(`[FCM初期化] 開始 - ユーザー: ${user.uid}`)
+
     // ユーザー情報を取得して前回のトークンエラーを確認
     const userDoc = await getDoc(doc(db, 'users', user.uid))
     const userData = userDoc.data()
-    
+
     // トークン更新フラグのチェックを追加
-    const needsForceRefresh = userData?.lastTokenError || 
-                             userData?.needTokenRefresh || 
-                             (userData?.lastTokenUpdate && 
-                              Date.now() - userData.lastTokenUpdate.toDate().getTime() > 7 * 24 * 60 * 60 * 1000)
-    
-    console.error(`[FCM初期化] 強制更新フラグ: ${needsForceRefresh}, 理由: ${
-      userData?.lastTokenError ? 'トークンエラーあり' : 
-      userData?.needTokenRefresh ? '更新フラグあり' : 
-      'トークン期限切れ'
-    }`)
-    
+    const needsForceRefresh =
+      userData?.lastTokenError ||
+      userData?.needTokenRefresh ||
+      (userData?.lastTokenUpdate &&
+        Date.now() - userData.lastTokenUpdate.toDate().getTime() >
+          7 * 24 * 60 * 60 * 1000)
+
+    console.log(
+      `[FCM初期化] 強制更新フラグ: ${needsForceRefresh}, 理由: ${
+        userData?.lastTokenError
+          ? 'トークンエラーあり'
+          : userData?.needTokenRefresh
+            ? '更新フラグあり'
+            : 'トークン期限切れ'
+      }`
+    )
+
     // トークンを更新（必要に応じて強制更新）
     await refreshFCMToken(user, needsForceRefresh)
-    
+
     // トークン更新が成功したらフラグをクリア
     if (userData?.needTokenRefresh) {
-      console.error(`[FCM初期化] 更新フラグをクリア - ユーザー: ${user.uid}`)
+      console.log(`[FCM初期化] 更新フラグをクリア - ユーザー: ${user.uid}`)
       await updateDoc(doc(db, 'users', user.uid), {
-        needTokenRefresh: false
+        needTokenRefresh: false,
       })
     }
-    
+
     // トークン更新イベントのリスナーを設定
     navigator.serviceWorker.addEventListener('message', async (event) => {
       if (event.data?.firebase?.msg?.type === 'token-refresh') {
@@ -145,9 +196,18 @@ export const initFCM = async (user: User) => {
     ) // 7日ごと
   } catch (error) {
     console.error(`[FCM初期化] 重大エラー - ユーザー: ${user.uid}`, error)
+    // Sentryに重大エラーを記録
+    Sentry.captureException(error, {
+      tags: {
+        operation: 'initFCM',
+        userId: user.uid,
+      },
+      extra: {
+        userId: user.uid,
+      },
+    })
   }
 }
-
 /**
  * プッシュ通知用のServiceWorker登録を取得または作成する関数
  * ServiceWorkerはバックグラウンドでの通知受信を可能にします
