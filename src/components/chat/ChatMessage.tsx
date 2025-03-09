@@ -307,21 +307,25 @@ const ChatMessage = ({
 
   // スワイプ関連のステート追加
   const [touchStartX, setTouchStartX] = useState(0)
+  const [touchStartY, setTouchStartY] = useState(0)
   const [isSwipingLeft, setIsSwipingLeft] = useState(false)
   
   // タッチ処理関数
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStartX(e.touches[0].clientX)
+    setTouchStartY(e.touches[0].clientY)
   }
   
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartX === 0) return
     
     const currentX = e.touches[0].clientX
-    const diff = touchStartX - currentX
+    const currentY = e.touches[0].clientY
+    const diffX = touchStartX - currentX
+    const diffY = touchStartY - currentY
     
     // 右から左へのスワイプを検出（30px以上の移動で検出）
-    if (diff > 30) {
+    if (diffX > 30 && diffX > diffY * 2) {
       setIsSwipingLeft(true)
     } else {
       setIsSwipingLeft(false)
@@ -340,6 +344,7 @@ const ChatMessage = ({
     
     // 状態をリセット
     setTouchStartX(0)
+    setTouchStartY(0)
     setIsSwipingLeft(false)
   }
 
