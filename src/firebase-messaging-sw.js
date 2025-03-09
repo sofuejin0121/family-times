@@ -43,14 +43,21 @@ messaging.onBackgroundMessage((payload) => {
   )
 
   // 通知のタイトルを設定（ペイロードにタイトルがない場合はデフォルト値を使用）
-  const notificationTitle = payload.notification.title || '新しい通知'
+  const notificationTitle = payload.notification.title || 'メッセージ通知'
 
   // 通知の詳細オプションを設定
   const notificationOptions = {
     body: payload.notification.body || '', // 通知の本文
-    icon: '/favicon.png', // 通知に表示するアイコン
-    badge: '/favicon.png', // モバイルデバイスの通知バッジに表示するアイコン
+    icon: payload.notification.icon || '/homeicon.png', // 通知に表示するアイコン
+    badge: '/notification-badge.png', // モバイルデバイスの通知バッジに表示するアイコン
     data: payload.data, // 通知に関連するデータ（後でクリックイベントで使用）
+    // クリック時のアクション
+    actions: [
+      {
+        action: 'view',
+        title: '表示',
+      }
+    ]
   }
 
   // 実際に通知を表示します
@@ -61,6 +68,8 @@ messaging.onBackgroundMessage((payload) => {
 // 通知クリックイベントの処理
 // ユーザーが通知をクリックした時の動作を定義します
 self.addEventListener('notificationclick', (event) => {
+  console.log('[firebase-messaging-sw.js] 通知がクリックされました', event)
+  
   // 通知を閉じます
   event.notification.close()
 
@@ -69,7 +78,7 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     // clientsはService Workerに関連付けられたウィンドウ/タブのリストを取得します
     clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
+      .matchAll({ type: 'window' })
       .then((clientList) => {
         // 通知データからチャンネルIDとサーバーIDを取得
         const data = event.notification.data || {}
@@ -91,11 +100,12 @@ self.addEventListener('notificationclick', (event) => {
         // すでに開いているウィンドウがあるか確認
         for (const client of clientList) {
           // 同じオリジンのウィンドウがあり、focusメソッドが利用可能な場合
-          if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if (client.url.includes(self.registration.scope) && 'focus' in client) {
             // そのウィンドウにフォーカスを当てる
-            client.focus()
-            // 指定したURLに移動
-            client.navigate(url)
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              data: data
+            })
             return
           }
         }
@@ -106,4 +116,16 @@ self.addEventListener('notificationclick', (event) => {
         }
       })
   )
+})
+
+// Service Workerのインストール時
+self.addEventListener('install', function(event) {
+  console.log('[firebase-messaging-sw.js] Service Workerをインストールしました')
+  self.skipWaiting() // 即座にアクティブ化
+})
+
+// Service Workerのアクティベーション時
+self.addEventListener('activate', function(event) {
+  console.log('[firebase-messaging-sw.js] Service Workerがアクティブになりました')
+  event.waitUntil(clients.claim()) // クライアントの制御を取得
 })

@@ -40,6 +40,8 @@ import { Input } from '../ui/input'
 import { toast } from 'sonner'
 import NoServerView from './NoServerView'
 import LoadingScreen from '../loading/LoadingScreen'
+import { NotificationSettings } from './NotificationSettings'
+import { Bell } from 'lucide-react'
 
 interface AppSidebarProps {
   isMobileMenuOpen: boolean
@@ -57,6 +59,8 @@ export function AppSidebar({
   const [isCreateServerOpen, setIsCreateServerOpen] = useState(false)
   const [isUserEditOpen, setIsUserEditOpen] = useState(false)
   const [isJoinServerOpen, setIsJoinServerOpen] = useState(false)
+  const [isNotificationSettingsOpen, setIsNotificationSettingsOpen] =
+    useState(false)
   const [inviteCode, setInviteCode] = useState('')
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
@@ -71,7 +75,7 @@ export function AppSidebar({
       dispatch(
         setServerInfo({
           serverId: firstServer.id,
-          serverName: firstServer.docData.name
+          serverName: firstServer.docData.name,
         })
       )
     }
@@ -83,13 +87,13 @@ export function AppSidebar({
       toast.error('招待コードを入力してください')
       return
     }
-    
+
     // 簡易的なバリデーション - 最低5文字以上
     if (inviteCode.trim().length < 5) {
       toast.error('有効な招待コードを入力してください')
       return
     }
-    
+
     navigate(`/invite/${inviteCode.trim()}`)
     setIsJoinServerOpen(false)
     setInviteCode('')
@@ -132,19 +136,20 @@ export function AppSidebar({
         >
           <SidebarContent className="scrollbar-thin scrollbar-track-gray-100 scrollbar-thumb-gray-300 max-h-screen overflow-y-auto p-3">
             <SidebarMenu className="space-y-3">
-              {!serversLoading && servers.map((server) => (
-                <SidebarMenuItem
-                  key={server.id}
-                  className="flex justify-center"
-                >
-                  <Server
-                    id={server.id}
-                    name={server.docData.name}
-                    imageUrl={server.docData.imageUrl}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  />
-                </SidebarMenuItem>
-              ))}
+              {!serversLoading &&
+                servers.map((server) => (
+                  <SidebarMenuItem
+                    key={server.id}
+                    className="flex justify-center"
+                  >
+                    <Server
+                      id={server.id}
+                      name={server.docData.name}
+                      imageUrl={server.docData.imageUrl}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                  </SidebarMenuItem>
+                ))}
               <SidebarMenuItem className="flex justify-center pt-2">
                 <TooltipProvider>
                   <Tooltip>
@@ -164,7 +169,7 @@ export function AppSidebar({
                   </Tooltip>
                 </TooltipProvider>
               </SidebarMenuItem>
-              
+
               {/* サーバー参加ボタン - 常に表示 */}
               <SidebarMenuItem className="flex justify-center pt-2">
                 <TooltipProvider>
@@ -250,19 +255,43 @@ export function AppSidebar({
                   </p>
                 </div>
               </div>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <LogOut
-                      className="h-5 w-5 cursor-pointer text-gray-500 hover:text-gray-700"
-                      onClick={() => auth.signOut()}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent className="tooltip-arrow">
-                    <p>ログアウト</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 cursor-pointer"
+                        onClick={() => setIsNotificationSettingsOpen(true)}
+                      >
+                        <Bell className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>通知設定</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 cursor-pointer"
+                        onClick={() => auth.signOut()}
+                      >
+                        <LogOut className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>ログアウト</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           </SidebarFooter>
         </Sidebar>
@@ -277,26 +306,37 @@ export function AppSidebar({
         isOpen={isUserEditOpen}
         onClose={() => setIsUserEditOpen(false)}
       />
-      
+
+      {/* 通知設定ダイアログ */}
+      <Dialog
+        open={isNotificationSettingsOpen}
+        onOpenChange={setIsNotificationSettingsOpen}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>通知設定</DialogTitle>
+          </DialogHeader>
+          <NotificationSettings />
+        </DialogContent>
+      </Dialog>
+
       {/* 招待コード入力ダイアログ */}
       <Dialog open={isJoinServerOpen} onOpenChange={setIsJoinServerOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>サーバーに参加</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col space-y-4 py-4">
-            <p className="text-sm text-gray-500">
-              サーバーの招待コードを入力してください
-            </p>
-            <div className="flex items-center space-x-2">
+          <div className="space-y-4 py-2 pb-4">
+            <div className="space-y-2">
               <Input
+                placeholder="招待コードを入力"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="招待コード"
-                className="flex-1"
               />
-              <Button onClick={handleJoinServer}>参加</Button>
             </div>
+            <Button type="submit" className="w-full" onClick={handleJoinServer}>
+              参加する
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

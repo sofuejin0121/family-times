@@ -31,7 +31,6 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
             )
 
             // 環境変数とプレースホルダーのマッピング
-            // これらのプレースホルダーはService Workerファイル内で実際の値に置き換えられます
             const envReplacements = {
               FIREBASE_API_KEY_PLACEHOLDER: env.VITE_apiKey, // Firebase APIキー
               FIREBASE_AUTH_DOMAIN_PLACEHOLDER: env.VITE_authDomain, // Firebase認証ドメイン
@@ -54,6 +53,14 @@ function firebaseMessagingSwPlugin(env: Record<string, string>): Plugin {
 
             // レスポンスヘッダーを設定してJavaScriptとして送信
             res.setHeader('Content-Type', 'application/javascript')
+            // キャッシュを無効化するヘッダーを追加
+            res.setHeader(
+              'Cache-Control',
+              'no-store, no-cache, must-revalidate, proxy-revalidate'
+            )
+            res.setHeader('Pragma', 'no-cache')
+            res.setHeader('Expires', '0')
+            res.setHeader('Surrogate-Control', 'no-store')
             res.end(swSource)
           } catch (error) {
             console.error('Service Worker提供エラー:', error)

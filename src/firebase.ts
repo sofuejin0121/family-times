@@ -90,9 +90,30 @@ export const refreshFCMToken = async (user: User, forceRefresh = false) => {
       console.log(
         `[TokenRefresh] 新しいFCMトークン取得成功 - ユーザー: ${user.uid}, トークン: ${token.substring(0, 10)}...`
       )
+
+      // デバイス識別子を取得
+      const deviceId = await getDeviceIdentifier()
+
+      // ユーザードキュメントを取得
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      const userData = userDoc.data() || {}
+
+      // fcmTokensマップを初期化または更新
+      const fcmTokensMap = userData.fcmTokensMap || {}
+      fcmTokensMap[deviceId] = {
+        token,
+        lastUpdated: new Date(),
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+        },
+      }
+
       // ユーザードキュメントにトークンを保存
       await updateDoc(doc(db, 'users', user.uid), {
-        fcmToken: token,
+        fcmToken: token, // 後方互換性のために残す
+        fcmTokensMap, // デバイスごとのトークンマップ
         lastTokenUpdate: new Date(),
         tokenErrorCleared: true, // エラーがクリアされたことを示す
       })
@@ -129,6 +150,92 @@ export const refreshFCMToken = async (user: User, forceRefresh = false) => {
       },
     })
     return null
+  }
+}
+
+/**
+ * デバイス識別子を取得する関数
+ * ブラウザのフィンガープリントを使用して一意のデバイスIDを生成
+ */
+const getDeviceIdentifier = async () => {
+  try {
+    // ローカルストレージからデバイスIDを取得
+    let deviceId = localStorage.getItem('device_id')
+
+    // デバイスIDがない場合は新しく生成
+    if (!deviceId) {
+      // 簡易的なフィンガープリントを生成
+      const fingerprint = [
+        navigator.userAgent,
+        navigator.language,
+        navigator.platform,
+        window.screen.width,
+        window.screen.height,
+        new Date().getTimezoneOffset(),
+      ].join('|')
+
+      // SHA-256ハッシュを生成
+      const msgBuffer = new TextEncoder().encode(fingerprint)
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer)
+      const hashArray = Array.from(new Uint8Array(hashBuffer))
+      deviceId = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+
+      // ローカルストレージに保存
+      localStorage.setItem('device_id', deviceId)
+    }
+
+    return deviceId
+  } catch (error) {
+    console.error('デバイスID生成エラー:', error)
+    // エラー時はランダムなIDを返す
+    return `device_${Math.random().toString(36).substring(2, 15)}`
+  }
+}
+
+/**
+ * FCMトークンを手動で再発行する関数
+ * 設定ページなどから呼び出すことを想定
+ */
+export const manuallyRefreshFCMToken = async () => {
+  const user = auth.currentUser
+  if (!user) {
+    throw new Error('ユーザーがログインしていません')
+  }
+
+  try {
+    // 通知許可を確認
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission()
+      if (permission !== 'granted') {
+        throw new Error('通知許可が得られませんでした')
+      }
+    }
+
+    // ServiceWorkerの登録を確認
+    const swRegistration = await getServiceWorkerRegistration()
+    if (!swRegistration) {
+      // ServiceWorkerを再登録
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        scope: '/firebase-cloud-messaging-push-scope',
+      })
+    }
+
+    // トークンを強制的に更新
+    const token = await refreshFCMToken(user, true)
+    if (!token) {
+      throw new Error('トークンの取得に失敗しました')
+    }
+
+    return {
+      success: true,
+      token: token.substring(0, 10) + '...',
+    }
+  } catch (error) {
+    console.error('トークン再発行エラー:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '不明なエラー',
+    }
   }
 }
 
@@ -208,6 +315,7 @@ export const initFCM = async (user: User) => {
     })
   }
 }
+
 /**
  * プッシュ通知用のServiceWorker登録を取得または作成する関数
  * ServiceWorkerはバックグラウンドでの通知受信を可能にします

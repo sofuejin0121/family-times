@@ -26,9 +26,8 @@ setGlobalOptions({
 // チャンネルに新しいメッセージが作成されたときに通知を送信する関数
 exports.sendMessageNotification = onDocumentCreated(
   {
-    // 監視するドキュメントパス（ワイルドカード{}を使用して動的なパスを指定）
     document: 'servers/{serverId}/channels/{channelId}/messages/{messageId}',
-    region: 'asia-northeast1', // 関数を実行するリージョン
+    region: 'asia-northeast1',
   },
   async (event) => {
     // イベントパラメータから必要な情報を取得
@@ -89,13 +88,40 @@ exports.sendMessageNotification = onDocumentCreated(
         await Promise.all(
           batch.map(async (uid) => {
             try {
-              // ユーザードキュメントからFCMトークン（通知用の識別子）を取得
+              // ユーザードキュメントからFCMトークン情報を取得
               const userDoc = await firestore.collection('users').doc(uid).get()
               const userData = userDoc.data()
 
-              // FCMトークンがない場合は通知を送信しない
-              if (!userData || !userData.fcmToken) {
-                logger.log(`User ${uid} has no FCM token`)
+              // FCMトークン情報がない場合は通知を送信しない
+              if (!userData) {
+                logger.log(`User ${uid} has no data`)
+                return null
+              }
+
+              // 送信するトークンのリストを作成
+              const tokensToSend = []
+              
+              // 従来の単一トークン（後方互換性のため）
+              if (userData.fcmToken) {
+                tokensToSend.push(userData.fcmToken)
+              }
+              
+              // デバイスごとのトークンマップがある場合
+              if (userData.fcmTokensMap && typeof userData.fcmTokensMap === 'object') {
+                // 各デバイスのトークンを追加（重複を避けるためにSet使用）
+                const uniqueTokens = new Set(tokensToSend)
+                Object.values(userData.fcmTokensMap).forEach(deviceData => {
+                  if (deviceData && deviceData.token) {
+                    uniqueTokens.add(deviceData.token)
+                  }
+                })
+                tokensToSend.length = 0 // 配列をクリア
+                tokensToSend.push(...uniqueTokens) // Setから配列に戻す
+              }
+              
+              // 送信するトークンがない場合
+              if (tokensToSend.length === 0) {
+                logger.log(`User ${uid} has no FCM tokens`)
                 return null
               }
 
@@ -134,81 +160,78 @@ exports.sendMessageNotification = onDocumentCreated(
                 },
               }
 
-              try {
-                // FCM V1 API形式で通知を送信
-                await getMessaging().send({
-                  token: userData.fcmToken, // 送信先のFCMトークン
-                  ...payload, // 通知内容
-                })
-                logger.log(`Notification sent to ${uid}`) // 成功ログ
-
-                // トークン送信成功時にエラーフラグをクリア
-                if (userData.lastTokenError) {
-                  await firestore.collection('users').doc(uid).update({
-                    lastTokenError: null,
-                    tokenErrorMessage: null,
+              // 無効なトークンを記録する配列
+              const invalidTokens = []
+              // 有効なトークンを記録する配列
+              const validTokens = []
+              
+              // 各トークンに通知を送信
+              for (const token of tokensToSend) {
+                try {
+                  // FCM V1 API形式で通知を送信
+                  await getMessaging().send({
+                    token: token,
+                    ...payload,
                   })
-                }
-              } catch (err) {
-                // 通知送信エラーの処理
-                logger.error(`Error sending notification to ${uid}:`, err)
-
-                // トークンが無効な場合の処理
-                if (
-                  err.code === 'messaging/invalid-registration-token' || // 無効なトークン
-                  err.code === 'messaging/registration-token-not-registered' || // 登録されていないトークン
-                  err.message.includes('404') || // 404エラー
-                  err.message.includes('Not Found') // Not Foundエラー
-                ) {
-                  logger.error(`[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, エラーコード: ${err.code}, トークン: ${userData.fcmToken?.substring(0, 10)}...`)
+                  logger.log(`Notification sent to ${uid} (token: ${token.substring(0, 10)}...)`)
+                  validTokens.push(token)
+                } catch (err) {
+                  logger.error(`Error sending notification to ${uid} (token: ${token.substring(0, 10)}...):`, err)
                   
-                  // エラー情報追加：日時とエラーコードを記録
-                  await firestore
-                    .collection('users')
-                    .doc(uid)
-                    .update({
-                      fcmToken: null, // トークンをクリア
-                      lastTokenError: new Date(), // エラー発生日時
-                      tokenErrorCode: err.code || 'unknown', // エラーコード
-                      tokenErrorMessage: err.message, // エラーメッセージ
-                    })
-                  
-                  logger.error(`[FCMError] ユーザーのトークンをクリア済み - ${uid}`)
-
-                  // 別のデバイスが使っているトークンがあれば確認
-                  if (userData.fcmTokens && Array.isArray(userData.fcmTokens)) {
-                    // 現在無効になったトークンを配列から削除
-                    const updatedTokens = userData.fcmTokens.filter(
-                      (token) => token !== userData.fcmToken
-                    )
-                    
-                    logger.error(`[FCMError] 代替トークン検索 - ユーザー: ${uid}, 候補数: ${updatedTokens.length}`)
-                    
-                    // 有効なトークンがあれば試行
-                    for (const alternativeToken of updatedTokens) {
-                      try {
-                        logger.error(`[FCMError] 代替トークン試行 - ユーザー: ${uid}, トークン: ${alternativeToken.substring(0, 10)}...`)
-                        
-                        await getMessaging().send({
-                          token: alternativeToken,
-                          ...payload,
-                        })
-
-                        // 成功したらこのトークンを主要トークンとして設定
-                        await firestore.collection('users').doc(uid).update({
-                          fcmToken: alternativeToken,
-                          fcmTokens: updatedTokens,
-                          lastTokenUpdate: new Date(),
-                        })
-
-                        logger.error(`[FCMError] 代替トークンで成功 - ユーザー: ${uid}`)
-                        break // 成功したらループを抜ける
-                      } catch (altErr) {
-                        // この代替トークンも無効な場合は次へ
-                        logger.error(`[FCMError] 代替トークンも無効 - ユーザー: ${uid}, エラー: ${altErr.code}`)
-                      }
-                    }
+                  // トークンが無効な場合
+                  if (
+                    err.code === 'messaging/invalid-registration-token' ||
+                    err.code === 'messaging/registration-token-not-registered' ||
+                    err.message.includes('404') ||
+                    err.message.includes('Not Found')
+                  ) {
+                    invalidTokens.push(token)
+                    logger.error(`[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, トークン: ${token.substring(0, 10)}...`)
                   }
+                }
+              }
+              
+              // 無効なトークンがある場合、ユーザードキュメントを更新
+              if (invalidTokens.length > 0) {
+                // 更新するデータを準備
+                const updateData = {}
+                
+                // fcmTokensMapから無効なトークンを削除
+                if (userData.fcmTokensMap) {
+                  const updatedTokensMap = { ...userData.fcmTokensMap }
+                  let mapUpdated = false
+                  
+                  // 各デバイスのトークンをチェック
+                  Object.entries(updatedTokensMap).forEach(([deviceId, deviceData]) => {
+                    if (deviceData && deviceData.token && invalidTokens.includes(deviceData.token)) {
+                      // このデバイスのトークンが無効なので削除
+                      delete updatedTokensMap[deviceId]
+                      mapUpdated = true
+                    }
+                  })
+                  
+                  if (mapUpdated) {
+                    updateData.fcmTokensMap = updatedTokensMap
+                  }
+                }
+                
+                // メインのfcmTokenが無効な場合
+                if (userData.fcmToken && invalidTokens.includes(userData.fcmToken)) {
+                  // 有効なトークンがあれば、それをメインのトークンに設定
+                  if (validTokens.length > 0) {
+                    updateData.fcmToken = validTokens[0]
+                  } else {
+                    updateData.fcmToken = null
+                    updateData.lastTokenError = new Date()
+                    updateData.tokenErrorCode = 'all_tokens_invalid'
+                    updateData.tokenErrorMessage = '全てのトークンが無効です'
+                  }
+                }
+                
+                // ユーザードキュメントを更新
+                if (Object.keys(updateData).length > 0) {
+                  await firestore.collection('users').doc(uid).update(updateData)
+                  logger.error(`[FCMError] ユーザーのトークン情報を更新しました - ${uid}`)
                 }
               }
             } catch (err) {

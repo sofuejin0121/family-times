@@ -1,10 +1,9 @@
 import { Input } from '../ui/input'
 // import { Button } from '../ui/button'
 // import { Menu } from 'lucide-react'
-import { Users, MapPin, MessageCircleMore, Bell } from 'lucide-react'
+import { Users, MapPin, MessageCircleMore } from 'lucide-react'
 import { useAppSelector } from '../../app/hooks'
-import React, { useState } from 'react'
-import { requestNotificationPermission } from '../../firebase'
+import React from 'react'
 import { Button } from '../ui/button'
 
 interface Props {
@@ -29,19 +28,11 @@ const ChatHeader = (props: Props) => {
   } = props
   const serverId = useAppSelector((state) => state.server.serverId)
   const isServerSelected = Boolean(serverId)
-  const [notificationEnabled, setNotificationEnabled] = useState(
-    Notification.permission === 'granted'
-  )
 
   const handleMemberSidebarToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
     onToggleMemberSidebar()
-  }
-
-  const handleNotificationRequest = async () => {
-    const granted = await requestNotificationPermission()
-    setNotificationEnabled(granted)
   }
 
   return (
@@ -96,17 +87,6 @@ const ChatHeader = (props: Props) => {
           >
             <MapPin className="h-5 w-5" />
           </Button>
-
-          {/* 通知許可ボタン */}
-          {!notificationEnabled && (
-            <Button
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              onClick={handleNotificationRequest}
-              title="通知を有効にする"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
-          )}
 
           {/* 検索入力欄 */}
           <div className="flex items-center rounded bg-gray-100 p-[3px]">
