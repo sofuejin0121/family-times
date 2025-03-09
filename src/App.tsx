@@ -21,6 +21,7 @@ import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
+import { MapProvider } from 'react-map-gl'
 
 // エラーハンドリング用コンポーネント
 // URLが無効な形式の時に表示される画面
@@ -141,8 +142,15 @@ function App() {
   // タッチ終了時の処理
   const handleTouchEnd = () => {
     // モバイルデバッグ用のログを追加
-    console.log('TouchEnd - isSwiping:', isSwiping, 'isMapMode:', isMapMode, 'isImageDialogOpen:', isImageDialogOpen)
-    
+    console.log(
+      'TouchEnd - isSwiping:',
+      isSwiping,
+      'isMapMode:',
+      isMapMode,
+      'isImageDialogOpen:',
+      isImageDialogOpen
+    )
+
     // スワイプ動作がない場合や無効化条件の場合は処理しない
     if (!isSwiping || isMapMode || isImageDialogOpen) return
 
@@ -240,81 +248,83 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
-      <DeepLinkChecker />
-      {/* モバイルデバッグ用のメッセージを追加 */}
-      {process.env.NODE_ENV !== 'production' && 
-        <div className="fixed top-0 left-0 z-50 bg-black/50 text-white text-xs p-1">
-          {`Mobile: ${window.innerWidth}x${window.innerHeight}`}
-        </div>
-      }
-      {!user ? (
-        // 未ログイン状態
-        <>
-          <Routes>
-            <Route path="*" element={<Login />} />
-          </Routes>
-          <Toaster />
-        </>
-      ) : (
-        // ログイン済み状態（プロフィール設定チェックを含む）
-        <SidebarProvider>
-          <div
-            className="flex w-full items-center justify-center overflow-hidden"
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
+    <MapProvider>
+      <BrowserRouter>
+        <DeepLinkChecker />
+        {/* モバイルデバッグ用のメッセージを追加 */}
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="fixed top-0 left-0 z-50 bg-black/50 p-1 text-xs text-white">
+            {`Mobile: ${window.innerWidth}x${window.innerHeight}`}
+          </div>
+        )}
+        {!user ? (
+          // 未ログイン状態
+          <>
             <Routes>
-              {needsProfileSetup ? (
-                <>
-                  <Route path="/profile" element={<NewUserProfile />} />
-                  <Route
-                    path="*"
-                    element={<Navigate to="/profile" replace />}
-                  />
-                </>
-              ) : (
-                <>
-                  <Route
-                    path="/"
-                    element={
-                      <div className="flex h-screen w-full overflow-hidden">
-                        <AppSidebar
-                          isMobileMenuOpen={isMobileMenuOpen}
-                          setIsMobileMenuOpen={setIsMobileMenuOpen}
-                        />
-                        <div className="min-w-0 flex-1">
-                          <Chat
-                            isMemberSidebarOpen={isMemberSidebarOpen}
-                            setIsMemberSidebarOpen={setIsMemberSidebarOpen}
-                            isMobileMenuOpen={isMobileMenuOpen}
-                            setIsMobileMenuOpen={setIsMobileMenuOpen}
-                            isMapMode={isMapMode}
-                            setIsMapMode={setIsMapMode}
-                            setIsImageDialogOpen={setIsImageDialogOpen}
-                          />
-                        </div>
-                      </div>
-                    }
-                  />
-                  <Route path="/invite" element={<InvitePage />} />
-                  <Route
-                    path="/invite/:inviteCode"
-                    element={<InviteRedirect />}
-                  />
-                  <Route path="/profile" element={<NewUserProfile />} />
-
-                  {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
-                  <Route path="/invite/*" element={<InvalidInvitePath />} />
-                </>
-              )}
+              <Route path="*" element={<Login />} />
             </Routes>
             <Toaster />
-          </div>
-        </SidebarProvider>
-      )}
-    </BrowserRouter>
+          </>
+        ) : (
+          // ログイン済み状態（プロフィール設定チェックを含む）
+          <SidebarProvider>
+            <div
+              className="flex w-full items-center justify-center overflow-hidden"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              <Routes>
+                {needsProfileSetup ? (
+                  <>
+                    <Route path="/profile" element={<NewUserProfile />} />
+                    <Route
+                      path="*"
+                      element={<Navigate to="/profile" replace />}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Route
+                      path="/"
+                      element={
+                        <div className="flex h-screen w-full overflow-hidden">
+                          <AppSidebar
+                            isMobileMenuOpen={isMobileMenuOpen}
+                            setIsMobileMenuOpen={setIsMobileMenuOpen}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <Chat
+                              isMemberSidebarOpen={isMemberSidebarOpen}
+                              setIsMemberSidebarOpen={setIsMemberSidebarOpen}
+                              isMobileMenuOpen={isMobileMenuOpen}
+                              setIsMobileMenuOpen={setIsMobileMenuOpen}
+                              isMapMode={isMapMode}
+                              setIsMapMode={setIsMapMode}
+                              setIsImageDialogOpen={setIsImageDialogOpen}
+                            />
+                          </div>
+                        </div>
+                      }
+                    />
+                    <Route path="/invite" element={<InvitePage />} />
+                    <Route
+                      path="/invite/:inviteCode"
+                      element={<InviteRedirect />}
+                    />
+                    <Route path="/profile" element={<NewUserProfile />} />
+
+                    {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
+                    <Route path="/invite/*" element={<InvalidInvitePath />} />
+                  </>
+                )}
+              </Routes>
+              <Toaster />
+            </div>
+          </SidebarProvider>
+        )}
+      </BrowserRouter>
+    </MapProvider>
   )
 }
 
