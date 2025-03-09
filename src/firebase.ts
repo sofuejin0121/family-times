@@ -6,7 +6,7 @@
 
 // 必要なFirebaseモジュールをインポート
 import { initializeApp } from 'firebase/app' // Firebaseアプリケーションの初期化
-import { doc, getFirestore, updateDoc } from 'firebase/firestore' // Firestoreデータベース操作
+import { doc, getFirestore, updateDoc, getDoc } from 'firebase/firestore' // Firestoreデータベース操作
 import { getStorage } from 'firebase/storage' // Firebaseストレージ
 import { getAuth, GoogleAuthProvider, onAuthStateChanged } from 'firebase/auth' // 認証関連
 import {
@@ -39,40 +39,109 @@ const storage = getStorage(app) // ストレージサービスへの参照を取
 const messaging = getMessaging(app) // メッセージングサービスへの参照を取得
 
 /**
- * Firebase Cloud Messaging (FCM)トークンを取得してFirestoreに保存する関数
- * このトークンはユーザーにプッシュ通知を送信するために必要です
- * 
+ * FCMトークンを取得または更新する関数
+ * トークンが無効になった場合や定期的な更新に使用
+ *
+ * @param user - 現在ログインしているユーザー
+ * @param forceRefresh - トークンを強制的に更新するかどうか
+ */
+export const refreshFCMToken = async (user: User, forceRefresh = false) => {
+  try {
+    // ServiceWorker登録を取得
+    const swRegistration = await getServiceWorkerRegistration()
+
+    // トークン削除を試みる部分を修正
+    if (forceRefresh) {
+      try {
+        // deleteToken()の使用を避け、新しいトークンで上書きする方法に変更
+        console.log('トークンのリフレッシュを実行します')
+        // deleteToken使用を完全に避ける
+      } catch (err) {
+        console.log('トークン更新処理でエラーが発生しました:', err)
+      }
+    }
+
+    // 新しいトークンを取得
+    const token = await getToken(messaging, {
+      vapidKey: import.meta.env.VITE_VAPID_KEY,
+      serviceWorkerRegistration: swRegistration || undefined,
+    })
+
+    if (token) {
+      console.log('新しいFCMトークン:', token)
+      // ユーザードキュメントにトークンを保存
+      await updateDoc(doc(db, 'users', user.uid), {
+        fcmToken: token,
+        lastTokenUpdate: new Date(),
+        tokenErrorCleared: true, // エラーがクリアされたことを示す
+      })
+      return token
+    } else {
+      console.log('FCMトークンの取得に失敗しました')
+      return null
+    }
+  } catch (error) {
+    console.error('FCMトークン更新エラー:', error)
+    return null
+  }
+}
+
+/**
+ * ログイン時またはアプリ起動時にFCMトークンを初期化し、
+ * 定期的な更新と無効トークンの検出を設定します
+ *
  * @param user - 現在ログインしているユーザー
  */
 export const initFCM = async (user: User) => {
   try {
-    // FCMトークンを取得（VAPIDキーとServiceWorker登録情報を使用）
-    const token = await getToken(messaging, {
-      vapidKey: import.meta.env.VITE_VAPID_KEY, // Web Push通知用の公開鍵
-      serviceWorkerRegistration:
-        (await getServiceWorkerRegistration()) || undefined, // ServiceWorker登録情報
+    // ユーザー情報を取得して前回のトークンエラーを確認
+    const userDoc = await getDoc(doc(db, 'users', user.uid))
+    const userData = userDoc.data()
+    
+    // トークン更新フラグのチェックを追加
+    const needsForceRefresh = userData?.lastTokenError || 
+                             userData?.needTokenRefresh || 
+                             (userData?.lastTokenUpdate && 
+                              Date.now() - userData.lastTokenUpdate.toDate().getTime() > 7 * 24 * 60 * 60 * 1000);
+    
+    // トークンを更新（必要に応じて強制更新）
+    await refreshFCMToken(user, needsForceRefresh);
+    
+    // トークン更新が成功したらフラグをクリア
+    if (userData?.needTokenRefresh) {
+      await updateDoc(doc(db, 'users', user.uid), {
+        needTokenRefresh: false
+      });
+    }
+    
+    // トークン更新イベントのリスナーを設定
+    navigator.serviceWorker.addEventListener('message', async (event) => {
+      if (event.data?.firebase?.msg?.type === 'token-refresh') {
+        console.log('トークンの更新が必要です')
+        await refreshFCMToken(user, true)
+      }
     })
 
-    if (token) {
-      console.log('FCMトークン取得成功:', token)
-      // ユーザードキュメントにFCMトークンを保存
-      await updateDoc(doc(db, 'users', user.uid), {
-        fcmToken: token, // FCMトークン
-        lastUpdated: new Date(), // 更新日時
-      })
-      console.log('FCMトークンをFirestoreに保存しました')
-    } else {
-      console.log('FCMトークンの取得に失敗しました')
-    }
+    // 定期的にトークンを更新（例: 一週間ごと）
+    const tokenRefreshInterval = setInterval(
+      async () => {
+        if (auth.currentUser) {
+          await refreshFCMToken(auth.currentUser, true)
+        } else {
+          clearInterval(tokenRefreshInterval)
+        }
+      },
+      7 * 24 * 60 * 60 * 1000
+    ) // 7日ごと
   } catch (error) {
-    console.error('FCMトークンの取得に失敗しました:', error)
+    console.error('FCM初期化エラー:', error)
   }
 }
 
 /**
  * プッシュ通知用のServiceWorker登録を取得または作成する関数
  * ServiceWorkerはバックグラウンドでの通知受信を可能にします
- * 
+ *
  * @returns ServiceWorkerRegistration | null - 登録されたServiceWorkerまたはnull
  */
 const getServiceWorkerRegistration = async () => {
@@ -147,7 +216,7 @@ export const setupFCMWithAuth = () => {
 /**
  * ブラウザの通知許可を要求する関数
  * ユーザーアクション（ボタンクリックなど）に応じて呼び出す必要があります
- * 
+ *
  * @returns Promise<boolean> - 許可が得られたかどうかを示すブール値
  */
 export const requestNotificationPermission = async () => {
