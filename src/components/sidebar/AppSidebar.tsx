@@ -147,7 +147,6 @@ export function AppSidebar({
                       name={server.server.name}
                       photoId={server.server.photoId}
                       photoExtension={server.server.photoExtension}
-                      imageUrl={server.server.imageUrl}
                       onClick={() => setIsMobileMenuOpen(false)}
                     />
                   </SidebarMenuItem>
