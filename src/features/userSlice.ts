@@ -1,5 +1,4 @@
 import { createSlice, createAction } from "@reduxjs/toolkit";
-import { InitialUserState } from "../Types";
 
 interface UserState {
   user: {
@@ -10,12 +9,12 @@ interface UserState {
     photoExtension?: string
     displayName: string
   } | null
-  isLoading: boolean
+  isAuthChecking: boolean
 }
 
-const initialState: InitialUserState = {
+const initialState: UserState = {
   user: null,
-  isAuthChecking: true, //認証状態確認中フラグ
+  isAuthChecking: true,
 };
 
 export const userSlice = createSlice({
