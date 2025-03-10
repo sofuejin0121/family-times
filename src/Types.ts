@@ -2,6 +2,8 @@ export interface InitialUserState {
     user: {
         uid: string;
         photo: string;
+        photoId?: string;
+        photoExtension?: string;
         email: string;
         displayName: string;
     } | null;

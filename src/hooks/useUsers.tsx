@@ -4,6 +4,8 @@ import { db } from "../firebase";
 interface Users {
   uid: string;
   photoURL: string;
+  photoId?: string;
+  photoExtension?: string;
   email: string;
   displayName: string;
 }
