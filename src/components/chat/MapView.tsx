@@ -234,6 +234,7 @@ const MapView = ({ messages }: MapViewProps) => {
       <div className="flex-grow">
         <Map
           id="map"
+          reuseMaps
           ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={initialViewState}
