@@ -16,7 +16,8 @@ interface Reaction {
 
 interface Messages {
   id: string
-  photoId: string
+  photoId: string | null
+  photoExtension?: string | null
   photoURL: string
   timestamp: Timestamp
   message: string
@@ -38,6 +39,7 @@ interface Messages {
     message: string | null
     displayName: string | null
     photoId: string | null
+    photoExtension?: string | null
   }
 }
 
@@ -66,19 +68,45 @@ const useMessage = () => {
       const unsubscribe = onSnapshot(collectionRefOrderBy, (snapshot) => {
         const results: Messages[] = []
         snapshot.docs.forEach((doc) => {
+          const data = doc.data()
+          
+          // 既存のデータ構造との互換性を保つ
+          let photoId = data.photoId || null
+          let photoExtension = data.photoExtension || null
+          
+          // 古い形式のphotoIdから拡張子を抽出（移行期間中の対応）
+          if (photoId && !photoExtension && photoId.includes('.')) {
+            const lastDotIndex = photoId.lastIndexOf('.')
+            if (lastDotIndex !== -1) {
+              photoExtension = photoId.substring(lastDotIndex + 1)
+              photoId = photoId.substring(0, lastDotIndex)
+            }
+          }
+          
+          // リプライ情報の処理
+          const  replyTo = data.replyTo || null
+          if (replyTo && replyTo.photoId && replyTo.photoId.includes('.') && !replyTo.photoExtension) {
+            const lastDotIndex = replyTo.photoId.lastIndexOf('.')
+            if (lastDotIndex !== -1) {
+              replyTo.photoExtension = replyTo.photoId.substring(lastDotIndex + 1)
+              replyTo.photoId = replyTo.photoId.substring(0, lastDotIndex)
+            }
+          }
+
           results.push({
             id: doc.id,
-            timestamp: doc.data().timestamp,
-            message: doc.data().message,
-            user: doc.data().user,
-            photoId: doc.data().photoId,
-            photoURL: doc.data().photoURL,
-            imageWidth: doc.data().imageWidth,
-            imageHeight: doc.data().imageHeight,
-            latitude: doc.data().latitude,
-            longitude: doc.data().longitude,
-            reactions: doc.data().reactions || {},
-            replyTo: doc.data().replyTo || null,
+            timestamp: data.timestamp,
+            message: data.message,
+            user: data.user,
+            photoId: photoId,
+            photoExtension: photoExtension,
+            photoURL: data.photoURL,
+            imageWidth: data.imageWidth,
+            imageHeight: data.imageHeight,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            reactions: data.reactions || {},
+            replyTo: replyTo,
           })
         })
         setSubDocuments(results)

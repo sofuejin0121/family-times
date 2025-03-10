@@ -1,8 +1,7 @@
 import React, { useState, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import useUsers from "../../hooks/useUsers";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage, auth } from "../../firebase";
+import { auth } from "../../firebase";
 import { updateProfile } from "firebase/auth";
 import { updateUserInfo } from "../../features/userSlice";
 import { Button } from "../ui/button";
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { uploadImage, getServerOrUserImageUrl } from "../../utils/imageUtils";
 
 interface UserEditProps {
   isOpen: boolean;
@@ -31,6 +31,8 @@ const UserEdit = (props: UserEditProps) => {
   const { updateUser } = useUsers();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [photoURL, setPhotoURL] = useState(user?.photo || "");
+  const [photoId, setPhotoId] = useState(user?.photoId || "");
+  const [photoExtension, setPhotoExtension] = useState(user?.photoExtension || "");
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -43,10 +45,23 @@ const UserEdit = (props: UserEditProps) => {
     if (!file) return;
     setIsUploading(true);
     try {
-      const storageRef = ref(storage, `users/${user.uid}/${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-      setPhotoURL(downloadURL);
+      // 新しい画像アップロード関数を使用
+      const result = await uploadImage(file, `users/${user.uid}`);
+      
+      // 画像URLを取得して表示用に設定
+      const url = await getServerOrUserImageUrl(
+        result.photoId, 
+        result.photoExtension, 
+        `users/${user.uid}`
+      );
+      
+      if (url) {
+        setPhotoURL(url);
+      }
+      
+      // 画像IDと拡張子を保存
+      setPhotoId(result.photoId);
+      setPhotoExtension(result.photoExtension);
     } catch (error) {
       console.error("画像のアップロードに失敗しました:", error);
     } finally {
@@ -65,7 +80,7 @@ const UserEdit = (props: UserEditProps) => {
       if (currentUser) {
         await updateProfile(currentUser, {
           displayName: displayName,
-          photoURL: photoURL,
+          photoURL: photoURL, // 表示用のURLは従来通り
         });
       }
 
@@ -73,6 +88,8 @@ const UserEdit = (props: UserEditProps) => {
       await updateUser(user.uid, {
         displayName: displayName,
         photoURL: photoURL,
+        photoId: photoId,
+        photoExtension: photoExtension,
       });
 
       // Reduxストアのユーザー情報を更新
@@ -80,6 +97,8 @@ const UserEdit = (props: UserEditProps) => {
         updateUserInfo({
           displayName: displayName,
           photo: photoURL,
+          photoId: photoId,
+          photoExtension: photoExtension,
         })
       );
 

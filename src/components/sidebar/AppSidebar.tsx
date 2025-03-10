@@ -75,7 +75,7 @@ export function AppSidebar({
       dispatch(
         setServerInfo({
           serverId: firstServer.id,
-          serverName: firstServer.docData.name,
+          serverName: firstServer.server.name,
         })
       )
     }
@@ -144,8 +144,10 @@ export function AppSidebar({
                   >
                     <Server
                       id={server.id}
-                      name={server.docData.name}
-                      imageUrl={server.docData.imageUrl}
+                      name={server.server.name}
+                      photoId={server.server.photoId}
+                      photoExtension={server.server.photoExtension}
+                      imageUrl={server.server.imageUrl}
                       onClick={() => setIsMobileMenuOpen(false)}
                     />
                   </SidebarMenuItem>

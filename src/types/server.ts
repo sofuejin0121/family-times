@@ -1,22 +1,23 @@
 import { Timestamp } from "firebase/firestore";
 
-interface Server {
+export interface Server {
   name: string;
-  imageUrl: string;
+  imageUrl?: string;
+  photoId?: string;
+  photoExtension?: string;
+  createdAt: Timestamp;
+  createdBy: string;
   members: {
-    [userId: string]: {
-      role: "admin" | "member";
+    [key: string]: {
+      role: string;
       joinedAt: Timestamp;
     };
   };
-  invites: {
-    [inviteCode: string]: {
-      createdBy: string;
+  invites?: {
+    [key: string]: {
       createdAt: Timestamp;
-      expiresAt: Timestamp;
-      active: boolean;
+      createdBy: string;
+      uses: number;
     };
   };
 }
-
-export type { Server };

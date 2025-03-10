@@ -13,11 +13,9 @@ import {
   useEffect,
 } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db, storage } from '../../firebase'
+import { db } from '../../firebase'
 import useMessage from '../../hooks/useMessage'
 import MemberSidebar from '../sidebar/MemberSidebar'
-import { ref, uploadBytes } from 'firebase/storage'
-import { v4 as uuid4 } from 'uuid'
 import { Input } from '../ui/input'
 import { Send, X, Loader2, Reply } from 'lucide-react'
 import { toast } from 'sonner'
@@ -29,6 +27,7 @@ import { setChannelInfo } from '@/features/channelSlice'
 import { setServerInfo } from '@/features/serverSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
+import { uploadImage } from '../../utils/imageUtils'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -59,15 +58,17 @@ interface MessageData {
   timestamp: ReturnType<typeof serverTimestamp>
   user: User | null
   photoId: string | null
-  imageWidth?: number
-  imageHeight?: number
-  latitude?: number
-  longitude?: number
+  photoExtension?: string | null
+  imageWidth?: number | null
+  imageHeight?: number | null
+  latitude?: number | null
+  longitude?: number | null
   replyTo?: {
     messageId: string
     message: string | null
     displayName: string | null
     photoId: string | null
+    photoExtension?: string | null
   }
 }
 
@@ -205,6 +206,7 @@ const Chat = ({
     message: string | null
     displayName: string | null
     photoId: string | null
+    photoExtension?: string | null
   } | null>(null)
 
   const [repliedMessageId, setRepliedMessageId] = useState<string | null>(null)
@@ -219,13 +221,15 @@ const Chat = ({
       messageId: string,
       message: string | null,
       displayName: string | null,
-      photoId: string | null
+      photoId: string | null,
+      photoExtension?: string | null
     ) => {
       setReplyingTo({
         messageId,
         message,
         displayName,
         photoId,
+        photoExtension,
       })
       setRepliedMessageId(messageId)
       // 入力フィールドにフォーカスを当てる
@@ -239,27 +243,25 @@ const Chat = ({
     setIsUploading(true)
     try {
       let photoId = null
-      let fileName = null
+      let photoExtension = null
       let imageWidth = null
       let imageHeight = null
       let locationData = null // EXIF位置情報用
 
       // 画像がある場合のみ処理
       if (selectedFile) {
-        photoId = uuid4()
-        fileName = photoId + selectedFile.name
-        const fileRef = ref(storage, fileName)
-
-        // 画像のアップロード
-        await uploadBytes(fileRef, selectedFile)
-
+        // 新しい画像アップロード関数を使用
+        const result = await uploadImage(selectedFile, 'messages')
+        photoId = result.photoId
+        photoExtension = result.photoExtension
+        
         // 画像サイズの取得
         if (fileImageDimensions) {
           imageWidth = fileImageDimensions.width
           imageHeight = fileImageDimensions.height
         }
 
-        // 位置情報の取得（imageLocationにはEXIFから取得した位置情報が入っている）
+        // 位置情報の取得
         if (imageLocation) {
           locationData = {
             latitude: imageLocation.latitude,
@@ -274,45 +276,14 @@ const Chat = ({
         message: inputText || null,
         timestamp: serverTimestamp(),
         user: user,
-        photoId: fileName,
-      }
-
-      // 画像サイズがある場合のみ追加
-      if (imageWidth !== null) {
-        messageData.imageWidth = imageWidth
-      }
-      if (imageHeight !== null) {
-        messageData.imageHeight = imageHeight
-      }
-
-      // EXIF位置情報がある場合のみ追加
-      if (locationData) {
-        // NaNチェックを追加
-        if (isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
-          // Sentryにエラーログを送信
-          Sentry.captureMessage('位置情報にNaNが含まれています', {
-            level: 'warning',
-            extra: {
-              locationData,
-              fileInfo: selectedFile
-                ? {
-                    name: selectedFile.name,
-                    type: selectedFile.type,
-                    size: selectedFile.size,
-                    lastModified: selectedFile.lastModified,
-                  }
-                : null,
-              userAgent: navigator.userAgent,
-              platform: navigator.platform,
-              isAndroid: /android/i.test(navigator.userAgent),
-            },
-          })
-          console.error('位置情報にNaNが含まれています:', locationData)
-          // NaNの場合は位置情報を追加しない
-        } else {
-          messageData.latitude = locationData.latitude
-          messageData.longitude = locationData.longitude
-        }
+        photoId: photoId,
+        photoExtension: photoExtension,
+        imageWidth: imageWidth ?? undefined,
+        imageHeight: imageHeight ?? undefined,
+        ...(locationData ? {
+          latitude: locationData.latitude,
+          longitude: locationData.longitude
+        } : {})
       }
 
       // リプライ情報がある場合は追加
@@ -322,6 +293,7 @@ const Chat = ({
           message: replyingTo.message,
           displayName: replyingTo.displayName,
           photoId: replyingTo.photoId,
+          photoExtension: replyingTo.photoExtension,
         }
       }
 
@@ -615,6 +587,7 @@ const Chat = ({
                         timestamp={message.timestamp}
                         user={message.user}
                         photoId={message.photoId}
+                        photoExtension={message.photoExtension}
                         photoURL={message.photoURL}
                         imageWidth={message.imageWidth}
                         imageHeight={message.imageHeight}

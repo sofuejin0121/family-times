@@ -1,4 +1,3 @@
-import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
 import { useState } from "react";
 import { useAppSelector } from "../../app/hooks";
 import { addDoc, collection } from "firebase/firestore";
@@ -14,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { uploadImage } from "../../utils/imageUtils";
 
 interface CreateServerProps {
   isOpen: boolean;
@@ -26,6 +26,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const user = useAppSelector((state) => state.user.user);
+  
   //ファイルが選択された時に実行される関数
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     //選択されたファイルを取得
@@ -52,17 +53,20 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
     
     setIsLoading(true);
     try {
-      let imageUrl = "";
+      let photoId = null;
+      let photoExtension = null;
+      
       if (selectedFile) {
-        const storage = getStorage();
-        const storageRef = ref(storage, `servers/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(storageRef, selectedFile);
-        imageUrl = await getDownloadURL(storageRef);
+        // 新しい画像アップロード関数を使用
+        const result = await uploadImage(selectedFile, 'servers');
+        photoId = result.photoId;
+        photoExtension = result.photoExtension;
       }
       
       await addDoc(collection(db, "servers"), {
         name: serverName,
-        imageUrl,
+        photoId,
+        photoExtension,
         createdAt: new Date(),
         createdBy: user?.uid,
         members: {

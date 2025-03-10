@@ -15,7 +15,7 @@ const MemberSidebar = () => {
   // 現在選択しているサーバーのドキュメントを取得する
   const server = servers.find((server) => server.id === serverId);
   // 取得した単一のserver docからObject.keysを使って、membersオブジェクトのkeyの配列を取得する（これがuniqueIds）
-  const uniqueIds = Object.keys(server?.docData.members || {});
+  const uniqueIds = Object.keys(server?.server.members || {});
 
 
   return (

@@ -10,9 +10,104 @@ const {
 } = require('firebase-functions/v2/firestore') // Firestoreドキュメント作成時のトリガー関数とスケジュール関数
 const { setGlobalOptions } = require('firebase-functions/v2') // Cloud Functionsのグローバル設定を行うための関数
 const logger = require('firebase-functions/logger') // ログ出力用のロガー
+const { getStorage } = require('firebase-admin/storage') // Firebase Storageにアクセスするための関数
+const { onObjectFinalized } = require('firebase-functions/v2/storage') // Firebase Storageオブジェクト変更時のトリガー関数
+const path = require('path') // パス操作を行うためのモジュール
+const os = require('os') // オペレーティングシステムの情報を取得するためのモジュール
+const fs = require('fs') // ファイル操作を行うためのモジュール
+const sharp = require('sharp') // 画像処理を行うためのモジュール
 
 // Firebase Adminアプリを初期化
 initializeApp()
+/**
+ * ストレージバケットに画像がアップロードされたとき、
+ * 最適化のためにAVIF形式に変換します
+ */
+exports.convertToAvif = onObjectFinalized({
+   cpu: 2,
+   region: 'asia-northeast1', 
+  }, async (event) => {
+  // ファイル情報を取得
+  const fileBucket = event.data.bucket
+  const filePath = event.data.name
+  const contentType = event.data.contentType
+
+  // 画像でない場合は処理を終了
+  if (!contentType || !contentType.startsWith('image/')) {
+    return logger.log('これは画像ではありません。')
+  }
+
+  // すでにAVIFまたはWebP形式の場合は処理を終了
+  const fileName = path.basename(filePath)
+  if (fileName.endsWith('.avif') || fileName.endsWith('.webp')) {
+    return logger.log('ファイルはすでに最適化された形式です。')
+  }
+
+  // ファイル拡張子と名前を取得
+  const fileDir = path.dirname(filePath)
+  const fileExtension = path.extname(fileName)
+  const fileNameWithoutExt = path.basename(fileName, fileExtension)
+
+  // ソースファイルと出力先ファイルの参照
+  const bucket = getStorage().bucket(fileBucket)
+  const file = bucket.file(filePath)
+
+  // 処理用の一時ディレクトリを作成
+  const workingDir = path.join(os.tmpdir(), 'image-optimization')
+  const tempFilePath = path.join(workingDir, fileName)
+  const tempOutputPath = path.join(workingDir, `${fileNameWithoutExt}.avif`)
+
+  // バケット内の出力ファイルパス（同じディレクトリ構造を維持）
+  const outputFilePath = path.join(fileDir, `${fileNameWithoutExt}.avif`)
+
+  // 一時ディレクトリが存在することを確認
+  await fs.promises.mkdir(workingDir, { recursive: true })
+
+  try {
+    // ファイルを一時ディレクトリにダウンロード
+    await file.download({ destination: tempFilePath })
+    logger.log(`画像を ${tempFilePath} にダウンロードしました`)
+
+    // Sharpで画像を処理
+    await sharp(tempFilePath)
+      .toFormat('avif', { quality: 60 }) // 必要に応じて品質を調整
+      .toFile(tempOutputPath)
+    logger.log(`画像をAVIF形式に変換しました: ${tempOutputPath}`)
+
+    // 変換した画像をCloud Storageにアップロード
+    await bucket.upload(tempOutputPath, {
+      destination: outputFilePath,
+      metadata: {
+        contentType: 'image/avif',
+        // オプション: Cache-Controlヘッダーを設定
+        cacheControl: 'public, max-age=31536000',
+      },
+    })
+    logger.log(`AVIF画像をアップロードしました: ${outputFilePath}`)
+
+    // オプション: 元のファイルを削除する場合はコメントを解除
+    // await file.delete();
+    // logger.log(`元の画像を削除しました: ${filePath}`);
+
+    // 一時ディレクトリを削除
+    await fs.promises.rm(workingDir, { recursive: true, force: true })
+    logger.log('一時ファイルを削除しました')
+
+    return logger.log('画像変換が完了しました！')
+  } catch (error) {
+    logger.error('画像処理中にエラーが発生しました:', error)
+
+    // エラーが発生した場合でも一時ファイルを削除
+    try {
+      await fs.promises.rm(workingDir, { recursive: true, force: true })
+      logger.log('エラー後に一時ファイルを削除しました')
+    } catch (cleanupError) {
+      logger.error('一時ファイルの削除中にエラーが発生しました:', cleanupError)
+    }
+
+    throw error
+  }
+})
 // Firestoreデータベースへの参照を取得
 const firestore = getFirestore()
 
@@ -100,17 +195,20 @@ exports.sendMessageNotification = onDocumentCreated(
 
               // 送信するトークンのリストを作成
               const tokensToSend = []
-              
+
               // 従来の単一トークン（後方互換性のため）
               if (userData.fcmToken) {
                 tokensToSend.push(userData.fcmToken)
               }
-              
+
               // デバイスごとのトークンマップがある場合
-              if (userData.fcmTokensMap && typeof userData.fcmTokensMap === 'object') {
+              if (
+                userData.fcmTokensMap &&
+                typeof userData.fcmTokensMap === 'object'
+              ) {
                 // 各デバイスのトークンを追加（重複を避けるためにSet使用）
                 const uniqueTokens = new Set(tokensToSend)
-                Object.values(userData.fcmTokensMap).forEach(deviceData => {
+                Object.values(userData.fcmTokensMap).forEach((deviceData) => {
                   if (deviceData && deviceData.token) {
                     uniqueTokens.add(deviceData.token)
                   }
@@ -118,7 +216,7 @@ exports.sendMessageNotification = onDocumentCreated(
                 tokensToSend.length = 0 // 配列をクリア
                 tokensToSend.push(...uniqueTokens) // Setから配列に戻す
               }
-              
+
               // 送信するトークンがない場合
               if (tokensToSend.length === 0) {
                 logger.log(`User ${uid} has no FCM tokens`)
@@ -164,7 +262,7 @@ exports.sendMessageNotification = onDocumentCreated(
               const invalidTokens = []
               // 有効なトークンを記録する配列
               const validTokens = []
-              
+
               // 各トークンに通知を送信
               for (const token of tokensToSend) {
                 try {
@@ -173,50 +271,67 @@ exports.sendMessageNotification = onDocumentCreated(
                     token: token,
                     ...payload,
                   })
-                  logger.log(`Notification sent to ${uid} (token: ${token.substring(0, 10)}...)`)
+                  logger.log(
+                    `Notification sent to ${uid} (token: ${token.substring(0, 10)}...)`
+                  )
                   validTokens.push(token)
                 } catch (err) {
-                  logger.error(`Error sending notification to ${uid} (token: ${token.substring(0, 10)}...):`, err)
-                  
+                  logger.error(
+                    `Error sending notification to ${uid} (token: ${token.substring(0, 10)}...):`,
+                    err
+                  )
+
                   // トークンが無効な場合
                   if (
                     err.code === 'messaging/invalid-registration-token' ||
-                    err.code === 'messaging/registration-token-not-registered' ||
+                    err.code ===
+                      'messaging/registration-token-not-registered' ||
                     err.message.includes('404') ||
                     err.message.includes('Not Found')
                   ) {
                     invalidTokens.push(token)
-                    logger.error(`[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, トークン: ${token.substring(0, 10)}...`)
+                    logger.error(
+                      `[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, トークン: ${token.substring(0, 10)}...`
+                    )
                   }
                 }
               }
-              
+
               // 無効なトークンがある場合、ユーザードキュメントを更新
               if (invalidTokens.length > 0) {
                 // 更新するデータを準備
                 const updateData = {}
-                
+
                 // fcmTokensMapから無効なトークンを削除
                 if (userData.fcmTokensMap) {
                   const updatedTokensMap = { ...userData.fcmTokensMap }
                   let mapUpdated = false
-                  
+
                   // 各デバイスのトークンをチェック
-                  Object.entries(updatedTokensMap).forEach(([deviceId, deviceData]) => {
-                    if (deviceData && deviceData.token && invalidTokens.includes(deviceData.token)) {
-                      // このデバイスのトークンが無効なので削除
-                      delete updatedTokensMap[deviceId]
-                      mapUpdated = true
+                  Object.entries(updatedTokensMap).forEach(
+                    ([deviceId, deviceData]) => {
+                      if (
+                        deviceData &&
+                        deviceData.token &&
+                        invalidTokens.includes(deviceData.token)
+                      ) {
+                        // このデバイスのトークンが無効なので削除
+                        delete updatedTokensMap[deviceId]
+                        mapUpdated = true
+                      }
                     }
-                  })
-                  
+                  )
+
                   if (mapUpdated) {
                     updateData.fcmTokensMap = updatedTokensMap
                   }
                 }
-                
+
                 // メインのfcmTokenが無効な場合
-                if (userData.fcmToken && invalidTokens.includes(userData.fcmToken)) {
+                if (
+                  userData.fcmToken &&
+                  invalidTokens.includes(userData.fcmToken)
+                ) {
                   // 有効なトークンがあれば、それをメインのトークンに設定
                   if (validTokens.length > 0) {
                     updateData.fcmToken = validTokens[0]
@@ -227,11 +342,16 @@ exports.sendMessageNotification = onDocumentCreated(
                     updateData.tokenErrorMessage = '全てのトークンが無効です'
                   }
                 }
-                
+
                 // ユーザードキュメントを更新
                 if (Object.keys(updateData).length > 0) {
-                  await firestore.collection('users').doc(uid).update(updateData)
-                  logger.error(`[FCMError] ユーザーのトークン情報を更新しました - ${uid}`)
+                  await firestore
+                    .collection('users')
+                    .doc(uid)
+                    .update(updateData)
+                  logger.error(
+                    `[FCMError] ユーザーのトークン情報を更新しました - ${uid}`
+                  )
                 }
               }
             } catch (err) {
@@ -250,48 +370,54 @@ exports.sendMessageNotification = onDocumentCreated(
   }
 )
 
-// 新しい関数：無効なFCMトークンを持つユーザーのトークンを定期的にクリーンアップ
-exports.cleanupInvalidFCMTokens = onSchedule(
-  {
-    schedule: 'every 24 hours',
-    region: 'asia-northeast1',
-  },
-  async (event) => {
-    try {
-      logger.error(`[TokenCleanup] 定期クリーンアップ開始: ${new Date().toISOString()}`)
-      
-      // 最後のトークンエラーから24時間以上経過したユーザーを検索
-      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      
-      // エラーフラグがあり、トークンがnullのユーザーを取得
-      const usersWithErrors = await firestore
-        .collection('users')
-        .where('lastTokenError', '!=', null)
-        .where('fcmToken', '==', null)
-        .get()
-      
-      logger.error(`[TokenCleanup] トークンエラーユーザー数: ${usersWithErrors.size}人`)
-      
-      // 各ユーザーを処理
-      const batch = firestore.batch()
-      usersWithErrors.docs.forEach((doc) => {
-        logger.error(`[TokenCleanup] ユーザー更新フラグを設定: ${doc.id}`)
-        batch.update(doc.ref, {
-          needTokenRefresh: true, // クライアント側で検出するフラグ
-          lastTokenRefreshRequest: new Date(),
-        })
-      })
-      
-      await batch.commit()
-      logger.error(`[TokenCleanup] 完了: ${usersWithErrors.size}人のトークン更新フラグを設定しました`)
-      
-      return null
-    } catch (error) {
-      logger.error('[TokenCleanup] クリーンアップ処理でエラー発生:', error)
-      return null
-    }
-  }
-)
+// // 新しい関数：無効なFCMトークンを持つユーザーのトークンを定期的にクリーンアップ
+// exports.cleanupInvalidFCMTokens = onSchedule(
+//   {
+//     schedule: 'every 24 hours',
+//     region: 'asia-northeast1',
+//   },
+//   async (event) => {
+//     try {
+//       logger.error(
+//         `[TokenCleanup] 定期クリーンアップ開始: ${new Date().toISOString()}`
+//       )
+
+//       // 最後のトークンエラーから24時間以上経過したユーザーを検索
+//       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+
+//       // エラーフラグがあり、トークンがnullのユーザーを取得
+//       const usersWithErrors = await firestore
+//         .collection('users')
+//         .where('lastTokenError', '!=', null)
+//         .where('fcmToken', '==', null)
+//         .get()
+
+//       logger.error(
+//         `[TokenCleanup] トークンエラーユーザー数: ${usersWithErrors.size}人`
+//       )
+
+//       // 各ユーザーを処理
+//       const batch = firestore.batch()
+//       usersWithErrors.docs.forEach((doc) => {
+//         logger.error(`[TokenCleanup] ユーザー更新フラグを設定: ${doc.id}`)
+//         batch.update(doc.ref, {
+//           needTokenRefresh: true, // クライアント側で検出するフラグ
+//           lastTokenRefreshRequest: new Date(),
+//         })
+//       })
+
+//       await batch.commit()
+//       logger.error(
+//         `[TokenCleanup] 完了: ${usersWithErrors.size}人のトークン更新フラグを設定しました`
+//       )
+
+//       return null
+//     } catch (error) {
+//       logger.error('[TokenCleanup] クリーンアップ処理でエラー発生:', error)
+//       return null
+//     }
+//   }
+// )
 
 // 以下はコメントアウトされた機能
 // ユーザーがサーバーに追加された時通知を送信する関数

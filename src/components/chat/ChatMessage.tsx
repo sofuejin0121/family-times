@@ -14,9 +14,8 @@
 
 import { deleteDoc, doc, runTransaction, updateDoc } from 'firebase/firestore'
 import { useAppSelector } from '../../app/hooks'
-import { db, storage } from '../../firebase'
+import { db } from '../../firebase'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { getDownloadURL, ref } from 'firebase/storage'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt'
 import EditIcon from '@mui/icons-material/Edit'
@@ -42,6 +41,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
+import { getImageUrl } from '../../utils/imageUtils'
 // 固定の絵文字リアクションを定義
 const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
@@ -81,6 +81,7 @@ interface User {
  * @property {Timestamp} timestamp - 投稿日時
  * @property {User} user - 投稿者情報
  * @property {string | null} photoId - 添付画像のID
+ * @property {string | null} photoExtension - 添付画像の拡張子
  * @property {string} [photoURL] - 添付画像のURL(オプション)
  * @property {number} [imageWidth] - 画像の幅(オプション)
  * @property {number} [imageHeight] - 画像の高さ(オプション)
@@ -98,6 +99,7 @@ interface Props {
   timestamp: Timestamp
   user: User
   photoId: string | null
+  photoExtension?: string | null
   photoURL?: string
   imageWidth?: number
   imageHeight?: number
@@ -111,7 +113,8 @@ interface Props {
     messageId: string,
     message: string | null,
     displayName: string | null,
-    photoId: string | null
+    photoId: string | null,
+    photoExtension?: string | null
   ) => void
   isReplied?: boolean
   replyTo?: {
@@ -119,6 +122,7 @@ interface Props {
     message: string | null
     displayName: string | null
     photoId: string | null
+    photoExtension?: string | null
   }
 }
 
@@ -142,6 +146,7 @@ interface Props {
 const ChatMessage = ({
   timestamp,
   photoId,
+  photoExtension,
   id,
   message,
   reactions,
@@ -185,18 +190,18 @@ const ChatMessage = ({
 
   useEffect(() => {
     const fetchURL = async () => {
-      // photoIdが存在し、空でない場合のみURLを取得
-      if (photoId && photoId.trim() !== '') {
-        try {
-          const baseURL = await getDownloadURL(ref(storage, photoId))
-          setFileURL(baseURL)
-        } catch (error) {
-          console.log('画像URLの取得に失敗しました:', error)
+      try {
+        const url = await getImageUrl(photoId, photoExtension)
+        if (url) {
+          setFileURL(url)
         }
+      } catch (error) {
+        console.error('画像URLの取得に失敗しました:', error)
       }
     }
+
     fetchURL()
-  }, [photoId])
+  }, [photoId, photoExtension])
 
   const deleteMessage = async () => {
     if (serverId !== null && channelId !== null && id !== null) {
@@ -341,7 +346,8 @@ const ChatMessage = ({
         id,
         message || '', // メッセージがnullの場合は空文字列を渡す
         userDisplayName,
-        photoId || ''
+        photoId || '',
+        photoExtension
       )
     }
 
@@ -446,7 +452,8 @@ const ChatMessage = ({
                     id,
                     message || '', // メッセージがnullの場合は空文字列を渡す
                     userDisplayName,
-                    photoId || ''
+                    photoId || '',
+                    photoExtension
                   )
                 }
                 className="focus-visible:ring-ring border-input bg-background hover:bg-accent hover:text-accent-foreground hidden h-10 cursor-pointer items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 md:block md:opacity-0 md:transition-all md:duration-200 md:ease-in-out md:group-hover:opacity-100"

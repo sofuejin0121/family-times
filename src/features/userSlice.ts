@@ -1,5 +1,17 @@
-import { createSlice } from "@reduxjs/toolkit";
+import { createSlice, createAction } from "@reduxjs/toolkit";
 import { InitialUserState } from "../Types";
+
+interface UserState {
+  user: {
+    uid: string
+    email: string
+    photo: string
+    photoId?: string
+    photoExtension?: string
+    displayName: string
+  } | null
+  isLoading: boolean
+}
 
 const initialState: InitialUserState = {
   user: null,
@@ -29,17 +41,25 @@ export const userSlice = createSlice({
     },
     //ユーザー情報を更新
     updateUserInfo: (state, action) => {
-      //既存のユーザー情報がある場合のみ更新
       if (state.user) {
-        //action.payloadのユーザー情報をマージ
         state.user = {
-          ...state.user, //スプレッド構文で既存のプロパティを保持
-          ...action.payload, //新しいプロパティで上書き
+          ...state.user,
+          displayName: action.payload.displayName || state.user.displayName,
+          photo: action.payload.photo || state.user.photo,
+          photoId: action.payload.photoId || state.user.photoId,
+          photoExtension: action.payload.photoExtension || state.user.photoExtension,
         };
       }
     },
   },
 });
 
-export const { login, logout, updateUserInfo,startAuthCheck,finishAuthCheck  } = userSlice.actions;
+export const { login, logout, startAuthCheck, finishAuthCheck } = userSlice.actions;
 export default userSlice.reducer;
+
+export const updateUserInfo = createAction<{
+  displayName?: string
+  photo?: string
+  photoId?: string
+  photoExtension?: string
+}>('user/updateUserInfo')

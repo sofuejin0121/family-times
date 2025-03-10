@@ -10,17 +10,31 @@ import {
 import { db } from "../firebase";
 import { useAppSelector } from "../app/hooks";
 import { Server as ServerDoc } from "../types/server";
+import { Timestamp } from "firebase/firestore";
 
 interface Server {
   id: string;
-  docData: ServerDoc;
+  server: {
+    name: string;
+    imageUrl?: string;
+    photoId?: string;
+    photoExtension?: string;
+    createdAt: Timestamp;
+    createdBy: string;
+    members: {
+      [key: string]: {
+        role: string;
+        joinedAt: Timestamp;
+      };
+    };
+  };
 }
 
 //サーバー一覧を取得するカスタムフック
 const useServer = () => {
   //サーバー情報を格納するstate
   const [documents, setDocuments] = useState<Server[]>([]);
-  const [loading, setLoading] = useState(true); // ローディング状態を追加
+  const [loading, setLoading] = useState(true); // ローディング状態を追加@imageUtils.ts 
   const user = useAppSelector((state) => state.user.user);
   
   const collectionRef: Query<DocumentData> | null = useMemo(() => {
@@ -45,12 +59,21 @@ const useServer = () => {
       collectionRef,
       (querySnapshot) => {
         const serverResults: Server[] = [];
-        querySnapshot.docs.forEach((doc) =>
+        querySnapshot.docs.forEach((doc) => {
+          const data = doc.data() as ServerDoc;
           serverResults.push({
             id: doc.id,
-            docData: doc.data() as ServerDoc,
-          })
-        );
+            server: {
+              name: data.name,
+              imageUrl: data.imageUrl,
+              photoId: data.photoId,
+              photoExtension: data.photoExtension,
+              createdAt: data.createdAt,
+              createdBy: data.createdBy,
+              members: data.members,
+            },
+          });
+        });
         setDocuments(serverResults);
         setLoading(false); // データ取得完了時にローディング状態をfalseに設定
       },

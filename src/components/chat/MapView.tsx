@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { Timestamp } from 'firebase/firestore'
-import { getDownloadURL, ref } from 'firebase/storage'
-import { storage } from '../../firebase'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Map, { Marker, Popup, NavigationControl, useMap } from 'react-map-gl'
 import MapboxLanguage from '@mapbox/mapbox-gl-language'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { getImageUrl } from '../../utils/imageUtils'
 
 // Mapboxのアクセストークン（環境変数から取得するか、ここに直接記述）
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
@@ -40,7 +39,8 @@ interface MapViewProps {
     latitude?: number
     longitude?: number
     photoURL?: string
-    photoId?: string
+    photoId?: string | null
+    photoExtension?: string | null
     message?: string | null
     timestamp?: Timestamp
     user?: {
@@ -145,22 +145,24 @@ const MapView = ({ messages }: MapViewProps) => {
   useEffect(() => {
     const preloadImages = async () => {
       // 画像IDの配列を作成（重複なし）
-      const photoIds = Array.from(
+      const photoIdsWithExt = Array.from(
         new Set(
           geoMessagesWithPhotos
             .filter((msg) => msg.photoId && !imageUrls[msg.photoId])
-            .map((msg) => msg.photoId!)
+            .map((msg) => ({
+              photoId: msg.photoId!,
+              photoExtension: msg.photoExtension
+            }))
         )
       )
 
-      if (photoIds.length === 0) return
+      if (photoIdsWithExt.length === 0) return
 
       // 複数の画像を並列で読み込む
-      const promises = photoIds.map(async (photoId) => {
+      const promises = photoIdsWithExt.map(async ({ photoId, photoExtension }) => {
         try {
-          const imageRef = ref(storage, photoId)
-          const url = await getDownloadURL(imageRef)
-          return { photoId, url }
+          const url = await getImageUrl(photoId, photoExtension)
+          return url ? { photoId, url } : null
         } catch (error) {
           console.error(`Error loading image ${photoId}:`, error)
           return null

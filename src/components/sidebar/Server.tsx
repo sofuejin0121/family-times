@@ -8,18 +8,39 @@ import {
 } from '@/components/ui/tooltip'
 import useChannel from '../../hooks/useChannel'
 import { setChannelInfo } from '../../features/channelSlice'
+import { useEffect, useState } from 'react'
+import { getServerOrUserImageUrl } from '../../utils/imageUtils'
 
 type Props = {
   id: string
   name: string
-  imageUrl: string
+  photoId?: string | null
+  photoExtension?: string | null
+  imageUrl?: string // 後方互換性のため残す
   onClick?: () => void
 }
 
 const Server = (props: Props) => {
-  const { id, name, imageUrl } = props
+  const { id, name, photoId, photoExtension, imageUrl } = props
+  const [serverImageUrl, setServerImageUrl] = useState<string | null>(imageUrl || null)
   const dispatch = useAppDispatch()
   const { documents: channels } = useChannel()
+
+  // 画像URLを取得
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      if (photoId && photoExtension) {
+        const url = await getServerOrUserImageUrl(photoId, photoExtension, 'servers')
+        if (url) {
+          setServerImageUrl(url)
+        }
+      }
+    }
+
+    if (!imageUrl && photoId && photoExtension) {
+      fetchImageUrl()
+    }
+  }, [photoId, photoExtension, imageUrl])
 
   const handleServerClick = () => {
     dispatch(
@@ -48,9 +69,9 @@ const Server = (props: Props) => {
             className="group relative m-2 flex h-12 w-12 cursor-pointer items-center justify-center rounded-[24px] bg-zinc-700 text-white transition-all duration-200 ease-in-out hover:scale-105 hover:rounded-[16px] hover:bg-indigo-500"
             onClick={handleServerClick}
           >
-            {imageUrl ? (
+            {serverImageUrl ? (
               <img
-                src={imageUrl}
+                src={serverImageUrl}
                 alt={name}
                 className="h-full w-full rounded-[24px] object-cover transition-all duration-200 group-hover:rounded-[16px]"
               />
