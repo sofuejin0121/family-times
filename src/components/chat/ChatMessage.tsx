@@ -99,7 +99,7 @@ interface Props {
   timestamp: Timestamp
   user: User
   photoId: string | null
-  photoExtension?: string | null
+  photoExtension: string | null
   photoURL?: string
   imageWidth?: number
   imageHeight?: number
@@ -191,7 +191,7 @@ const ChatMessage = ({
   useEffect(() => {
     const fetchURL = async () => {
       try {
-        const url = await getImageUrl(photoId, photoExtension)
+        const url = await getImageUrl(photoId, photoExtension, "messages")
         if (url) {
           setFileURL(url)
         }

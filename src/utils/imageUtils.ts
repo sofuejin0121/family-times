@@ -11,7 +11,8 @@ import { v4 as uuid4 } from 'uuid'
  */
 export const getImageUrl = async (
   photoId: string | null,
-  extension?: string | null
+  extension: string | null,
+  path: string
 ): Promise<string | null> => {
   // photoIdのバリデーション
   if (!photoId || photoId.trim() === '') {
@@ -19,10 +20,12 @@ export const getImageUrl = async (
   }
 
   // 完全なファイル名を構築
-  const originalFileName = extension ? `${photoId}.${extension}` : photoId
+  const originalFileName = extension
+    ? `${path}/${photoId}.${extension}`
+    : `${path}/${photoId}`
 
   // AVIF形式のファイル名
-  const avifFileName = `${photoId}.avif`
+  const avifFileName = `${path}/${photoId}.avif`
 
   // エラーログ出力用のヘルパー関数
   const logError = (error: unknown) => {
@@ -73,9 +76,10 @@ export const uploadImage = async (
   // ファイル名から拡張子を抽出
   const originalFileName = file.name
   const lastDotIndex = originalFileName.lastIndexOf('.')
-  const extension = lastDotIndex !== -1
-    ? originalFileName.substring(lastDotIndex + 1).toLowerCase()
-    : ''
+  const extension =
+    lastDotIndex !== -1
+      ? originalFileName.substring(lastDotIndex + 1).toLowerCase()
+      : ''
 
   // UUIDを生成
   const photoId = uuid4()
@@ -91,31 +95,3 @@ export const uploadImage = async (
 
   return { photoId, photoExtension, fullPath }
 }
-
-/**
- * サーバーやユーザーの画像URLを取得する関数
- * @param photoId 画像ID
- * @param photoExtension 拡張子
- * @param path 保存先のパス（例: 'servers' または 'users/userId'）
- * @returns {Promise<string | null>} 画像URL
- */
-export const getServerOrUserImageUrl = async (
-  photoId: string | null,
-  photoExtension: string | null,
-  path?: string
-): Promise<string | null> => {
-  if (!photoId || !photoExtension) return null
-
-  try {
-    // パスが指定されている場合は、そのパスを使用
-    const fullPath = path 
-      ? `${path}/${photoId}.${photoExtension}`
-      : `${photoId}.${photoExtension}`
-    
-    const url = await getDownloadURL(ref(storage, fullPath))
-    return url
-  } catch (error) {
-    console.error('画像URLの取得に失敗しました:', error)
-    return null
-  }
-} 

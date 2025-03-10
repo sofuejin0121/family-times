@@ -40,7 +40,7 @@ interface MapViewProps {
     longitude?: number
     photoURL?: string
     photoId?: string | null
-    photoExtension?: string | null
+    photoExtension: string | null
     message?: string | null
     timestamp?: Timestamp
     user?: {
@@ -161,7 +161,7 @@ const MapView = ({ messages }: MapViewProps) => {
       // 複数の画像を並列で読み込む
       const promises = photoIdsWithExt.map(async ({ photoId, photoExtension }) => {
         try {
-          const url = await getImageUrl(photoId, photoExtension)
+          const url = await getImageUrl(photoId, photoExtension, "messages")
           return url ? { photoId, url } : null
         } catch (error) {
           console.error(`Error loading image ${photoId}:`, error)

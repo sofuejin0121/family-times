@@ -17,7 +17,7 @@ interface Reaction {
 interface Messages {
   id: string
   photoId: string | null
-  photoExtension?: string | null
+  photoExtension: string | null
   photoURL: string
   timestamp: Timestamp
   message: string

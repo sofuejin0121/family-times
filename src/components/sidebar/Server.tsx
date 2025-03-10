@@ -16,7 +16,7 @@ import {
 import useChannel from '../../hooks/useChannel'
 import { setChannelInfo } from '../../features/channelSlice'
 import { useEffect, useState } from 'react'
-import { getServerOrUserImageUrl } from '../../utils/imageUtils'
+import { getImageUrl } from '../../utils/imageUtils'
 import { Edit, Trash, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore'
@@ -66,7 +66,7 @@ const Server = (props: Props) => {
     const fetchImageUrl = async () => {
       if (photoId && photoExtension) {
         try {
-          const url = await getServerOrUserImageUrl(
+          const url = await getImageUrl(
             photoId,
             photoExtension,
             'servers'

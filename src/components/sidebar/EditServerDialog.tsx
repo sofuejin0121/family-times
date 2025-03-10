@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { doc, updateDoc, getDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { toast } from 'sonner'
-import { uploadImage } from '../../utils/imageUtils'
+import { uploadImage, getImageUrl } from '../../utils/imageUtils'
 import { X, Upload } from 'lucide-react'
 
 interface EditServerDialogProps {
@@ -37,9 +37,7 @@ export function EditServerDialog({
     const fetchCurrentImage = async () => {
       if (serverPhotoId && serverPhotoExtension) {
         try {
-          const imageUrl = await import('../../utils/imageUtils').then(module => 
-            module.getServerOrUserImageUrl(serverPhotoId, serverPhotoExtension, 'servers')
-          )
+          const imageUrl = await getImageUrl(serverPhotoId, serverPhotoExtension, 'servers')
           setCurrentImageUrl(imageUrl)
         } catch (error) {
           console.error('サーバー画像の取得に失敗しました:', error)

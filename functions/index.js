@@ -23,91 +23,86 @@ initializeApp()
  * ストレージバケットに画像がアップロードされたとき、
  * 最適化のためにAVIF形式に変換します
  */
-exports.convertToAvif = onObjectFinalized({
-   cpu: 2,
-   region: 'asia-northeast1', 
-  }, async (event) => {
-  // ファイル情報を取得
-  const fileBucket = event.data.bucket
-  const filePath = event.data.name
-  const contentType = event.data.contentType
+exports.convertToAvif = onObjectFinalized(
+  {
+    cpu: 2,
+    region: 'asia-northeast1',
+    memory: '1GiB',  // メモリ制限を1GBに増やす
+    timeoutSeconds: 300,  // タイムアウトも増やす（5分）
+  },
+  async (event) => {
+    // ファイル情報を取得
+    const fileBucket = event.data.bucket
+    const filePath = event.data.name
+    const contentType = event.data.contentType
 
-  // 画像でない場合は処理を終了
-  if (!contentType || !contentType.startsWith('image/')) {
-    return logger.log('これは画像ではありません。')
-  }
-
-  // すでにAVIFまたはWebP形式の場合は処理を終了
-  const fileName = path.basename(filePath)
-  if (fileName.endsWith('.avif') || fileName.endsWith('.webp')) {
-    return logger.log('ファイルはすでに最適化された形式です。')
-  }
-
-  // ファイル拡張子と名前を取得
-  const fileDir = path.dirname(filePath)
-  const fileExtension = path.extname(fileName)
-  const fileNameWithoutExt = path.basename(fileName, fileExtension)
-
-  // ソースファイルと出力先ファイルの参照
-  const bucket = getStorage().bucket(fileBucket)
-  const file = bucket.file(filePath)
-
-  // 処理用の一時ディレクトリを作成
-  const workingDir = path.join(os.tmpdir(), 'image-optimization')
-  const tempFilePath = path.join(workingDir, fileName)
-  const tempOutputPath = path.join(workingDir, `${fileNameWithoutExt}.avif`)
-
-  // バケット内の出力ファイルパス（同じディレクトリ構造を維持）
-  const outputFilePath = path.join(fileDir, `${fileNameWithoutExt}.avif`)
-
-  // 一時ディレクトリが存在することを確認
-  await fs.promises.mkdir(workingDir, { recursive: true })
-
-  try {
-    // ファイルを一時ディレクトリにダウンロード
-    await file.download({ destination: tempFilePath })
-    logger.log(`画像を ${tempFilePath} にダウンロードしました`)
-
-    // Sharpで画像を処理
-    await sharp(tempFilePath)
-      .toFormat('avif', { quality: 60 }) // 必要に応じて品質を調整
-      .toFile(tempOutputPath)
-    logger.log(`画像をAVIF形式に変換しました: ${tempOutputPath}`)
-
-    // 変換した画像をCloud Storageにアップロード
-    await bucket.upload(tempOutputPath, {
-      destination: outputFilePath,
-      metadata: {
-        contentType: 'image/avif',
-        // オプション: Cache-Controlヘッダーを設定
-        cacheControl: 'public, max-age=31536000',
-      },
-    })
-    logger.log(`AVIF画像をアップロードしました: ${outputFilePath}`)
-
-    // オプション: 元のファイルを削除する場合はコメントを解除
-    // await file.delete();
-    // logger.log(`元の画像を削除しました: ${filePath}`);
-
-    // 一時ディレクトリを削除
-    await fs.promises.rm(workingDir, { recursive: true, force: true })
-    logger.log('一時ファイルを削除しました')
-
-    return logger.log('画像変換が完了しました！')
-  } catch (error) {
-    logger.error('画像処理中にエラーが発生しました:', error)
-
-    // エラーが発生した場合でも一時ファイルを削除
-    try {
-      await fs.promises.rm(workingDir, { recursive: true, force: true })
-      logger.log('エラー後に一時ファイルを削除しました')
-    } catch (cleanupError) {
-      logger.error('一時ファイルの削除中にエラーが発生しました:', cleanupError)
+    // 画像でない場合は処理を終了
+    if (!contentType || !contentType.startsWith('image/')) {
+      return logger.log('これは画像ではありません。')
     }
 
-    throw error
+    // すでにAVIF形式の場合は処理を終了
+    const fileName = path.basename(filePath)
+    if (fileName.endsWith('.avif')) {
+      return logger.log('ファイルはすでにAVIF形式です。')
+    }
+
+    try {
+      // メモリ使用量を最適化するために、ストリーム処理を使用
+      const bucket = getStorage().bucket(fileBucket)
+      const file = bucket.file(filePath)
+      const fileStream = file.createReadStream()
+
+      // 一時ディレクトリを作成
+      const workingDir = path.join(os.tmpdir(), 'image-optimization')
+      await fs.promises.mkdir(workingDir, { recursive: true })
+
+      const outputFilePath = path.join(
+        path.dirname(filePath),
+        `${path.basename(fileName, path.extname(fileName))}.avif`
+      )
+
+      // Sharpのパイプラインを設定
+      const transform = sharp()
+        .toFormat('avif', {
+          quality: 60,
+          effort: 4,
+        })
+
+      // Cloud Storageに直接アップロード
+      const outputFile = bucket.file(outputFilePath)
+      const outputStream = outputFile.createWriteStream({
+        metadata: {
+          contentType: 'image/avif',
+          cacheControl: 'public, max-age=31536000',
+        },
+      })
+
+      // ストリームを接続してメモリ効率的に処理
+      await new Promise((resolve, reject) => {
+        fileStream
+          .pipe(transform)
+          .pipe(outputStream)
+          .on('finish', resolve)
+          .on('error', reject)
+      })
+
+      logger.log(`AVIF画像をアップロードしました: ${outputFilePath}`)
+      return logger.log('画像変換が完了しました！')
+
+    } catch (error) {
+      logger.error('画像処理中にエラーが発生しました:', error)
+      throw error
+    } finally {
+      // 一時ディレクトリのクリーンアップ
+      try {
+        await fs.promises.rm(workingDir, { recursive: true, force: true })
+      } catch (error) {
+        logger.error('クリーンアップ中にエラーが発生しました:', error)
+      }
+    }
   }
-})
+)
 // Firestoreデータベースへの参照を取得
 const firestore = getFirestore()
 
@@ -369,196 +364,3 @@ exports.sendMessageNotification = onDocumentCreated(
     }
   }
 )
-
-// // 新しい関数：無効なFCMトークンを持つユーザーのトークンを定期的にクリーンアップ
-// exports.cleanupInvalidFCMTokens = onSchedule(
-//   {
-//     schedule: 'every 24 hours',
-//     region: 'asia-northeast1',
-//   },
-//   async (event) => {
-//     try {
-//       logger.error(
-//         `[TokenCleanup] 定期クリーンアップ開始: ${new Date().toISOString()}`
-//       )
-
-//       // 最後のトークンエラーから24時間以上経過したユーザーを検索
-//       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
-
-//       // エラーフラグがあり、トークンがnullのユーザーを取得
-//       const usersWithErrors = await firestore
-//         .collection('users')
-//         .where('lastTokenError', '!=', null)
-//         .where('fcmToken', '==', null)
-//         .get()
-
-//       logger.error(
-//         `[TokenCleanup] トークンエラーユーザー数: ${usersWithErrors.size}人`
-//       )
-
-//       // 各ユーザーを処理
-//       const batch = firestore.batch()
-//       usersWithErrors.docs.forEach((doc) => {
-//         logger.error(`[TokenCleanup] ユーザー更新フラグを設定: ${doc.id}`)
-//         batch.update(doc.ref, {
-//           needTokenRefresh: true, // クライアント側で検出するフラグ
-//           lastTokenRefreshRequest: new Date(),
-//         })
-//       })
-
-//       await batch.commit()
-//       logger.error(
-//         `[TokenCleanup] 完了: ${usersWithErrors.size}人のトークン更新フラグを設定しました`
-//       )
-
-//       return null
-//     } catch (error) {
-//       logger.error('[TokenCleanup] クリーンアップ処理でエラー発生:', error)
-//       return null
-//     }
-//   }
-// )
-
-// 以下はコメントアウトされた機能
-// ユーザーがサーバーに追加された時通知を送信する関数
-// exports.sendServerInviteNotification = onDocumentCreated(
-//   {
-//     document: 'servers/{serverId}/members/{userId}',
-//     region: 'asia-northeast1', // リージョンを明示的に指定
-//   },
-//   async (event) => {
-//     const { serverId, userId } = event.params
-//
-//     try {
-//       // サーバードキュメントを取得
-//       const serverDoc = await firestore
-//         .collection('servers')
-//         .doc(serverId)
-//         .get()
-//       const serverData = serverDoc.data()
-//
-//       if (!serverData) {
-//         logger.log('サーバーデータがありません')
-//         return null
-//       }
-//
-//       // FCMトークンを取得するためのユーザードキュメント
-//       const userDoc = await firestore.collection('users').doc(userId).get()
-//       const userData = userDoc.data()
-//
-//       if (!userData || !userData.fcmToken) {
-//         logger.log(`User ${userId} has no FCM token`)
-//         return null
-//       }
-//
-//       // 通知ペイロードを準備
-//       const payload = {
-//         notification: {
-//           title: `${serverData.serverName}に招待されました`,
-//           body: `サーバーに招待されました`,
-//           icon: serverData.serverIcon || '/homeicon.png',
-//           clickAction: `https://${process.env.VITE_DOMAIN}/servers/${serverId}`,
-//         },
-//         data: {
-//           serverId,
-//           type: 'serverInvite',
-//         },
-//       }
-//       //通知を送信
-//       await getMessaging().sendToDevice(userData.fcmToken, payload)
-//       logger.log(`Notification sent to ${userId} for server invite`)
-//     } catch (err) {
-//       logger.error('エラーが発生しました:', err)
-//       return null
-//     }
-//   }
-// )
-
-// メッセージでユーザーがメンションされたとき通知を送信する関数
-// exports.sendMentionNotification = onDocumentCreated(
-//   'servers/{serverId}/channels/{channelId}/messages/{messageId}',
-//   async (event) => {
-//     const { serverId, channelId, messageId } = event.params
-//     const messageData = event.data.data()
-//
-//     if (!messageData || !messageData.message) {
-//       return null
-//     }
-//
-//     try {
-//       // メッセージ内の@メンションをチェック
-//       // これは単純な実装 - より洗練されたアプローチを使うかもしれません
-//       const mentionRegex = /@(\S+)/g
-//       const mentions = messageData.message.match(mentionRegex)
-//
-//       if (!mentions || mentions.length === 0) {
-//         return null
-//       }
-//
-//       // チャンネル名を取得
-//       const channelDoc = await firestore
-//         .collection('servers')
-//         .doc(serverId)
-//         .collection('channels')
-//         .doc(channelId)
-//         .get()
-//
-//       const channelData = channelDoc.data()
-//       if (!channelData) {
-//         logger.log('No channel data found')
-//         return null
-//       }
-//
-//       const channelName = channelData.channelName
-//
-//       // サーバー内のすべてのユーザーを取得
-//       const usersSnapshot = await firestore.collection('users').get()
-//       const users = usersSnapshot.docs.map(doc => ({
-//         uid: doc.id,
-//         ...doc.data()
-//       }))
-//
-//       // 各メンションについて、一致するユーザーを見つけて通知を送信
-//       for (const mention of mentions) {
-//         // @メンションからユーザー名を抽出
-//         const username = mention.substring(1) // @記号を削除
-//
-//         // メンションに一致するユーザーを見つける
-//         // これは単純な実装 - 実際のアプリではユーザーを特定するためのより正確な方法があるでしょう
-//         const matchedUsers = users.filter(user =>
-//           user.displayName && user.displayName.toLowerCase() === username.toLowerCase())
-//
-//         // メッセージ作成者には通知しない
-//         const filteredUsers = matchedUsers.filter(user => user.uid !== messageData.user.uid)
-//
-//         // メンションされたユーザーに通知を送信
-//         for (const user of filteredUsers) {
-//           if (!user.fcmToken) continue
-//
-//           const payload = {
-//             notification: {
-//               title: `${messageData.user.displayName} mentioned you in #${channelName}`,
-//               body: messageData.message,
-//               icon: messageData.user.photo || '/favicon.png',
-//               clickAction: `https://${process.env.VITE_DOMAIN}/servers/${serverId}/channels/${channelId}`,
-//             },
-//             data: {
-//               serverId: serverId,
-//               channelId: channelId,
-//               messageId: messageId,
-//               type: 'mention'
-//             }
-//           }
-//
-//           await getMessaging().sendToDevice(user.fcmToken, payload)
-//           logger.log(`Mention notification sent to user ${user.uid}`)
-//         }
-//       }
-//
-//       return null
-//     } catch (error) {
-//       logger.error('Error in sendMentionNotification:', error)
-//       return null
-//     }
-//   }
-// )

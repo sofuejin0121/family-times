@@ -21,6 +21,8 @@ const useUsers = () => {
           UsersResults.push({
             uid: doc.data().uid,
             photoURL: doc.data().photoURL,
+            photoId: doc.data().photoId,
+            photoExtension: doc.data().photoExtension,
             displayName: doc.data().displayName,
             email: doc.data().email,
           })
