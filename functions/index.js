@@ -27,8 +27,8 @@ exports.convertToAvif = onObjectFinalized(
   {
     cpu: 2,
     region: 'asia-northeast1',
-    memory: '1GiB',  // メモリ制限を1GBに増やす
-    timeoutSeconds: 300,  // タイムアウトも増やす（5分）
+    memory: '2GiB', // メモリ制限を2GBに増やす
+    timeoutSeconds: 300,
   },
   async (event) => {
     // ファイル情報を取得
@@ -47,15 +47,15 @@ exports.convertToAvif = onObjectFinalized(
       return logger.log('ファイルはすでにAVIF形式です。')
     }
 
+    // 一時ディレクトリを作成
+    const workingDir = path.join(os.tmpdir(), 'image-optimization')
+
     try {
+      await fs.promises.mkdir(workingDir, { recursive: true })
+
       // メモリ使用量を最適化するために、ストリーム処理を使用
       const bucket = getStorage().bucket(fileBucket)
       const file = bucket.file(filePath)
-      const fileStream = file.createReadStream()
-
-      // 一時ディレクトリを作成
-      const workingDir = path.join(os.tmpdir(), 'image-optimization')
-      await fs.promises.mkdir(workingDir, { recursive: true })
 
       const outputFilePath = path.join(
         path.dirname(filePath),
@@ -63,15 +63,18 @@ exports.convertToAvif = onObjectFinalized(
       )
 
       // Sharpのパイプラインを設定
-      const transform = sharp()
-        .toFormat('avif', {
-          quality: 60,
-          effort: 4,
-        })
+      const transform = sharp({
+        limitInputPixels: 268402689, // 制限を緩和（16384 x 16384）
+        failOnError: false,
+      }).toFormat('avif', {
+        quality: 60,
+        effort: 4,
+      })
 
       // Cloud Storageに直接アップロード
       const outputFile = bucket.file(outputFilePath)
       const outputStream = outputFile.createWriteStream({
+        resumable: false, // 小さいファイルの場合はfalseの方が高速
         metadata: {
           contentType: 'image/avif',
           cacheControl: 'public, max-age=31536000',
@@ -80,25 +83,29 @@ exports.convertToAvif = onObjectFinalized(
 
       // ストリームを接続してメモリ効率的に処理
       await new Promise((resolve, reject) => {
-        fileStream
-          .pipe(transform)
-          .pipe(outputStream)
-          .on('finish', resolve)
+        file
+          .createReadStream()
           .on('error', reject)
+          .pipe(transform)
+          .on('error', reject)
+          .pipe(outputStream)
+          .on('error', reject)
+          .on('finish', resolve)
       })
 
       logger.log(`AVIF画像をアップロードしました: ${outputFilePath}`)
       return logger.log('画像変換が完了しました！')
-
     } catch (error) {
       logger.error('画像処理中にエラーが発生しました:', error)
       throw error
     } finally {
       // 一時ディレクトリのクリーンアップ
-      try {
-        await fs.promises.rm(workingDir, { recursive: true, force: true })
-      } catch (error) {
-        logger.error('クリーンアップ中にエラーが発生しました:', error)
+      if (workingDir) {
+        try {
+          await fs.promises.rm(workingDir, { recursive: true, force: true })
+        } catch (error) {
+          logger.error('クリーンアップ中にエラーが発生しました:', error)
+        }
       }
     }
   }
