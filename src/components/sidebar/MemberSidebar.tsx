@@ -4,7 +4,10 @@ import useServer from '../../hooks/useServer'
 import { useAppSelector } from '../../app/hooks'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import { Sidebar, SidebarContent, SidebarHeader } from '@/components/ui/sidebar'
-import { getImageUrl } from '@/utils/imageUtils'
+import { getCachedImageUrl } from '@/utils/imageUtils'
+
+type UserId = string
+type UserPhotoUrl = string
 
 const MemberSidebar = () => {
   const { documents: users } = useUsers()
@@ -28,7 +31,7 @@ const MemberSidebar = () => {
 
   // 画像URLのキャッシュ用state
   const [userPhotoUrlMap, setUserPhotoUrlMap] = useState<{
-    [key: string]: string
+    [key: UserId]: UserPhotoUrl
   }>({})
 
   // 画像URL取得関数
@@ -44,7 +47,7 @@ const MemberSidebar = () => {
       }
 
       try {
-        const url = await getImageUrl(
+        const url = await getCachedImageUrl(
           user.photoId,
           user.photoExtension,
           'users'
@@ -64,7 +67,7 @@ const MemberSidebar = () => {
     const abortController = new AbortController()
 
     const fetchPhotos = async () => {
-      const newPhotoUrls: { [key: string]: string } = {}
+      const newPhotoUrls: { [key: UserId]: UserPhotoUrl } = {}
 
       // 既存のキャッシュを保持しつつ、新しいURLのみを取得
       const usersToFetch = filteredUsers.filter(

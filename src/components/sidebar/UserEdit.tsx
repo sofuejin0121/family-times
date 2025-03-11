@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { uploadImage, getImageUrl } from "../../utils/imageUtils";
+import { uploadImage, getCachedImageUrl } from "../../utils/imageUtils";
 
 interface UserEditProps {
   isOpen: boolean;
@@ -49,7 +49,7 @@ const UserEdit = (props: UserEditProps) => {
       const result = await uploadImage(file, `users/${user.uid}`);
       
       // 画像URLを取得して表示用に設定
-      const url = await getImageUrl(
+      const url = await getCachedImageUrl(
         result.photoId, 
         result.photoExtension, 
         `users`

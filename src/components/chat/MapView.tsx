@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Map, { Marker, Popup, NavigationControl, useMap } from 'react-map-gl'
 import MapboxLanguage from '@mapbox/mapbox-gl-language'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { getImageUrl } from '../../utils/imageUtils'
+import { getCachedImageUrl } from '../../utils/imageUtils'
 
 // Mapboxのアクセストークン（環境変数から取得するか、ここに直接記述）
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
@@ -161,7 +161,7 @@ const MapView = ({ messages }: MapViewProps) => {
       // 複数の画像を並列で読み込む
       const promises = photoIdsWithExt.map(async ({ photoId, photoExtension }) => {
         try {
-          const url = await getImageUrl(photoId, photoExtension, "messages")
+          const url = await getCachedImageUrl(photoId, photoExtension, "messages")
           return url ? { photoId, url } : null
         } catch (error) {
           console.error(`Error loading image ${photoId}:`, error)

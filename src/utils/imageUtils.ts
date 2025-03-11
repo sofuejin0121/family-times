@@ -1,7 +1,9 @@
+// /home/sofue/apps/family-times/src/utils/imageUtils.ts
 import { getDownloadURL, ref } from 'firebase/storage'
 import { storage } from '../firebase'
 import { uploadBytes } from 'firebase/storage'
 import { v4 as uuid4 } from 'uuid'
+import { useImageCache } from '../stores/imageCache'
 
 /**
  * 画像IDから画像URLを取得する関数
@@ -14,6 +16,9 @@ export const getImageUrl = async (
   extension: string | null,
   path: string
 ): Promise<string | null> => {
+  // Zustandのキャッシュを使用するように修正
+  // キャッシュの実装は別の関数に委譲し、この関数はそのままの形を保持
+  
   // photoIdのバリデーション
   if (!photoId || photoId.trim() === '') {
     return null
@@ -41,6 +46,8 @@ export const getImageUrl = async (
     // まずAVIF形式を試す
     try {
       const avifURL = await getDownloadURL(ref(storage, avifFileName))
+      // キャッシュに保存時にextensionを省略
+      useImageCache.getState().cacheUrl(photoId, null, path, avifURL)
       return avifURL
     } catch (avifError) {
       console.log('AVIF画像が見つかりません:', avifError)
@@ -50,6 +57,8 @@ export const getImageUrl = async (
     // 次にオリジナル形式を試す
     try {
       const baseURL = await getDownloadURL(ref(storage, originalFileName))
+      // キャッシュに保存時にextensionを省略
+      useImageCache.getState().cacheUrl(photoId, null, path, baseURL)
       return baseURL
     } catch (originalError) {
       console.log('元の画像が見つかりません:', originalError)
@@ -61,6 +70,21 @@ export const getImageUrl = async (
     logError(error)
     return null
   }
+}
+
+/**
+ * キャッシュを利用して画像URLを取得する関数
+ * コンポーネントからはこの関数を使用する
+ */
+export const getCachedImageUrl = async (
+  photoId: string | null,
+  extension: string | null,
+  path: string
+): Promise<string | null> => {
+  if (!photoId) return null
+  
+  // Zustandのキャッシュストアから取得
+  return useImageCache.getState().getImageUrl(photoId, extension, path)
 }
 
 /**
@@ -92,6 +116,9 @@ export const uploadImage = async (
 
   // 画像のアップロード
   await uploadBytes(fileRef, file)
+
+  // キャッシュ無効化時にextensionを省略
+  useImageCache.getState().invalidateCache(photoId, null, path)
 
   return { photoId, photoExtension, fullPath }
 }

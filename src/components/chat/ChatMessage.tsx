@@ -41,7 +41,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
-import { getImageUrl } from '../../utils/imageUtils'
+import { getCachedImageUrl } from '../../utils/imageUtils'
 // 固定の絵文字リアクションを定義
 const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
@@ -191,7 +191,7 @@ const ChatMessage = ({
   useEffect(() => {
     const fetchURL = async () => {
       try {
-        const url = await getImageUrl(photoId, photoExtension, "messages")
+        const url = await getCachedImageUrl(photoId, photoExtension, "messages")
         if (url) {
           setFileURL(url)
         }
