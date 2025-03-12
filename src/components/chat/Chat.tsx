@@ -278,12 +278,21 @@ const Chat = ({
         user: user,
         photoId: photoId,
         photoExtension: photoExtension,
-        imageWidth: imageWidth ?? undefined,
-        imageHeight: imageHeight ?? undefined,
-        ...(locationData ? {
-          latitude: locationData.latitude,
-          longitude: locationData.longitude
-        } : {})
+      }
+
+      // 画像サイズが存在する場合のみ追加
+      if (imageWidth !== null) {
+        messageData.imageWidth = imageWidth
+      }
+
+      if (imageHeight !== null) {
+        messageData.imageHeight = imageHeight
+      }
+
+      // 位置情報が存在する場合のみ追加
+      if (locationData) {
+        messageData.latitude = locationData.latitude
+        messageData.longitude = locationData.longitude
       }
 
       // リプライ情報がある場合は追加
