@@ -46,7 +46,7 @@ const UserEdit = (props: UserEditProps) => {
     setIsUploading(true);
     try {
       // 新しい画像アップロード関数を使用
-      const result = await uploadImage(file, `users/${user.uid}`);
+      const result = await uploadImage(file, "users");
       
       // 画像URLを取得して表示用に設定
       const url = await getCachedImageUrl(

@@ -13,6 +13,10 @@ const MemberSidebar = () => {
   const { documents: users } = useUsers()
   const serverId = useAppSelector((state) => state.server.serverId)
   const { documents: servers } = useServer()
+  const currentUser = useAppSelector((state) => state.user.user) // Reduxのユーザー情報を監視
+
+  // キャッシュのバージョン管理用
+  const [cacheVersion, setCacheVersion] = useState(0)
 
   // サーバー情報の取得を最適化
   const server = useMemo(() => {
@@ -61,6 +65,11 @@ const MemberSidebar = () => {
     []
   )
 
+  // currentUserの変更を監視してキャッシュを更新
+  useEffect(() => {
+    setCacheVersion(prev => prev + 1)
+  }, [currentUser?.photo, currentUser?.photoId])
+
   // 画像URLの一括取得とキャッシュ
   useEffect(() => {
     let isMounted = true
@@ -69,16 +78,9 @@ const MemberSidebar = () => {
     const fetchPhotos = async () => {
       const newPhotoUrls: { [key: UserId]: UserPhotoUrl } = {}
 
-      // 既存のキャッシュを保持しつつ、新しいURLのみを取得
-      const usersToFetch = filteredUsers.filter(
-        (user) => !userPhotoUrlMap[user.uid]
-      )
-
-      if (usersToFetch.length === 0) return
-
       try {
         await Promise.all(
-          usersToFetch.map(async (user) => {
+          filteredUsers.map(async (user) => {
             if (!isMounted) return
             const url = await fetchUserPhoto(user)
             if (url) {
@@ -88,10 +90,7 @@ const MemberSidebar = () => {
         )
 
         if (isMounted) {
-          setUserPhotoUrlMap((prev) => ({
-            ...prev,
-            ...newPhotoUrls,
-          }))
+          setUserPhotoUrlMap(newPhotoUrls) // キャッシュを完全に置き換え
         }
       } catch (error) {
         console.error('画像URLの取得中にエラーが発生しました:', error)
@@ -104,7 +103,7 @@ const MemberSidebar = () => {
       isMounted = false
       abortController.abort()
     }
-  }, [filteredUsers, fetchUserPhoto, userPhotoUrlMap])
+  }, [filteredUsers, fetchUserPhoto, cacheVersion]) // cacheVersionを依存配列に追加
 
   return (
     <Sidebar
