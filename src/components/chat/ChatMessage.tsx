@@ -13,7 +13,9 @@
  */
 
 import { deleteDoc, doc, runTransaction, updateDoc } from 'firebase/firestore'
-import { useAppSelector } from '../../app/hooks'
+import { useUserStore } from '../../stores/userSlice'
+import { useServerStore } from '../../stores/serverSlice'
+import { useChannelStore } from '../../stores/channelSlice'
 import { db } from '../../firebase'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -161,14 +163,14 @@ const ChatMessage = ({
   const [fileURL, setFileURL] = useState<string>()
   const [editDialogOpen, setEditDialogOpen] = useState<boolean>(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false)
-  const channelId = useAppSelector((state) => state.channel.channelId)
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const channelId = useChannelStore((state) => state.channelId)
+  const serverId = useServerStore((state) => state.serverId)
   const [editedMessage, setEditedMessage] = useState(message)
   const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false)
   const { documents: users } = useUsers()
 
   // 現在のユーザーのIDを取得
-  const currentUser = useAppSelector((state) => state.user.user)
+  const currentUser = useUserStore((state) => state.user)
 
   // メッセージの送信者かどうかをチェック
   const isMessageOwner = currentUser?.uid === userProps.uid
@@ -191,7 +193,7 @@ const ChatMessage = ({
   useEffect(() => {
     const fetchURL = async () => {
       try {
-        const url = await getCachedImageUrl(photoId, photoExtension, "messages")
+        const url = await getCachedImageUrl(photoId, photoExtension, 'messages')
         if (url) {
           setFileURL(url)
         }

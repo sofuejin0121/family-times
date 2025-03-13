@@ -1,6 +1,7 @@
 import { collection, query, onSnapshot} from "firebase/firestore";
 import { db } from "../firebase";
-import { useAppSelector } from "../app/hooks";
+import { useChannelStore } from "../stores/channelSlice";
+import { useServerStore } from "../stores/serverSlice";
 import { useEffect, useState } from "react";
 
 interface GetIds {
@@ -13,8 +14,8 @@ interface GetIds {
 
 const useGetId = () => {
   const [documents, setDocuments] = useState<GetIds[]>([]);
-  const channelId = useAppSelector((state) => state.channel.channelId);
-  const serverId = useAppSelector((state) => state.server.serverId);
+  const channelId = useChannelStore((state) => state.channelId);
+  const serverId = useServerStore((state) => state.serverId);
   useEffect(() => {
     if (serverId !== null && channelId !== null) {
       const getIdRef = query(

@@ -1,19 +1,20 @@
 import { useMemo, useCallback, useState, useEffect } from 'react'
 import useUsers from '../../hooks/useUsers'
 import useServer from '../../hooks/useServer'
-import { useAppSelector } from '../../app/hooks'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import { Sidebar, SidebarContent, SidebarHeader } from '@/components/ui/sidebar'
 import { getCachedImageUrl } from '@/utils/imageUtils'
+import { useServerStore } from '@/stores/serverSlice'
+import { useUserStore } from '@/stores/userSlice'
 
 type UserId = string
 type UserPhotoUrl = string
 
 const MemberSidebar = () => {
   const { documents: users } = useUsers()
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const serverId = useServerStore((state) => state.serverId)
   const { documents: servers } = useServer()
-  const currentUser = useAppSelector((state) => state.user.user) // Reduxのユーザー情報を監視
+  const currentUser = useUserStore((state) => state.user) // Reduxのユーザー情報を監視
 
   // キャッシュのバージョン管理用
   const [cacheVersion, setCacheVersion] = useState(0)

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { useAppSelector } from "../../app/hooks";
+import { useServerStore } from "../../stores/serverSlice";
 import { auth } from "../../firebase";
 import { createServerInvite } from "../../utils/generateInvite";
 import { UserPlus, Copy } from "lucide-react";
@@ -26,7 +26,7 @@ export const CreateInvite = () => {
   const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const serverId = useAppSelector((state) => state.server.serverId);
+  const serverId = useServerStore((state) => state.serverId);
 
   const handleOpen = useCallback(async () => {
     const user = auth.currentUser;

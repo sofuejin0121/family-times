@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAppSelector } from "../../app/hooks";
+import { useUserStore } from "../../stores/userSlice";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../../firebase";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ export const CreateServer = ({ isOpen, onClose }: CreateServerProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const user = useAppSelector((state) => state.user.user);
+  const user = useUserStore((state) => state.user);
   
   //ファイルが選択された時に実行される関数
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {

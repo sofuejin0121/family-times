@@ -1,8 +1,7 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { useAppDispatch, useAppSelector } from './app/hooks'
 import Login from './components/login/Login'
 import { auth, setupFCMListener } from './firebase'
-import { login, logout } from './features/userSlice'
+import { useUserStore } from './stores/userSlice'
 import {
   BrowserRouter,
   Route,
@@ -15,7 +14,6 @@ import { Toaster } from '@/components/ui/sonner'
 import { AppSidebar } from '@/components/sidebar/AppSidebar'
 import Chat from './components/chat/Chat'
 import { SidebarProvider } from '@/components/ui/sidebar'
-import { startAuthCheck } from './features/userSlice'
 import LoadingScreen from './components/loading/LoadingScreen'
 import NewUserProfile from './pages/NewUserProfile'
 import { toast } from 'sonner'
@@ -87,9 +85,8 @@ function App() {
     // FCMのリスナーのみ初期化
     setupFCMListener()
   }, [])
-  const dispatch = useAppDispatch()
-  const isAuthChecking = useAppSelector((state) => state.user.isAuthChecking)
-  const user = useAppSelector((state) => state.user.user)
+  const isAuthChecking = useUserStore((state) => state.isAuthChecking)
+  const user = useUserStore((state) => state.user)
   const [isInitialized, setIsInitialized] = useState(false)
   // モバイルでは初期状態で非表示に設定
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -199,7 +196,7 @@ function App() {
 
   // 認証状態の確認を useLayoutEffect で行う
   useLayoutEffect(() => {
-    dispatch(startAuthCheck())
+    useUserStore.getState().startAuthCheck()
 
     const unsubscribe = auth.onAuthStateChanged((loginUser) => {
       if (loginUser) {
@@ -218,25 +215,23 @@ function App() {
           loginUser.displayName ||
           (loginUser.email ? loginUser.email.split('@')[0] : '名称未設定')
 
-        dispatch(
-          login({
-            uid: loginUser.uid,
-            photo: loginUser.photoURL,
-            email: loginUser.email,
-            displayName: displayName,
-          })
-        )
+        useUserStore.getState().login({
+          uid: loginUser.uid,
+          photo: loginUser.photoURL || '',
+          email: loginUser.email || '',
+          displayName: displayName,
+        })
 
         setIsJustLoggedIn(true)
         setTimeout(() => setIsJustLoggedIn(false), 300)
       } else {
-        dispatch(logout())
+        useUserStore.getState().logout()
       }
       setIsInitialized(true)
     })
 
     return () => unsubscribe()
-  }, [dispatch])
+  }, [])
 
   // 初期化とサーバーデータのロードが完了するまでローディング画面を表示
   if (!isInitialized || isAuthChecking) {

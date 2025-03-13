@@ -1,9 +1,8 @@
 import React, { useState, useRef } from "react";
-import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import useUsers from "../../hooks/useUsers";
 import { auth } from "../../firebase";
 import { updateProfile } from "firebase/auth";
-import { updateUserInfo } from "../../features/userSlice";
+import { useUserStore } from "../../stores/userSlice";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Avatar, AvatarImage } from "../ui/avatar";
@@ -26,8 +25,7 @@ interface UserEditProps {
 
 const UserEdit = (props: UserEditProps) => {
   const { isOpen, onClose } = props;
-  const user = useAppSelector((state) => state.user.user);
-  const dispatch = useAppDispatch();
+  const user = useUserStore((state) => state.user);
   const { updateUser } = useUsers();
   const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [photoURL, setPhotoURL] = useState(user?.photo || "");
@@ -93,14 +91,12 @@ const UserEdit = (props: UserEditProps) => {
       });
 
       // Reduxストアのユーザー情報を更新
-      dispatch(
-        updateUserInfo({
-          displayName: displayName,
-          photo: photoURL,
-          photoId: photoId,
-          photoExtension: photoExtension,
-        })
-      );
+      useUserStore.getState().updateUserInfo({
+        displayName: displayName,
+        photo: photoURL,
+        photoId: photoId,
+        photoExtension: photoExtension,
+      });
 
       onClose();
     } catch (error) {

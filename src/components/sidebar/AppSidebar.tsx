@@ -1,4 +1,3 @@
-import { useAppSelector } from '../../app/hooks'
 import { auth } from '../../firebase'
 import { useState, useLayoutEffect } from 'react'
 import useChannel from '../../hooks/useChannel'
@@ -33,8 +32,7 @@ import {
 
 import { Button } from '../ui/button'
 import { useNavigate } from 'react-router-dom'
-import { useAppDispatch } from '../../app/hooks'
-import { setServerInfo } from '../../features/serverSlice'
+import { useServerStore } from '../../stores/serverSlice'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog'
 import { Input } from '../ui/input'
 import { toast } from 'sonner'
@@ -42,6 +40,7 @@ import NoServerView from './NoServerView'
 import LoadingScreen from '../loading/LoadingScreen'
 import { NotificationSettings } from './NotificationSettings'
 import { Bell } from 'lucide-react'
+import { useUserStore } from '@/stores/userSlice'
 
 interface AppSidebarProps {
   isMobileMenuOpen: boolean
@@ -52,8 +51,8 @@ export function AppSidebar({
   isMobileMenuOpen,
   setIsMobileMenuOpen,
 }: AppSidebarProps) {
-  const user = useAppSelector((state) => state.user.user)
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const user = useUserStore((state) => state.user)
+  const serverId = useServerStore((state) => state.serverId)
   const { documents: channels } = useChannel()
   const { documents: servers, loading: serversLoading } = useServer()
   const [isCreateServerOpen, setIsCreateServerOpen] = useState(false)
@@ -63,7 +62,6 @@ export function AppSidebar({
     useState(false)
   const [inviteCode, setInviteCode] = useState('')
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
 
   // サーバーが選択されているかチェック
   const isServerSelected = Boolean(serverId)
@@ -72,14 +70,12 @@ export function AppSidebar({
   useLayoutEffect(() => {
     if (!serversLoading && servers.length > 0 && !serverId) {
       const firstServer = servers[0]
-      dispatch(
-        setServerInfo({
-          serverId: firstServer.id,
-          serverName: firstServer.server.name,
-        })
-      )
+      useServerStore.getState().setServerInfo({
+        serverId: firstServer.id,
+        serverName: firstServer.server.name,
+      })
     }
-  }, [servers, serverId, dispatch, serversLoading])
+  }, [servers, serverId, serversLoading])
 
   // 招待コードを処理する関数
   const handleJoinServer = () => {

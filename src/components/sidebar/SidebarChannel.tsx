@@ -1,5 +1,4 @@
-import { useAppDispatch } from "../../app/hooks";
-import { setChannelInfo } from "../../features/channelSlice";
+import { useChannelStore } from "../../stores/channelSlice";
 import { DocumentData } from "firebase/firestore";
 
 type Props = {
@@ -10,15 +9,12 @@ type Props = {
 
 const SidebarChannel = (props: Props) => {
   const { id, channel, onClick } = props;
-  const dispatch = useAppDispatch();
   
   const handleClick = () => {
-    dispatch(
-      setChannelInfo({
-        channelId: id,
-        channelName: channel.channel.channelName,
-      })
-    );
+    useChannelStore.getState().setChannelInfo({
+      channelId: id,
+      channelName: channel.channel.channelName,
+    });
     if (onClick) onClick();
   };
   

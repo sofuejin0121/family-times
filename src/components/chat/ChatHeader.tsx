@@ -2,7 +2,7 @@ import { Input } from '../ui/input'
 // import { Button } from '../ui/button'
 // import { Menu } from 'lucide-react'
 import { Users, MapPin, MessageCircleMore } from 'lucide-react'
-import { useAppSelector } from '../../app/hooks'
+import { useServerStore } from '../../stores/serverSlice'
 import React from 'react'
 import { Button } from '../ui/button'
 
@@ -26,7 +26,7 @@ const ChatHeader = (props: Props) => {
     onChatClick,
     activeTab,
   } = props
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const serverId = useServerStore((state) => state.serverId)
   const isServerSelected = Boolean(serverId)
 
   const handleMemberSidebarToggle = (e: React.MouseEvent) => {

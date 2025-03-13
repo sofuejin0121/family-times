@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { useAppDispatch, useAppSelector } from '@/app/hooks'
+import { useUserStore } from '@/stores/userSlice'
 import { auth, db, storage } from '@/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { updateProfile } from 'firebase/auth'
-import { login } from '@/features/userSlice'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -13,8 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Loader2 } from 'lucide-react'
 
 const NewUserProfile = () => {
-  const user = useAppSelector((state) => state.user.user)
-  const dispatch = useAppDispatch()
+  const user = useUserStore((state) => state.user)
   const navigate = useNavigate()
   const location = useLocation()
   const [redirectPath, setRedirectPath] = useState('/')
@@ -46,7 +44,7 @@ const NewUserProfile = () => {
     if (file) {
       // ローディング状態を開始
       setIsImageLoading(true)
-      
+
       // プレビュー表示用のURL生成
       const reader = new FileReader()
       reader.onload = () => {
@@ -111,15 +109,12 @@ const NewUserProfile = () => {
         email: currentUser.email,
       })
 
-      // Redux状態を更新
-      dispatch(
-        login({
-          uid: currentUser.uid,
-          photo: updatedPhotoURL,
-          email: currentUser.email,
-          displayName: displayName,
-        })
-      )
+      useUserStore.getState().login({
+        uid: currentUser.uid,
+        photo: updatedPhotoURL,
+        email: currentUser.email || '',
+        displayName: displayName,
+      })
 
       toast.success('プロフィールを設定しました')
       navigate(redirectPath) // 保存したリダイレクト先に遷移
@@ -133,7 +128,7 @@ const NewUserProfile = () => {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-100 p-4 w-full">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center bg-gray-100 p-4">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md">
         <h2 className="mb-6 text-center text-2xl font-bold">
           プロフィール設定
@@ -155,7 +150,7 @@ const NewUserProfile = () => {
             <div className="relative h-24 w-24">
               {isImageLoading ? (
                 <div className="flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <Loader2 className="text-primary h-8 w-8 animate-spin" />
                 </div>
               ) : (
                 <Avatar
@@ -187,9 +182,9 @@ const NewUserProfile = () => {
 
           {/* ボタン */}
           <div className="flex flex-col space-y-3 pt-2">
-            <Button 
-              type="submit" 
-              disabled={isLoading || isImageLoading} 
+            <Button
+              type="submit"
+              disabled={isLoading || isImageLoading}
               className="w-full cursor-pointer"
             >
               {isLoading ? (

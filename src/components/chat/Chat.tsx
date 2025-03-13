@@ -1,7 +1,6 @@
 import ChatHeader from './ChatHeader'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import ChatMessage from './ChatMessage'
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
 import {
   useCallback,
   useRef,
@@ -23,11 +22,13 @@ import LoadingScreen from '../loading/LoadingScreen'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
 import NoServerView from '../sidebar/NoServerView'
 import { CreateServer } from '../sidebar/CreateServer'
-import { setChannelInfo } from '@/features/channelSlice'
-import { setServerInfo } from '@/features/serverSlice'
+import { useChannelStore } from '../../stores/channelSlice'
+import { useServerStore } from '../../stores/serverSlice'
+import { useUserStore } from '../../stores/userSlice'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as Sentry from '@sentry/react'
 import { uploadImage } from '../../utils/imageUtils'
+import useServer from '../../hooks/useServer'
 
 interface ChatProps {
   isMemberSidebarOpen: boolean
@@ -96,23 +97,22 @@ const Chat = ({
     longitude: number
   } | null>(null)
 
-  const channelId = useAppSelector((state) => state.channel.channelId)
-  const channelName = useAppSelector((state) => state.channel.channelName)
-  const user = useAppSelector((state) => state.user.user)
+  const channelId = useChannelStore((state) => state.channelId)
+  const channelName = useChannelStore((state) => state.channelName)
+  const user = useUserStore((state) => state.user)
   const fileInputRef = useRef<HTMLInputElement>(null)
   //カスタムフックを使用してメッセージデータを取得
   const { subDocuments: messages } = useMessage()
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const serverId = useServerStore((state) => state.serverId)
   const isServerSelected = Boolean(serverId)
-  const isChannelSelected = Boolean(channelId)
   const { isLoading } = useMessage()
+  const { initialLoadComplete } = useServer()
 
   //メッセージリストのコンテナへの参照作成
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   // チャットコンテナの参照を追加
   const chatContainerRef = useRef<HTMLDivElement>(null)
 
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -124,8 +124,14 @@ const Chat = ({
 
     if (urlServerId && urlChannelId) {
       console.log('URLパラメータ:', { urlServerId, urlChannelId, urlMessageId })
-      dispatch(setServerInfo({ serverId: urlServerId }))
-      dispatch(setChannelInfo({ channelId: urlChannelId }))
+      useServerStore.getState().setServerInfo({
+        serverId: urlServerId,
+        serverName: '',
+      })
+      useChannelStore.getState().setChannelInfo({
+        channelId: urlChannelId,
+        channelName: '',
+      })
     }
     // URLパラメータをクリア
 
@@ -133,7 +139,7 @@ const Chat = ({
     setTimeout(() => {
       navigate('/', { replace: true })
     }, 500)
-  }, [dispatch, navigate, searchParams])
+  }, [navigate, searchParams])
 
   // スクロール処理を最適化（モバイル対応）
   useLayoutEffect(() => {
@@ -254,7 +260,7 @@ const Chat = ({
         const result = await uploadImage(selectedFile, 'messages')
         photoId = result.photoId
         photoExtension = result.photoExtension
-        
+
         // 画像サイズの取得
         if (fileImageDimensions) {
           imageWidth = fileImageDimensions.width
@@ -531,10 +537,10 @@ const Chat = ({
       {!isServerSelected && (
         <NoServerView onCreateServer={() => setIsCreateServerOpen(true)} />
       )}
-      {/* サーバーを選択していて、かつisLoadingがtrueの場合はLoadingScreenを表示 */}
-      {isServerSelected && isLoading && <LoadingScreen />}
-      {/* サーバーを選択していて、かつisLoadingがfalseの場合はチャット画面を表示 */}
-      {isServerSelected && !isLoading && (
+      {/* 初期ロードが完了していない場合のみLoadingScreenを表示 */}
+      {isServerSelected && isLoading && !initialLoadComplete && <LoadingScreen />}
+      {/* サーバーを選択していて、初期ロードが完了しているか、ロード中でない場合はチャット画面を表示 */}
+      {isServerSelected && (!isLoading || initialLoadComplete) && (
         <div className="relative flex h-full w-full">
           <div
             className="flex h-svh min-w-0 flex-col"
@@ -558,17 +564,6 @@ const Chat = ({
                   </h3>
                   <p className="text-white-400 text-sm">
                     サーバーを選択するかサーバーに参加してください
-                  </p>
-                </div>
-              </div>
-            ) : !isChannelSelected ? (
-              <div className="flex h-[calc(100svh-77px-56px)] w-full flex-col items-center justify-center">
-                <div className="bg-grey-100 max-w-md -translate-x-[10%] transform rounded-lg p-8 text-center text-black md:-translate-x-[15%]">
-                  <h3 className="mb-2 text-lg font-medium">
-                    チャンネルが選択されていません
-                  </h3>
-                  <p className="text-white-400 text-sm">
-                    チャンネルを選択してメッセージを送信してください
                   </p>
                 </div>
               </div>

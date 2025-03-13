@@ -7,7 +7,8 @@ import {
   Timestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useAppSelector } from '../app/hooks'
+import { useChannelStore } from '../stores/channelSlice'
+import { useServerStore } from '../stores/serverSlice'
 
 interface Reaction {
   emoji: string
@@ -46,8 +47,8 @@ interface Messages {
 const useMessage = () => {
   const [subDocuments, setSubDocuments] = useState<Messages[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const channelId = useAppSelector((state) => state.channel.channelId)
-  const serverId = useAppSelector((state) => state.server.serverId)
+  const channelId = useChannelStore((state) => state.channelId)
+  const serverId = useServerStore((state) => state.serverId)
 
   useEffect(() => {
     if (serverId !== null && channelId !== null) {

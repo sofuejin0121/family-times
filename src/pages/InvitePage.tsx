@@ -10,9 +10,9 @@ import {
   runTransaction,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useAppDispatch, useAppSelector } from '../app/hooks'
-import { setServerInfo } from '../features/serverSlice'
-import { setChannelInfo } from '../features/channelSlice'
+import { useUserStore } from '../stores/userSlice'
+import { useServerStore } from '../stores/serverSlice'
+import { useChannelStore } from '../stores/channelSlice'
 import { AppSidebar } from '../components/sidebar/AppSidebar'
 import Chat from '../components/chat/Chat'
 import {
@@ -26,8 +26,7 @@ import { Button } from '../components/ui/button'
 import { CheckCircle, Loader2, AlertCircle } from 'lucide-react'
 
 export const InvitePage = () => {
-  const dispatch = useAppDispatch()
-  const user = useAppSelector((state) => state.user.user)
+  const user = useUserStore((state) => state.user)
   // URLパラメータを取得するためのフック
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -131,12 +130,10 @@ export const InvitePage = () => {
         if (isAlreadyJoined) {
           console.log('すでに参加済みのサーバーです')
 
-          dispatch(
-            setServerInfo({
-              serverId: serverDoc.id,
-              serverName: serverData.name,
-            })
-          )
+          useServerStore.getState().setServerInfo({
+            serverId: serverDoc.id,
+            serverName: serverData.name,
+          })
 
           setIsProcessing(false)
 
@@ -208,21 +205,17 @@ export const InvitePage = () => {
         setJoinedChannelName(channelName || '')
 
         // 2. Reduxの更新
-        dispatch(
-          setServerInfo({
-            serverId: serverDoc.id,
-            serverName: serverData.name,
-          })
-        )
+        useServerStore.getState().setServerInfo({
+          serverId: serverDoc.id,
+          serverName: serverData.name,
+        })
 
         if (channelId && channelName) {
-          dispatch(
-            setChannelInfo({
-              channelId: channelId,
-              channelName: channelName,
-              createdBy: user.uid,
-            })
-          )
+          useChannelStore.getState().setChannelInfo({
+            channelId: channelId,
+            channelName: channelName,
+
+          })
         }
 
         // 3. 処理完了を示す
@@ -252,7 +245,7 @@ export const InvitePage = () => {
       }
       setIsComponentMounted(false)
     }
-  }, [searchParams, user, dispatch, navigate])
+  }, [searchParams, user, navigate, isComponentMounted, redirectToHome])
 
   useEffect(() => {
     console.log('モーダルの状態が変更されました:', isSuccessModalOpen)

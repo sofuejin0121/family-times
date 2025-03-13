@@ -8,7 +8,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db } from "../firebase";
-import { useAppSelector } from "../app/hooks";
+import { useUserStore } from "../stores/userSlice";
 import { Server as ServerDoc } from "../types/server";
 import { Timestamp } from "firebase/firestore";
 
@@ -34,8 +34,9 @@ interface Server {
 const useServer = () => {
   //サーバー情報を格納するstate
   const [documents, setDocuments] = useState<Server[]>([]);
-  const [loading, setLoading] = useState(true); // ローディング状態を追加@imageUtils.ts 
-  const user = useAppSelector((state) => state.user.user);
+  const [loading, setLoading] = useState(true); // ローディング状態
+  const user = useUserStore((state) => state.user);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false); // 初期ロード完了フラグを追加
   
   const collectionRef: Query<DocumentData> | null = useMemo(() => {
     if (user !== null) {
@@ -50,10 +51,14 @@ const useServer = () => {
   useEffect(() => {
     if (collectionRef === null) {
       setLoading(false);
+      setInitialLoadComplete(true); // 初期ロード完了をマーク
       return;
     }
 
-    setLoading(true); // データ取得開始時にローディング状態をtrueに設定
+    // サーバー切り替え時に初期ロードが完了していれば、ローディング状態を変更しない
+    if (!initialLoadComplete) {
+      setLoading(true); // 初回のみローディング状態をtrueに設定
+    }
 
     const unsubscribe = onSnapshot(
       collectionRef,
@@ -75,18 +80,20 @@ const useServer = () => {
           });
         });
         setDocuments(serverResults);
-        setLoading(false); // データ取得完了時にローディング状態をfalseに設定
+        setLoading(false);
+        setInitialLoadComplete(true); // データ取得完了時に初期ロード完了をマーク
       },
       (error) => {
         console.error("Error fetching servers:", error);
-        setLoading(false); // エラー時もローディング状態をfalseに設定
+        setLoading(false);
+        setInitialLoadComplete(true); // エラー時も初期ロード完了をマーク
       }
     );
 
     return () => unsubscribe();
-  }, [collectionRef]);
+  }, [collectionRef, initialLoadComplete]);
 
-  return { documents, loading }; // loadingステータスを返す
+  return { documents, loading, initialLoadComplete }; // 初期ロード完了フラグも返す
 };
 
 export default useServer;

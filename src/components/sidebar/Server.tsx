@@ -1,5 +1,3 @@
-import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import { setServerInfo } from '../../features/serverSlice'
 import {
   Tooltip,
   TooltipContent,
@@ -14,7 +12,6 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import useChannel from '../../hooks/useChannel'
-import { setChannelInfo } from '../../features/channelSlice'
 import { useEffect, useState } from 'react'
 import { getCachedImageUrl } from '../../utils/imageUtils'
 import { Edit, Trash, LogOut } from 'lucide-react'
@@ -23,6 +20,9 @@ import { doc, updateDoc, deleteDoc, getDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import { toast } from 'sonner'
 import { EditServerDialog } from './EditServerDialog'
+import { useUserStore } from '../../stores/userSlice'
+import { useServerStore } from '../../stores/serverSlice'
+import { useChannelStore } from '../../stores/channelSlice'
 
 type Props = {
   id: string
@@ -36,10 +36,9 @@ const Server = (props: Props) => {
   const { id, name, photoId, photoExtension } = props
   const [serverImageUrl, setServerImageUrl] = useState<string | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const dispatch = useAppDispatch()
   const { documents: channels } = useChannel()
   const navigate = useNavigate()
-  const user = useAppSelector((state) => state.user.user)
+  const user = useUserStore((state) => state.user)
   const [isServerOwner, setIsServerOwner] = useState(false)
 
   // サーバーの所有者かどうかを確認
@@ -86,21 +85,17 @@ const Server = (props: Props) => {
   }, [photoId, photoExtension])
 
   const handleServerClick = () => {
-    dispatch(
-      setServerInfo({
-        serverId: id,
-        serverName: name,
-      })
-    )
+    useServerStore.getState().setServerInfo({
+      serverId: id,
+      serverName: name,
+    })
     //そのサーバーにチャンネルが存在する場合
     if (channels.length > 0) {
       //最初のチャンネル(channels[0])を選択状態にする
-      dispatch(
-        setChannelInfo({
-          channelId: channels[0].id,
-          channelName: channels[0].channel.channelName,
-        })
-      )
+      useChannelStore.getState().setChannelInfo({
+        channelId: channels[0].id,
+        channelName: channels[0].channel.channelName,
+      })
     }
   }
 
