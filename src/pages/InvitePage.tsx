@@ -214,7 +214,6 @@ export const InvitePage = () => {
           useChannelStore.getState().setChannelInfo({
             channelId: channelId,
             channelName: channelName,
-
           })
         }
 

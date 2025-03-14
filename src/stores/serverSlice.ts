@@ -1,5 +1,5 @@
-import { create } from "zustand"
-import { devtools } from "zustand/middleware"
+import { create } from 'zustand'
+import { devtools } from 'zustand/middleware'
 import { useChannelStore } from './channelSlice'
 
 interface ServerState {
@@ -17,24 +17,24 @@ export const useServerStore = create<ServerState>()(
 
       setServerInfo: (info) => {
         // チャンネル情報をリセット
-        useChannelStore.getState().resetChannelInfo();
-        
+        useChannelStore.getState().resetChannelInfo()
+
         // サーバー情報を設定
         set({
           serverId: info.serverId,
-          serverName: info.serverName
-        });
+          serverName: info.serverName,
+        })
       },
-      
+
       resetServerInfo: () => {
         // チャンネル情報もリセット
-        useChannelStore.getState().resetChannelInfo();
-        
+        useChannelStore.getState().resetChannelInfo()
+
         // サーバー情報をリセット
         set({
           serverId: null,
-          serverName: null
-        });
+          serverName: null,
+        })
       },
     }),
     { name: 'server-store' }

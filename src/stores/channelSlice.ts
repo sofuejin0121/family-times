@@ -5,10 +5,7 @@ interface ChannelState {
   channelId: string | null
   channelName: string | null
   createdBy: string | null
-  setChannelInfo: (info: {
-    channelId: string
-    channelName: string
-  }) => void
+  setChannelInfo: (info: { channelId: string; channelName: string }) => void
   resetChannelInfo: () => void
 }
 

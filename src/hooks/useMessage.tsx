@@ -70,11 +70,11 @@ const useMessage = () => {
         const results: Messages[] = []
         snapshot.docs.forEach((doc) => {
           const data = doc.data()
-          
+
           // 既存のデータ構造との互換性を保つ
           let photoId = data.photoId || null
           let photoExtension = data.photoExtension || null
-          
+
           // 古い形式のphotoIdから拡張子を抽出（移行期間中の対応）
           if (photoId && !photoExtension && photoId.includes('.')) {
             const lastDotIndex = photoId.lastIndexOf('.')
@@ -83,13 +83,20 @@ const useMessage = () => {
               photoId = photoId.substring(0, lastDotIndex)
             }
           }
-          
+
           // リプライ情報の処理
-          const  replyTo = data.replyTo || null
-          if (replyTo && replyTo.photoId && replyTo.photoId.includes('.') && !replyTo.photoExtension) {
+          const replyTo = data.replyTo || null
+          if (
+            replyTo &&
+            replyTo.photoId &&
+            replyTo.photoId.includes('.') &&
+            !replyTo.photoExtension
+          ) {
             const lastDotIndex = replyTo.photoId.lastIndexOf('.')
             if (lastDotIndex !== -1) {
-              replyTo.photoExtension = replyTo.photoId.substring(lastDotIndex + 1)
+              replyTo.photoExtension = replyTo.photoId.substring(
+                lastDotIndex + 1
+              )
               replyTo.photoId = replyTo.photoId.substring(0, lastDotIndex)
             }
           }

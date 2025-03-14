@@ -68,7 +68,7 @@ const MemberSidebar = () => {
 
   // currentUserの変更を監視してキャッシュを更新
   useEffect(() => {
-    setCacheVersion(prev => prev + 1)
+    setCacheVersion((prev) => prev + 1)
   }, [currentUser?.photo, currentUser?.photoId])
 
   // 画像URLの一括取得とキャッシュ
