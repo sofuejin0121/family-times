@@ -196,5 +196,8 @@ export default defineConfig(({ mode }) => {
       sourcemap: true,
       target: 'esnext', // WebAssemblyをサポートするためesnextを指定
     },
+    worker: {
+      format: 'es', // 'iife'ではなく'es'を使用
+    },
   }
 })
