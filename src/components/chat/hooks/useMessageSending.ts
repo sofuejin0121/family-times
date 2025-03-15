@@ -3,7 +3,7 @@ import { useState, useCallback, RefObject, FormEvent } from 'react'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../../firebase'
 import { toast } from 'sonner'
-import { uploadImage } from '../../../utils/imageUtils'
+import { uploadWithAvifConversion } from '../../../utils/imageUtils'
 import * as Sentry from '@sentry/react'
 import { User, MessageData, ReplyInfo } from '../../../types/chat'
 
@@ -181,7 +181,7 @@ export const useMessageSending = ({
       // 画像がある場合のみ処理
       if (selectedFile) {
         // 新しい画像アップロード関数を使用
-        const result = await uploadImage(selectedFile, 'messages')
+        const result = await uploadWithAvifConversion(selectedFile, 'messages')
         photoId = result.photoId
         photoExtension = result.photoExtension
 

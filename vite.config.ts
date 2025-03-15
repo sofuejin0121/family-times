@@ -178,13 +178,23 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, './src'), // @エイリアスをsrcディレクトリに設定（インポート時に@/componentsのように使用可能）
       },
     },
+    // WebAssemblyファイルを正しく扱うための設定
+    optimizeDeps: {
+      exclude: ['@jsquash/avif'],
+    },
     build: {
       rollupOptions: {
         input: {
           main: 'index.html', // ビルドのエントリーポイントを指定
         },
+        output: {
+          manualChunks: {
+            jsquash: ['@jsquash/avif'],
+          },
+        },
       },
       sourcemap: true,
+      target: 'esnext', // WebAssemblyをサポートするためesnextを指定
     },
   }
 })
