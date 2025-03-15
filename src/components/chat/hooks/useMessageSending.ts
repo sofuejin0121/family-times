@@ -259,6 +259,13 @@ export const useMessageSending = ({
       // 画像がある場合の処理
       if (selectedFile) {
         // AVIF形式に変換してアップロード
+        // uploadWithAvifConversionが呼び出されると、以下の処理が行われる
+        // 1. `WorkerManager.getInstance()`でWorkerManagerの単一インスタンスを取得 (workerUtils)
+        // 2. `workerManager.encodeToAvif()`で画像データと変換オプションをWorkerに送信
+        // 3. Web Worker (avifWorker) が画像データを受け取り、AVIFエンコードを実行
+        // 4. エンコード完了後、Web Workerが結果をメインスレッドに返送
+        // 5. `workerManager`が結果を受け取り、登録されたPromiseを解決
+        // 6. `uploadWithAvifConversion`が変換された画像データが返される
         const result = await uploadWithAvifConversion(selectedFile, 'messages')
         photoId = result.photoId
         photoExtension = result.photoExtension
