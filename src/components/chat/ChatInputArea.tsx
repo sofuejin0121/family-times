@@ -1,9 +1,8 @@
-// 入力エリアを別コンポーネントに抽出
-import { FormEvent } from 'react'
-import { Input } from '../ui/input'
+import { FormEvent, useEffect, useRef } from 'react'
 import { Send, X, Reply, Loader2 } from 'lucide-react'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import { ReplyInfo } from '../../types/chat'
+import { Textarea } from '../ui/textarea'
 
 interface ChatInputAreaProps {
   inputText: string
@@ -34,6 +33,22 @@ const ChatInputArea = ({
   replyingTo,
   cancelReply,
 }: ChatInputAreaProps) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // 入力文字数が変わった時にテキストエリアの高さを自動調整
+  useEffect(() => {
+    if (textareaRef.current) {
+      // テキストエリアの高さをリセットしてから調整（スクロールハイトを正確に計算するため）
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }, [inputText])
+
+  // 入力ハンドラー
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value)
+  }
+
   return (
     <div className="mx-4 mb-4 flex flex-col rounded-lg text-gray-400">
       {/* リプライ情報 */}
@@ -78,7 +93,7 @@ const ChatInputArea = ({
       )}
 
       {/* 入力フォーム */}
-      <div className="flex items-center justify-between p-2.5">
+      <div className="flex w-full items-center justify-between p-2.5">
         <input
           type="file"
           className="hidden"
@@ -102,19 +117,23 @@ const ChatInputArea = ({
             className={`text-2xl ${isUploading ? 'opacity-50' : ''}`}
           />
         </label>
-        <form className="flex flex-grow items-center" onSubmit={sendMessage}>
-          <Input
+        <form
+          className="flex w-full max-w-full flex-grow items-center"
+          onSubmit={sendMessage}
+        >
+          <Textarea
             id="message-input"
-            type="text"
+            ref={textareaRef}
+            className="box-border max-h-[150px] min-h-[38px] w-full resize-none overflow-hidden border border-gray-300 bg-white break-words whitespace-pre-wrap text-black disabled:opacity-50"
             placeholder={
               channelName
                 ? `${channelName}へメッセージを送信`
                 : 'メッセージを送信'
             }
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={handleInputChange}
             value={inputText}
             disabled={isUploading}
-            className="border border-gray-300 bg-white text-black disabled:opacity-50"
+            rows={1}
           />
           <button
             type="submit"
