@@ -1,23 +1,48 @@
-// メッセージ送信関連のロジックを抽出したカスタムフック
-import { useState, useCallback, RefObject, FormEvent } from 'react'
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db } from '../../../firebase'
-import { toast } from 'sonner'
-import { uploadWithAvifConversion } from '../../../utils/imageUtils'
-import * as Sentry from '@sentry/react'
-import { User, MessageData, ReplyInfo } from '../../../types/chat'
+/**
+ * メッセージ送信機能を提供するReactカスタムフック
+ *
+ * カスタムフックとは？
+ * - React のロジックを再利用可能な関数として切り出したもの
+ * - コンポーネントから独立した形で複雑な処理を管理できる
+ * - 名前が「use」で始まるのが命名規則
+ */
 
+// 必要なライブラリと型をインポート
+import { useState, useCallback, RefObject, FormEvent } from 'react' // React のフック関連
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore' // Firebase データベース操作用
+import { db } from '../../../firebase' // Firebase 初期化済みインスタンス
+import { toast } from 'sonner' // 通知表示ライブラリ
+import { uploadWithAvifConversion } from '../../../utils/imageUtils' // 画像変換アップロード関数
+import * as Sentry from '@sentry/react' // エラー監視サービス
+import { User, MessageData, ReplyInfo } from '../../../types/chat' // 型定義
+
+/**
+ * カスタムフックに渡す引数の型定義
+ * TypeScript の interface で型の構造を定義
+ */
 interface UseMessageSendingProps {
-  serverId: string | null
-  channelId: string | null
-  user: User | null
-  fileInputRef: RefObject<HTMLInputElement>
-  replyingTo: ReplyInfo | null
-  setReplyingTo: (reply: ReplyInfo | null) => void
-  setRepliedMessageId: (id: string | null) => void
-  scrollToBottom: () => void
+  serverId: string | null // メッセージを送信するサーバーのID
+  channelId: string | null // メッセージを送信するチャンネルのID
+  user: User | null // 現在ログイン中のユーザー情報
+  fileInputRef: RefObject<HTMLInputElement> // ファイル選択入力要素への参照
+  replyingTo: ReplyInfo | null // 返信中のメッセージ情報
+  setReplyingTo: (reply: ReplyInfo | null) => void // 返信情報を設定する関数
+  setRepliedMessageId: (id: string | null) => void // 返信済みメッセージIDを設定する関数
+  scrollToBottom: () => void // チャット画面を一番下までスクロールする関数
 }
 
+/**
+ * メッセージ送信機能を集約したカスタムフック
+ *
+ * このフックは以下の機能を提供:
+ * 1. テキストメッセージの管理
+ * 2. 画像の選択、プレビュー、アップロード
+ * 3. 画像のEXIFデータからの位置情報取得
+ * 4. メッセージの送信処理
+ *
+ * @param props フックの設定オプション
+ * @returns メッセージ機能に関する状態と関数
+ */
 export const useMessageSending = ({
   serverId,
   channelId,
@@ -28,49 +53,83 @@ export const useMessageSending = ({
   setRepliedMessageId,
   scrollToBottom,
 }: UseMessageSendingProps) => {
+  // 各種の状態(state)をuseStateフックで定義
+
+  // メッセージ入力テキスト
   const [inputText, setInputText] = useState<string>('')
+
+  // 画像アップロード中かどうか
   const [isUploading, setIsUploading] = useState(false)
+
+  // 選択された画像ファイル
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+
+  // 選択された画像のプレビューURL
   const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(
     null
   )
+
+  // 画像の幅と高さ
   const [fileImageDimensions, setFileImageDimensions] = useState<{
     width: number
     height: number
   } | null>(null)
+
+  // 画像から抽出した位置情報（緯度・経度）
   const [imageLocation, setImageLocation] = useState<{
     latitude: number
     longitude: number
   } | null>(null)
 
+  /**
+   * 選択されたファイルをクリアする関数
+   *
+   * useCallbackとは？
+   * - 関数をメモ化するReactのフック
+   * - 依存配列が変更されない限り、同じ関数インスタンスが再利用される
+   * - パフォーマンス最適化のために使用
+   */
   const clearSelectedFile = useCallback(() => {
     if (selectedFilePreview) {
       // プレビュー用のURLを破棄
+      // URL.revokeObjectURL: 作成されたオブジェクトURLを解放するブラウザAPI
       URL.revokeObjectURL(selectedFilePreview)
     }
+    // 各状態をリセット
     setSelectedFile(null)
     setSelectedFilePreview(null)
     setFileImageDimensions(null)
-    // ファイル選択時の入力フィールドをクリア
+
+    // ファイル選択入力フィールドをクリア
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
-  }, [selectedFilePreview, fileInputRef])
+  }, [selectedFilePreview, fileInputRef]) // 依存配列: これらが変わったときだけ関数を再作成
 
+  /**
+   * ファイル選択時のイベントハンドラ
+   *
+   * - ファイルサイズのチェック
+   * - プレビュー表示の設定
+   * - EXIFデータからの位置情報抽出
+   *
+   * @param e 入力変更イベント
+   */
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     // ファイルが選択された場合
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0]
       console.log('選択されたファイル:', file.name, file.type, file.size)
 
-      // ファイルサイズのチェック
+      // ファイルサイズのチェック（5MB制限）
       const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
       // ファイルサイズが5MBを超える場合はエラー
       if (file.size > MAX_FILE_SIZE) {
+        // トースト通知でエラーを表示
         toast.error('ファイルサイズが大きすぎます (最大: 5MB)', {
-          duration: 3000,
+          duration: 3000, // 3秒間表示
         })
-        e.target.value = ''
+        e.target.value = '' // 入力フィールドをクリア
         return
       }
 
@@ -78,29 +137,32 @@ export const useMessageSending = ({
       setSelectedFile(file)
 
       // プレビュー用のURLを作成
+      // URL.createObjectURL: ファイルオブジェクトからブラウザ内URLを生成
       const previewURL = URL.createObjectURL(file)
       setSelectedFilePreview(previewURL)
 
-      // 画像のサイズを取得
-      const img = new Image()
+      // 画像のサイズ（幅と高さ）を取得
+      const img = new Image() // 新しいイメージオブジェクトを作成
       img.onload = () => {
+        // 画像読み込み完了時に実行
         setFileImageDimensions({
           width: img.width,
           height: img.height,
         })
       }
-      img.src = previewURL
+      img.src = previewURL // 画像のロード開始
 
-      // メタデータ処理を改善
+      // 画像のEXIFメタデータ処理
       try {
-        // exifrライブラリをインポート
+        // exifrライブラリを動的インポート
+        // 動的インポート: 必要になった時点でライブラリを読み込む仕組み
         const exifr = await import('exifr')
 
-        // 全メタデータを取得
+        // 全メタデータを取得（GPS情報を含む）
         const allMetadata = await exifr.default.parse(file, { gps: true })
         console.log('すべてのメタデータ:', allMetadata)
 
-        // 既に計算された緯度経度がメタデータに含まれている場合、それを直接使用
+        // 緯度経度がメタデータに含まれている場合
         if (
           typeof allMetadata?.latitude === 'number' &&
           typeof allMetadata?.longitude === 'number'
@@ -110,14 +172,16 @@ export const useMessageSending = ({
             longitude: allMetadata.longitude,
           }
 
-          // NaNチェックを追加
+          // NaN(Not a Number)チェック
+          // 数値として不正な値が入っていないか確認
           if (isNaN(locationData.latitude) || isNaN(locationData.longitude)) {
-            // Sentryにエラーログを送信
+            // Sentryにエラーログを送信（モニタリングサービス）
             Sentry.captureMessage(
               'EXIFから取得した位置情報にNaNが含まれています',
               {
                 level: 'warning',
                 extra: {
+                  // 追加情報
                   locationData,
                   allMetadata,
                   fileInfo: {
@@ -137,10 +201,10 @@ export const useMessageSending = ({
               locationData,
               allMetadata
             )
-            setImageLocation(null)
+            setImageLocation(null) // 不正な値なので位置情報をクリア
           } else {
             console.log('exifrから直接緯度経度を取得:', locationData)
-            setImageLocation(locationData)
+            setImageLocation(locationData) // 位置情報を状態に保存
             toast.success('写真から位置情報を取得しました')
           }
         }
@@ -160,27 +224,41 @@ export const useMessageSending = ({
             isAndroid: /android/i.test(navigator.userAgent),
           },
         })
-        setImageLocation(null)
+        setImageLocation(null) // エラー時は位置情報をクリア
       }
 
-      // 入力欄にフォーカスを当てる
+      // メッセージ入力欄にフォーカスを当てる
       document.getElementById('message-input')?.focus()
     }
   }
 
+  /**
+   * メッセージ送信処理を行う関数
+   *
+   * - テキストメッセージ送信
+   * - 画像のアップロードとAVIF変換
+   * - Firestoreへの保存
+   *
+   * @param e フォーム送信イベント
+   */
   const sendMessage = async (e: FormEvent) => {
+    // フォームのデフォルト送信動作をキャンセル
     e.preventDefault()
+
+    // アップロード中状態に設定
     setIsUploading(true)
+
     try {
+      // 画像関連の変数を初期化
       let photoId = null
       let photoExtension = null
       let imageWidth = null
       let imageHeight = null
       let locationData = null // EXIF位置情報用
 
-      // 画像がある場合のみ処理
+      // 画像がある場合の処理
       if (selectedFile) {
-        // 新しい画像アップロード関数を使用
+        // AVIF形式に変換してアップロード
         const result = await uploadWithAvifConversion(selectedFile, 'messages')
         photoId = result.photoId
         photoExtension = result.photoExtension
@@ -201,20 +279,21 @@ export const useMessageSending = ({
         }
       }
 
-      // Firestoreにメッセージを追加
+      // Firestoreに保存するメッセージデータの作成
       const messageData: MessageData = {
-        message: inputText || null,
-        timestamp: serverTimestamp(),
-        user: user,
-        photoId: photoId,
-        photoExtension: photoExtension,
+        message: inputText || null, // テキストがない場合はnull
+        timestamp: serverTimestamp(), // サーバー側のタイムスタンプ
+        user: user, // 送信者情報
+        photoId: photoId, // 画像ID
+        photoExtension: photoExtension, // 画像拡張子
       }
 
-      // 画像サイズが存在する場合のみ追加
+      // 画像の幅が存在する場合のみ追加
       if (imageWidth !== null) {
         messageData.imageWidth = imageWidth
       }
 
+      // 画像の高さが存在する場合のみ追加
       if (imageHeight !== null) {
         messageData.imageHeight = imageHeight
       }
@@ -236,8 +315,9 @@ export const useMessageSending = ({
         }
       }
 
-      // Firestoreに保存
+      // Firestoreにメッセージを保存
       if (serverId && channelId) {
+        // Firestoreのサブコレクションへの参照を作成してドキュメント追加
         await addDoc(
           collection(
             db,
@@ -255,6 +335,7 @@ export const useMessageSending = ({
         toast.error('メッセージの保存に失敗しました')
       }
 
+      // 送信後の後処理
       // 入力フィールドをクリア
       setInputText('')
       clearSelectedFile()
@@ -266,26 +347,31 @@ export const useMessageSending = ({
 
       // 処理終了
       setIsUploading(false)
+
+      // 新しいメッセージが見えるようにスクロール
       scrollToBottom()
     } catch (error) {
+      // エラー処理
       console.error('メッセージの送信に失敗しました:', error)
       toast.error('メッセージの送信に失敗しました')
       setIsUploading(false)
     } finally {
+      // try/catchの結果に関わらず実行される処理
       setIsUploading(false)
     }
   }
 
+  // カスタムフックから返す値と関数
   return {
-    inputText,
-    setInputText,
-    selectedFile,
-    selectedFilePreview,
-    fileImageDimensions,
-    imageLocation,
-    isUploading,
-    handleFileChange,
-    clearSelectedFile,
-    sendMessage,
+    inputText, // 入力テキスト
+    setInputText, // 入力テキストを設定する関数
+    selectedFile, // 選択されたファイル
+    selectedFilePreview, // ファイルのプレビューURL
+    fileImageDimensions, // 画像のサイズ情報
+    imageLocation, // 画像の位置情報
+    isUploading, // アップロード中かどうか
+    handleFileChange, // ファイル選択時の処理関数
+    clearSelectedFile, // ファイル選択をクリアする関数
+    sendMessage, // メッセージ送信関数
   }
 }

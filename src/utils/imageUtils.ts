@@ -232,112 +232,160 @@ export const uploadImage = async (
   return { photoId, photoExtension, fullPath }
 }
 
+/**
+ * 画像ファイルをAVIF形式に変換してアップロードする関数
+ *
+ * AVIF形式とは:
+ * - 新世代の画像圧縮形式で、JPEGやPNGよりも高圧縮・高画質
+ * - Webサイトの表示速度向上に役立つ
+ *
+ * @param file アップロードする画像ファイル（ユーザーが選択したファイル）
+ * @param path 保存先のパス（例: 'users/profile' や 'posts/images'など）
+ * @returns 画像に関する情報（ID、拡張子、サイズなど）を含むオブジェクト
+ */
 export const uploadWithAvifConversion = async (
   file: File,
   path: string
 ): Promise<{
-  photoId: string
-  photoExtension: string
-  width: number | null
-  height: number | null
-  originalSize: number
-  avifSize: number
+  photoId: string // 生成された一意の画像ID
+  photoExtension: string // 画像の拡張子（avifまたは元の拡張子）
+  width: number | null // 画像の幅（変換失敗時はnull）
+  height: number | null // 画像の高さ（変換失敗時はnull）
+  originalSize: number // 元の画像サイズ（バイト）
+  avifSize: number // 変換後のサイズ（バイト）
 }> => {
   try {
-    // 画像タイプチェック
+    // ステップ1: ファイルが画像かどうかをチェック
+    // file.typeはMIMEタイプ（例: 'image/jpeg', 'image/png'など）
     if (!file.type.startsWith('image/')) {
+      // 画像でない場合はエラーを投げる
       throw new Error('Not an image file')
     }
 
-    // AVIF形式かどうかをチェック
+    // ステップ2: すでにAVIF形式かどうかをチェック
     if (file.type === 'image/avif') {
-      // 既にAVIF形式の場合は直接アップロード
+      // すでにAVIF形式ならそのままアップロード
+      // uploadImage関数は別の場所で定義された画像アップロード用の関数
       const result = await uploadImage(file, path)
+
+      // 結果を返す（サイズ情報など）
       return {
-        photoId: result.photoId,
-        photoExtension: result.photoExtension,
-        width: null,
-        height: null,
-        originalSize: file.size,
-        avifSize: file.size,
+        photoId: result.photoId, // 生成されたID
+        photoExtension: result.photoExtension, // 拡張子
+        width: null, // 画像の幅（測定していないのでnull）
+        height: null, // 画像の高さ（測定していないのでnull）
+        originalSize: file.size, // 元のファイルサイズ
+        avifSize: file.size, // AVIFサイズ（変換なしなので同じ）
       }
     }
 
-    // WorkerManagerを初期化
+    // ステップ3: Web Workerの初期化
+    // Web Workerとは: メインスレッドをブロックせずに重い処理を実行するための仕組み
+    // AVIF変換は処理負荷が高いのでWeb Workerを使用
     const workerManager = WorkerManager.getInstance()
     workerManager.initWorker()
 
-    // 画像をImageDataに変換するためのオブジェクトURL作成
+    // ステップ4: 選択されたファイルをブラウザ内で表示できるURLに変換
+    // URLオブジェクトを作成して後でイメージオブジェクトで読み込めるようにする
     const imageUrl = URL.createObjectURL(file)
 
-    // 画像をImageDataに変換
+    // ステップ5: 画像を読み込んで幅と高さを取得
+    // Imageオブジェクトを作成して画像を読み込む
     const img = new Image()
     await new Promise((resolve, reject) => {
+      // 画像ロード完了時の処理
       img.onload = resolve
+      // エラー発生時の処理
       img.onerror = reject
+      // 画像のソースを設定（先ほど作成したURL）
       img.src = imageUrl
     })
 
+    // ステップ6: 画像をキャンバスに描画してピクセルデータを取得
+    // canvasとは: ブラウザ上で画像処理を行うためのHTML要素
     const canvas = document.createElement('canvas')
-    canvas.width = img.width
-    canvas.height = img.height
+    canvas.width = img.width // キャンバスの幅を画像と同じに
+    canvas.height = img.height // キャンバスの高さを画像と同じに
+
+    // 2D描画コンテキストを取得
     const ctx = canvas.getContext('2d')
 
+    // コンテキストが取得できなかった場合はエラー
     if (!ctx) {
       throw new Error('Failed to get canvas context')
     }
 
+    // 画像をキャンバスに描画
     ctx.drawImage(img, 0, 0)
+
+    // 描画した画像のピクセルデータを取得
+    // ImageDataは画像の生データ（ピクセル単位のRGBA値）
     const imageData = ctx.getImageData(0, 0, img.width, img.height)
 
-    // オブジェクトURLをクリーンアップ
+    // ステップ7: 使い終わったオブジェクトURLを解放
+    // メモリリークを防ぐため
     URL.revokeObjectURL(imageUrl)
 
-    // Web Worker経由でAVIF形式に変換
+    // ステップ8: Web Worker経由でAVIF形式に変換
+    // workerManager.encodeToAvifはWeb Workerを使って画像をAVIF形式に変換する
     const avifBuffer = await workerManager.encodeToAvif(imageData, {
-      // エンコード設定
-      cqLevel: 30, // 画質レベル (0-63, 低いほど高画質)
-      cqAlphaLevel: -1, // アルファチャンネルの画質 (-1でcqLevelと同じ)
-      speed: 8, // エンコード速度 (0-10, 高いほど速いが低画質)
+      // 画質と圧縮の設定
+      cqLevel: 30, // 画質レベル（0-63, 数値が小さいほど高画質だが大きいファイルになる）
+      cqAlphaLevel: -1, // アルファチャンネル（透明部分）の画質（-1は自動）
+      speed: 8, // エンコード速度（0-10, 高いほど速いが低画質になる傾向）
     })
 
-    // AVIFバッファからBlobを作成
+    // ステップ9: 変換したAVIFデータからBlobを作成
+    // Blobとは: バイナリデータを扱うためのオブジェクト
     const avifBlob = new Blob([avifBuffer], { type: 'image/avif' })
+
+    // ステップ10: ファイル名用にランダムなIDを生成
+    // uuid4は他のファイルとぶつからない一意のIDを生成する関数
     const photoId = uuid4()
 
-    // アップロード用のAVIFファイルを作成
+    // ステップ11: BlobからFileオブジェクトを作成
+    // Fileオブジェクトはアップロードに必要
     const avifFile = new File([avifBlob], `${photoId}.avif`, {
       type: 'image/avif',
     })
 
-    // Firebase Storageにアップロード
+    // ステップ12: Firebase Storageにアップロード
+    // uploadImage関数でファイルをクラウドストレージにアップロード
     const uploadResult = await uploadImage(avifFile, path)
 
+    // ステップ13: 結果を返す
     return {
-      photoId: uploadResult.photoId,
-      photoExtension: 'avif', // 拡張子はAVIFに固定
-      width: img.width,
-      height: img.height,
-      originalSize: file.size,
-      avifSize: avifBuffer.byteLength,
+      photoId: uploadResult.photoId, // 生成されたID
+      photoExtension: 'avif', // 拡張子はavifに固定（変換したため）
+      width: img.width, // 画像の幅
+      height: img.height, // 画像の高さ
+      originalSize: file.size, // 元のファイルサイズ
+      avifSize: avifBuffer.byteLength, // 変換後のサイズ
     }
   } catch (error) {
+    // エラーが発生した場合の処理
+
+    // エラー内容をコンソールに出力
     console.error('AVIF変換・アップロードエラー:', error)
 
-    // エラー時は元のファイルを直接アップロード
+    // ステップ14: エラー時は元のファイル形式でアップロードを試みる
+    // AVIF変換に失敗しても、元の形式でアップロードすることでユーザー体験を確保
     console.log('元の形式でアップロードを試みます')
     const result = await uploadImage(file, path)
 
+    // 変換に失敗した場合の結果を返す
     return {
-      photoId: result.photoId,
-      photoExtension: result.photoExtension,
-      width: null,
-      height: null,
-      originalSize: file.size,
-      avifSize: file.size, // エラー時は同じサイズを返す
+      photoId: result.photoId, // 生成されたID
+      photoExtension: result.photoExtension, // 元の拡張子
+      width: null, // 幅は取得できなかったのでnull
+      height: null, // 高さは取得できなかったのでnull
+      originalSize: file.size, // 元のファイルサイズ
+      avifSize: file.size, // 変換できなかったので元のサイズと同じ
     }
   } finally {
-    // WorkerManagerを終了
+    // ステップ15: 処理が完了したらWeb Workerを終了
+    // finally句は成功・失敗にかかわらず実行される
+    // リソース解放のためWorkerを終了
     WorkerManager.getInstance().terminateWorker()
   }
 }
