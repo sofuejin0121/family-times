@@ -46,6 +46,7 @@ ctx.addEventListener('message', async (event) => {
        * - 結果はArrayBuffer（バイナリデータ）
        */
       result = await encode(imageData, options)
+      // resultには画像のバイナリデータ（ArrayBuffer）が入る
     } else if (type === 'decode') {
       /**
        * AVIF形式の画像をデコード（復号）
@@ -55,6 +56,7 @@ ctx.addEventListener('message', async (event) => {
        * - 結果はImageData（ピクセルデータ）
        */
       result = await decode(buffer)
+      // resultにはピクセルデータ（ImageData）が入る
     } else {
       // 未知の操作タイプの場合はエラーを投げる
       throw new Error(`Unknown operation type: ${type}`)
@@ -69,19 +71,31 @@ ctx.addEventListener('message', async (event) => {
      *   - result: 処理結果（ArrayBufferまたはImageData）
      *   - id: リクエストID（どのリクエストの応答かを識別するため）
      *
-     * - 第2引数: 転送リスト
-     *   - ArrayBufferを「転送」するためのリスト
-     *   - 「転送」とはコピーではなく所有権の移動（パフォーマンス向上）
-     *   - 条件演算子（三項演算子）で結果の型に応じて異なる処理
-     *     - ImageDataの場合はその内部のbufferを転送
-     *     - それ以外（ArrayBuffer）の場合はそのまま転送
+     * - 第2引数: 転送リスト（重要）
+     *   - 大きなデータを効率的に送信するための仕組み
+     *   - 通常、スレッド間でデータを送るとコピーが作られるが、転送リストに指定すると
+     *     データの所有権だけが移動し、コピーが作られない（高速・省メモリ）
+     *   - 転送されたオブジェクトはWorker側ではもう使えなくなる
+     *
+     * この条件分岐の意味：
+     * - result instanceof ImageData： resultがImageDataオブジェクトの場合
+     *   - [result.data.buffer]： ImageDataの内部にあるピクセルデータのバッファだけを転送
+     *   - ImageDataオブジェクト自体はコピーされるが、大きなデータ部分（バッファ）は転送される
+     * - それ以外（ArrayBufferの場合）：
+     *   - [result]： ArrayBuffer全体を転送
+     *
+     * 転送リストに指定したオブジェクトは、メッセージ本体（第1引数）の中に
+     * 同じオブジェクトとして存在している必要がある。
+     * JavaScriptエンジンが内部的に「同じオブジェクト」かを参照で判断し、
+     * 該当箇所を特定して転送処理を行う。
      */
     ctx.postMessage(
       {
         success: true,
-        result,
+        result, // ここにエンコード/デコード結果が入っている
         id,
       },
+      // 転送リスト - メインスレッドに効率的にデータを渡すため
       result instanceof ImageData ? [result.data.buffer] : [result]
     )
   } catch (error) {
@@ -97,6 +111,7 @@ ctx.addEventListener('message', async (event) => {
       error: error instanceof Error ? error.message : String(error),
       id: event.data.id,
     })
+    // エラーの場合は転送リストなし（特に大きなデータを送信しないため）
   }
 })
 
@@ -107,3 +122,4 @@ ctx.addEventListener('message', async (event) => {
  * - メインスレッドはこのメッセージを受け取ってからWorkerを使い始められる
  */
 ctx.postMessage({ status: 'ready' })
+// 初期化メッセージには転送リストなし（特に大きなデータを送信しないため）
