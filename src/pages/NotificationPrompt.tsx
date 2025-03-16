@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FC } from 'react'
+import { useState, useEffect, FC } from 'react'
 import { requestNotificationPermission } from '../firebase'
 
 interface BeforeInstallPromptEvent extends Event {
