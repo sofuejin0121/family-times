@@ -231,36 +231,35 @@ exports.sendMessageNotification = onDocumentCreated(
               const payload = {
                 // 基本通知情報（クロスプラットフォーム共通）
                 notification: {
-                  title: `${messageData.user.displayName} in ${channelName}`, // 通知タイトル
-                  body: messageData.message || 'メッセージを確認してください', // 通知本文
-                  tag: `message_${messageId}`, // 同じタグの通知は置き換えられる
-                  // アイコンは各プラットフォーム固有設定で指定
+                  title: `${messageData.user.displayName} in ${channelName}`,
+                  body: messageData.message || 'メッセージを確認してください',
                 },
                 // 通知に付加するデータ（アプリ内で使用）
                 data: {
-                  serverId, // サーバーID
-                  channelId, // チャンネルID
-                  messageId, // メッセージID
-                  type: 'message', // 通知タイプ
+                  serverId,
+                  channelId,
+                  messageId,
+                  type: 'message',
+                  notificationId: `message_${messageId}`, // 識別用のIDを追加
                 },
                 // Android向け特有の設定
                 android: {
-                  priority: 'high', // 高優先度（すぐに表示）
+                  priority: 'high',
                   notification: {
-                    icon: 'ic_notification', // 通知アイコン
-                    color: '#4285F4', // 通知の色
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK', // クリック時のアクション
-                    tag: `message_${messageId}`, // 同じタグの通知は置き換えられる
+                    icon: 'ic_notification',
+                    color: '#4285F4',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                    tag: `message_${messageId}`, // Androidのtagはここだけに設定
                   },
                 },
                 // Web向けの設定
                 webpush: {
                   notification: {
-                    icon: messageData.user.photoURL || '/homeicon_512.png', // 通知アイコン
-                    tag: `message_${messageId}`, // 同じタグの通知は置き換えられる
+                    icon: messageData.user.photoURL || '/homeicon_512.png',
+                    tag: `message_${messageId}`, // Webのtagはここだけに設定
                   },
                   fcmOptions: {
-                    link: `/?serverId=${serverId}&channelId=${channelId}`, // クリック時のリンク先
+                    link: `/?serverId=${serverId}&channelId=${channelId}`,
                   },
                 },
               }

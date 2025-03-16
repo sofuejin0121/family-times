@@ -429,11 +429,23 @@ export const setupFCMListener = () => {
 
     // 通知をブラウザに表示（ユーザーが許可している場合）
     if (payload.notification && Notification.permission === 'granted') {
-      const { title, body, icon } = payload.notification
+      // 既存の通知を閉じる（同じタグの通知がある場合）
+      const notificationTag = (payload.notification as { tag?: string }).tag;
+      if (notificationTag) {
+        navigator.serviceWorker.ready.then(registration => {
+          registration.getNotifications({ tag: notificationTag })
+            .then(notifications => {
+              notifications.forEach(notification => notification.close());
+            });
+        });
+      }
+      
+      const { title, body, icon } = payload.notification;
       new Notification(title || 'メッセージ通知', {
-        body: body || '', // 通知の本文
-        icon: icon || '/homeicon.png', // 通知のアイコン
-      })
+        body: body || '',
+        icon: icon || '/homeicon.png',
+        tag: notificationTag, // タグを設定して重複を防止
+      });
     }
   })
 }
