@@ -424,10 +424,23 @@ export const requestNotificationPermission = async () => {
  * アプリケーション起動時に呼び出すことで、アプリ使用中の通知を処理できます
  */
 export const setupFCMListener = () => {
-  onMessage(messaging, (payload: MessagePayload) => {
-    console.log('フォアグラウンドでメッセージを受信しました', payload)
+  onMessage(messaging, async (payload: MessagePayload) => {
+    console.log('フォアグラウンドでメッセージを受信しました', payload);
 
-    // 通知をブラウザに表示（ユーザーが許可している場合）
+    // バッジカウントを更新
+    if (payload.data?.badgeCount && 'setAppBadge' in navigator) {
+      try {
+        const count = parseInt(payload.data.badgeCount as string, 10);
+        if (!isNaN(count)) {
+          await navigator.setAppBadge(count);
+          console.log(`バッジを${count}に設定しました`);
+        }
+      } catch (error) {
+        console.error('バッジの設定に失敗しました:', error);
+      }
+    }
+
+    // 通知をブラウザに表示（既存のコード）
     if (payload.notification && Notification.permission === 'granted') {
       // 既存の通知を閉じる（同じタグの通知がある場合）
       const notificationTag = (payload.notification as { tag?: string }).tag

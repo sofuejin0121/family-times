@@ -241,7 +241,7 @@ exports.sendMessageNotification = onDocumentCreated(
                   messageId,
                   type: 'message',
                   notificationId: `message_${messageId}`, // 識別用のIDを追加
-                  badgeCount: String(userData.unreadCount || 1), //バッジカウント追加(文字列として)
+                  badgeCount: String(userData.unreadCount || 1), // バッジカウント追加(文字列として)
                 },
                 // Android向け特有の設定
                 android: {
@@ -265,6 +265,9 @@ exports.sendMessageNotification = onDocumentCreated(
                   },
                 },
               }
+
+              // デバッグログを追加
+              console.log(`通知送信: ユーザー=${uid}, バッジカウント=${userData.unreadCount || 1}`);
 
               // 無効なトークンを記録する配列
               const invalidTokens = []

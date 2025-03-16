@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import Login from './components/login/Login'
-import { auth, clearAppBadge, setupFCMListener } from './firebase'
+import { auth, clearAppBadge, setupFCMListener, updateAppBadge } from './firebase'
 import { useUserStore } from './stores/userSlice'
 import {
   BrowserRouter,
@@ -86,11 +86,24 @@ function App() {
 
   // userの宣言後にuseEffectを配置
   useEffect(() => {
-    setupFCMListener()
+    // FCMのリスナーのみ初期化
+    setupFCMListener();
+    
+    // ユーザーがログインしている場合のみバッジをクリア
     if (user) {
+      // アプリが開かれたらバッジをクリア
       clearAppBadge()
+        .then(() => console.log('アプリ起動時にバッジをクリアしました'))
+        .catch(err => console.error('バッジクリアエラー:', err));
+        
+      // Firebase Authのユーザーオブジェクトを取得して渡す
+      if (auth.currentUser) {
+        updateAppBadge(auth.currentUser)
+          .then(() => console.log('バッジを更新しました'))
+          .catch(err => console.error('バッジ更新エラー:', err));
+      }
     }
-  }, [user])
+  }, [user]); // userが変わったとき（ログイン/ログアウト時）に実行
 
   const [isInitialized, setIsInitialized] = useState(false)
   // モバイルでは初期状態で非表示に設定

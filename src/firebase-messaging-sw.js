@@ -48,12 +48,25 @@ messaging.onBackgroundMessage((payload) => {
     const badgeCount = payload.data?.badgeCount
     if (badgeCount) {
       try {
-        self.navigator.setAppBadge(parseInt(badgeCount, 10))
-        console.log(`バッジを${badgeCount}に設定しました`)
+        // デバッグログを追加
+        console.log(`[SW] バッジカウント設定試行: ${badgeCount}, 型: ${typeof badgeCount}`);
+        
+        const count = parseInt(badgeCount, 10);
+        if (!isNaN(count)) {
+          self.navigator.setAppBadge(count)
+            .then(() => console.log(`[SW] バッジを${count}に設定しました`))
+            .catch(err => console.error('[SW] バッジ設定エラー:', err));
+        } else {
+          console.error(`[SW] 無効なバッジカウント: ${badgeCount}`);
+        }
       } catch (error) {
-        console.error('バッジの設定に失敗しました:', error)
+        console.error('[SW] バッジの設定に失敗しました:', error)
       }
+    } else {
+      console.log('[SW] バッジカウントがペイロードに含まれていません', payload);
     }
+  } else {
+    console.log('[SW] このブラウザはバッジAPIをサポートしていません');
   }
 
   // 通知はFirebaseが自動的に表示するため、ここでは何もしない
@@ -146,3 +159,14 @@ self.addEventListener('activate', function (event) {
   )
   event.waitUntil(clients.claim()) // クライアントの制御を取得
 })
+
+// デバッグ用コード
+console.log('バッジAPIサポート状況:', {
+  setAppBadge: 'setAppBadge' in navigator,
+  clearAppBadge: 'clearAppBadge' in navigator
+});
+
+console.log('PWAインストール状態:', {
+  standalone: window.matchMedia('(display-mode: standalone)').matches,
+  installed: window.matchMedia('(display-mode: window-controls-overlay)').matches
+});
