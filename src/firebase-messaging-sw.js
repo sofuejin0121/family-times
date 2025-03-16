@@ -41,6 +41,14 @@ messaging.onBackgroundMessage((payload) => {
     '[firebase-messaging-sw.js] バックグラウンドメッセージを受信しました ',
     payload
   )
+  
+  // ペイロードの詳細をログ出力
+  console.log('[SW] ペイロード詳細:', {
+    hasData: !!payload.data,
+    dataKeys: payload.data ? Object.keys(payload.data) : [],
+    badgeCount: payload.data?.badgeCount,
+    badgeCountType: payload.data?.badgeCount ? typeof payload.data.badgeCount : 'undefined'
+  });
 
   // バッジカウントを更新
   if ('setAppBadge' in self.navigator) {
@@ -166,7 +174,12 @@ console.log('バッジAPIサポート状況:', {
   clearAppBadge: 'clearAppBadge' in navigator
 });
 
-console.log('PWAインストール状態:', {
-  standalone: window.matchMedia('(display-mode: standalone)').matches,
-  installed: window.matchMedia('(display-mode: window-controls-overlay)').matches
+console.log('Service Worker環境情報:', {
+  scope: self.registration.scope,
+  badgeAPISupport: {
+    setAppBadge: 'setAppBadge' in self.navigator,
+    clearAppBadge: 'clearAppBadge' in self.navigator
+  }
 });
+
+
