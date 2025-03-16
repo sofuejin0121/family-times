@@ -259,10 +259,24 @@ function App() {
     });
     
     // PWAとしてインストールされているか確認
-    console.log('PWA状態:', {
-      standalone: window.matchMedia('(display-mode: standalone)').matches,
-      fullscreen: window.matchMedia('(display-mode: fullscreen)').matches
-    });
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.matchMedia('(display-mode: fullscreen)').matches;
+    
+    console.log('PWA状態:', { isPWA });
+    
+    if (isPWA && 'setAppBadge' in navigator) {
+      // PWAとしてインストールされている場合のみテスト
+      navigator.setAppBadge(3)
+        .then(() => {
+          console.log('テストバッジを設定しました');
+          // 5秒後にクリア
+          setTimeout(() => {
+            navigator.clearAppBadge()
+              .then(() => console.log('テストバッジをクリアしました'));
+          }, 5000);
+        })
+        .catch(err => console.error('テストバッジエラー:', err));
+    }
   }, []);
 
   // 初期化とサーバーデータのロードが完了するまでローディング画面を表示

@@ -43,35 +43,30 @@ messaging.onBackgroundMessage((payload) => {
     payload
   )
 
-  // バッジカウントを更新
-  if ('setAppBadge' in self.navigator) {
-    const badgeCount = payload.data?.badgeCount
-    if (badgeCount) {
-      try {
-        const count = parseInt(badgeCount, 10)
-        console.log(
-          `[SW] パース後のバッジカウント: ${count}, 型: ${typeof count}`
-        )
-
-        if (!isNaN(count)) {
-          self.navigator
-            .setAppBadge(count)
-            .then(() => console.log(`[SW] バッジを${count}に設定しました`))
-            .catch((err) => {
-              console.error('[SW] バッジ設定エラー:', err)
-              // 失敗時のフォールバック
-              self.registration.showNotification('新着メッセージ', {
-                body: 'バッジを設定できませんでした',
-                icon: '/homeicon.png',
-              })
-            })
-        }
-      } catch (error) {
-        console.error('[SW] バッジの設定に失敗しました:', error)
+  // バッジカウントを更新（より堅牢な実装）
+  if (payload.data && payload.data.badgeCount) {
+    try {
+      const count = parseInt(payload.data.badgeCount, 10);
+      console.log(`[SW] バッジカウント設定試行: ${count}`);
+      
+      if (!isNaN(count) && 'setAppBadge' in self.navigator) {
+        // Promise APIを使用
+        self.navigator.setAppBadge(count)
+          .then(() => console.log(`[SW] バッジを${count}に設定しました`))
+          .catch(err => {
+            console.error('[SW] バッジ設定エラー:', err);
+            // エラー時にフォールバック通知
+            self.registration.showNotification('新着メッセージ', {
+              body: `${count}件の新着メッセージがあります`,
+              icon: '/homeicon.png'
+            });
+          });
+      } else {
+        console.log('[SW] バッジAPIが利用できないか、無効な値です');
       }
+    } catch (error) {
+      console.error('[SW] バッジ処理エラー:', error);
     }
-  } else {
-    console.log('[SW] このブラウザはバッジAPIをサポートしていません')
   }
 })
 // 通知クリックイベントの処理
@@ -135,17 +130,19 @@ self.addEventListener('notificationclick', (event) => {
 
 // Service Workerのインストール時
 self.addEventListener('install', function (event) {
-  console.log('[SW] Service Workerをインストールしました')
-  // デバッグ情報を出力
-  console.log('[SW] 環境情報:', {
-    scope: self.registration.scope,
-    apiSupport: {
-      setAppBadge: 'setAppBadge' in self.navigator,
-      clearAppBadge: 'clearAppBadge' in self.navigator,
-    },
-  })
-  self.skipWaiting()
-})
+  console.log('[SW] Service Workerをインストールしました');
+  
+  // バッジAPIのサポート状況を詳細に確認
+  const badgeSupport = {
+    setAppBadge: 'setAppBadge' in self.navigator,
+    clearAppBadge: 'clearAppBadge' in self.navigator,
+    navigatorType: typeof self.navigator,
+    navigatorProps: Object.keys(self.navigator)
+  };
+  
+  console.log('[SW] バッジAPIサポート詳細:', badgeSupport);
+  self.skipWaiting();
+});
 
 // Service Workerのアクティベーション時
 self.addEventListener('activate', function (event) {

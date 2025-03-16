@@ -215,9 +215,7 @@ export const manuallyRefreshFCMToken = async () => {
     const swRegistration = await getServiceWorkerRegistration()
     if (!swRegistration) {
       // ServiceWorkerを再登録
-      await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/firebase-cloud-messaging-push-scope',
-      })
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js')
     }
 
     // トークンを強制的に更新
@@ -341,7 +339,8 @@ const getServiceWorkerRegistration = async () => {
 
     // 既存のServiceWorkerがない場合、新しいServiceWorkerを登録
     const registration = await navigator.serviceWorker.register(
-      '/firebase-messaging-sw.js' // ServiceWorkerファイルのパス
+      '/firebase-messaging-sw.js',
+      { scope: '/' }
     )
 
     // ServiceWorkerが確実にアクティブになるまで待機

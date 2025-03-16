@@ -140,8 +140,8 @@ export default defineConfig(({ mode }) => {
       tailwindcss(), // TailwindCSSサポートを有効化
       netlifyPlugin(), // Netlifyデプロイサポートを有効化
       VitePWA({
-        registerType: 'autoUpdate', // Service Workerの自動更新を有効化
-        injectRegister: 'auto', // Service Worker登録スクリプトを自動挿入
+        registerType: 'autoUpdate',
+        injectRegister: 'auto',
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           globIgnores: ['**/firebase-messaging-sw.js'],
