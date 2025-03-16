@@ -42,27 +42,27 @@ messaging.onBackgroundMessage((payload) => {
     payload
   )
 
-  // 通知のタイトルを設定（ペイロードにタイトルがない場合はデフォルト値を使用）
-  const notificationTitle = payload.notification.title || 'メッセージ通知'
+  // // 通知のタイトルを設定（ペイロードにタイトルがない場合はデフォルト値を使用）
+  // const notificationTitle = payload.notification.title || 'メッセージ通知'
 
-  // 通知の詳細オプションを設定
-  const notificationOptions = {
-    body: payload.notification.body || '', // 通知の本文
-    icon: payload.notification.icon || '/homeicon.png', // 通知に表示するアイコン
-    badge: '/notification-badge.png', // モバイルデバイスの通知バッジに表示するアイコン
-    data: payload.data, // 通知に関連するデータ（後でクリックイベントで使用）
-    // クリック時のアクション
-    actions: [
-      {
-        action: 'view',
-        title: '表示',
-      }
-    ]
-  }
+  // // 通知の詳細オプションを設定
+  // const notificationOptions = {
+  //   body: payload.notification.body || '', // 通知の本文
+  //   icon: payload.notification.icon || '/homeicon.png', // 通知に表示するアイコン
+  //   badge: '/notification-badge.png', // モバイルデバイスの通知バッジに表示するアイコン
+  //   data: payload.data, // 通知に関連するデータ（後でクリックイベントで使用）
+  //   // クリック時のアクション
+  //   actions: [
+  //     {
+  //       action: 'view',
+  //       title: '表示',
+  //     }
+  //   ]
+  // }
 
-  // 実際に通知を表示します
-  // self.registrationはService Workerの登録情報を参照します
-  self.registration.showNotification(notificationTitle, notificationOptions)
+  // // 実際に通知を表示します
+  // // self.registrationはService Workerの登録情報を参照します
+  // self.registration.showNotification(notificationTitle, notificationOptions)
 })
 
 // 通知クリックイベントの処理
