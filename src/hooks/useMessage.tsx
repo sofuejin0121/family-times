@@ -51,6 +51,9 @@ const useMessage = () => {
   const serverId = useServerStore((state) => state.serverId)
 
   useEffect(() => {
+    // サーバー/チャンネルが変わったら、まずデータをクリア
+    setSubDocuments([])
+    
     if (serverId !== null && channelId !== null) {
       setIsLoading(true)
       const collectionRef = collection(

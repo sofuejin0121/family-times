@@ -195,12 +195,12 @@ exports.sendMessageNotification = onDocumentCreated(
                 return null
               }
 
-              // 送信するトークンのリストを作成
-              const tokensToSend = []
+              // 送信するトークンのリストを作成（重複を避けるためにSetを使用）
+              const uniqueTokens = new Set()
 
               // 従来の単一トークン（後方互換性のため）
               if (userData.fcmToken) {
-                tokensToSend.push(userData.fcmToken)
+                uniqueTokens.add(userData.fcmToken)
               }
 
               // デバイスごとのトークンマップがある場合
@@ -208,16 +208,16 @@ exports.sendMessageNotification = onDocumentCreated(
                 userData.fcmTokensMap &&
                 typeof userData.fcmTokensMap === 'object'
               ) {
-                // 各デバイスのトークンを追加（重複を避けるためにSet使用）
-                const uniqueTokens = new Set(tokensToSend)
+                // 各デバイスのトークンを追加
                 Object.values(userData.fcmTokensMap).forEach((deviceData) => {
                   if (deviceData && deviceData.token) {
                     uniqueTokens.add(deviceData.token)
                   }
                 })
-                tokensToSend.length = 0 // 配列をクリア
-                tokensToSend.push(...uniqueTokens) // Setから配列に戻す
               }
+
+              // Setから配列に変換
+              const tokensToSend = [...uniqueTokens]
 
               // 送信するトークンがない場合
               if (tokensToSend.length === 0) {

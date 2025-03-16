@@ -257,7 +257,7 @@ const Chat = ({
               >
                 <TabsContent
                   value="chat"
-                  className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col"
+                  className="flex-1 overflow-auto data-[state=active]:flex data-[state=active]:flex-col data-[state=inactive]:hidden"
                 >
                   {/* チャットメッセージ表示エリア */}
                   <div
@@ -307,7 +307,7 @@ const Chat = ({
 
                 <TabsContent
                   value="map"
-                  className="flex-1 data-[state=active]:flex data-[state=active]:flex-col"
+                  className="flex-1 data-[state=active]:flex data-[state=active]:flex-col data-[state=inactive]:hidden"
                 >
                   <div className="h-full w-full">
                     <Suspense
