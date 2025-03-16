@@ -190,20 +190,29 @@ const ChatMessage = ({
     [userProps.uid, users]
   )
 
+  // サーバーIDまたはチャンネルIDが変わったときに画像URLをリセット
   useEffect(() => {
+    // サーバーまたはチャンネルが変わったら画像URLをクリア
+    setFileURL(undefined);
+  }, [serverId, channelId]);
+
+  // 画像URL取得処理（既存のuseEffect）
+  useEffect(() => {
+    if (!photoId) return;
+    
     const fetchURL = async () => {
       try {
-        const url = await getCachedImageUrl(photoId, photoExtension, 'messages')
+        const url = await getCachedImageUrl(photoId, photoExtension, 'messages');
         if (url) {
-          setFileURL(url)
+          setFileURL(url);
         }
       } catch (error) {
-        console.error('画像URLの取得に失敗しました:', error)
+        console.error('画像URLの取得に失敗しました:', error);
       }
-    }
+    };
 
-    fetchURL()
-  }, [photoId, photoExtension])
+    fetchURL();
+  }, [photoId, photoExtension]);
 
   const deleteMessage = async () => {
     if (serverId !== null && channelId !== null && id !== null) {

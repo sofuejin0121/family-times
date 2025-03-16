@@ -52,7 +52,6 @@ const useMessage = () => {
 
   useEffect(() => {
     // サーバー/チャンネルが変わったら、まずデータをクリア
-    setSubDocuments([])
     
     if (serverId !== null && channelId !== null) {
       setIsLoading(true)
