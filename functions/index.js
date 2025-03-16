@@ -244,6 +244,7 @@ exports.sendMessageNotification = onDocumentCreated(
                 notification: {
                   title: `${messageData.user.displayName} in ${channelName}`,
                   body: messageData.message || 'メッセージを確認してください',
+                  tag: `message_${messageId}`, // 同じタグの通知は置き換えられる
                 },
                 data: {
                   serverId,
