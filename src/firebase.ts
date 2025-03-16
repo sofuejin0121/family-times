@@ -40,6 +40,19 @@ const storage = getStorage(app) // ストレージサービスへの参照を取
 const messaging = getMessaging(app) // メッセージングサービスへの参照を取得
 
 /**
+ * アプリがPWAとしてインストールされているかを確認する関数
+ * @returns {boolean} PWAとしてインストールされている場合はtrue
+ */
+const isPWAInstalled = () => {
+  // displayModeがstandalone、fullscreen、minimal-uiのいずれかの場合はPWAとしてインストールされている
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.matchMedia('(display-mode: fullscreen)').matches ||
+         window.matchMedia('(display-mode: minimal-ui)').matches ||
+         // iOSのSafariでホーム画面から起動された場合
+         (window.navigator as unknown as { standalone: boolean }).standalone === true;
+};
+
+/**
  * FCMトークンを取得または更新する関数
  * トークンが無効になった場合や定期的な更新に使用
  *
@@ -48,6 +61,12 @@ const messaging = getMessaging(app) // メッセージングサービスへの�
  */
 export const refreshFCMToken = async (user: User, forceRefresh = false) => {
   try {
+    // PWAとしてインストールされていない場合は処理をスキップ
+    if (!isPWAInstalled()) {
+      console.log('PWAとしてインストールされていないため、通知登録をスキップします');
+      return null;
+    }
+
     console.log(
       `FCMトークン再取得開始 - ユーザー: ${user.uid}, 強制更新: ${forceRefresh}`
     )
@@ -323,8 +342,14 @@ export const initFCM = async (user: User) => {
  * @returns ServiceWorkerRegistration | null - 登録されたServiceWorkerまたはnull
  */
 const getServiceWorkerRegistration = async () => {
-  // ブラウザがServiceWorkerをサポートしていない場合はnullを返す
-  if (!('serviceWorker' in navigator)) return null
+  // PWAとしてインストールされていない場合はnullを返す
+  if (!isPWAInstalled()) {
+    console.log('PWAとしてインストールされていないため、ServiceWorker登録をスキップします');
+    return null;
+  }
+
+  // ブラウザがServiceWorkerをサポートしていない場合もnullを返す
+  if (!('serviceWorker' in navigator)) return null;
 
   try {
     // 既存のServiceWorker登録を確認
@@ -399,6 +424,12 @@ export const setupFCMWithAuth = () => {
  */
 export const requestNotificationPermission = async () => {
   try {
+    // PWAとしてインストールされていない場合は通知をスキップ
+    if (!isPWAInstalled()) {
+      console.log('PWAとしてインストールされていないため、通知許可をスキップします');
+      return false;
+    }
+
     // ブラウザの通知許可ダイアログを表示
     const permission = await Notification.requestPermission()
     if (permission === 'granted') {
@@ -420,21 +451,28 @@ export const requestNotificationPermission = async () => {
 }
 
 /**
- * フォアグラウンド（アプリ使用中）でのプッシュ通知受信リスナーを設定する関数
+ * フォアグラウンドでのプッシュ通知受信リスナーを設定する関数
  * アプリケーション起動時に呼び出すことで、アプリ使用中の通知を処理できます
  */
 export const setupFCMListener = () => {
+  // PWAとしてインストールされていない場合はリスナーをスキップ
+  if (!isPWAInstalled()) {
+    console.log('PWAとしてインストールされていないため、FCMリスナーをスキップします');
+    return;
+  }
+
   onMessage(messaging, (payload: MessagePayload) => {
     console.log('フォアグラウンドでメッセージを受信しました', payload)
 
-    // // 通知をブラウザに表示（ユーザーが許可している場合）
-    // if (payload.notification && Notification.permission === 'granted') {
-    //   const { title, body, icon } = payload.notification
-    //   new Notification(title || 'メッセージ通知', {
-    //     body: body || '', // 通知の本文
-    //     icon: icon || '/homeicon.png', // 通知のアイコン
-    //   })
-    // }
+    // 通知をブラウザに表示（ユーザーが許可している場合）
+    if (payload.notification && Notification.permission === 'granted') {
+      const { title, body, icon } = payload.notification
+      new Notification(title || 'メッセージ通知', {
+        body: body || '', // 通知の本文
+        icon: icon || '/homeicon.png', // 通知のアイコン
+        tag: payload.data?.messageId || undefined, // タグを追加して重複を防止
+      })
+    }
   })
 }
 

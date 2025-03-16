@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { InviteRedirect } from './pages/InviteRedirect'
 import { Button } from '@/components/ui/button'
 import { MapProvider } from 'react-map-gl'
+import NotificationPrompt from './pages/NotificationPrompt'
 
 // エラーハンドリング用コンポーネント
 // URLが無効な形式の時に表示される画面
@@ -246,6 +247,8 @@ function App() {
     <MapProvider>
       <BrowserRouter>
         <DeepLinkChecker />
+        <NotificationPrompt />
+
         {/* モバイルデバッグ用のメッセージを追加 */}
         {process.env.NODE_ENV !== 'production' && (
           <div className="fixed top-0 left-0 z-50 bg-black/50 p-1 text-xs text-white">
