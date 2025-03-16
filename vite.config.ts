@@ -149,6 +149,7 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: "Family Times",
           short_name: "Family Times",
+          display: "standalone",
           icons: [
             {
               src: '/homeicon_512.png',
@@ -164,7 +165,6 @@ export default defineConfig(({ mode }) => {
             },
           ],
           start_url: "/",
-          display: "standalone",
           background_color: "#ffffff",
           theme_color: "#4285F4"
         },
