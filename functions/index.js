@@ -182,6 +182,7 @@ exports.sendMessageNotification = onDocumentCreated(
         const batch = memberUids.slice(i, i + batchSize)
 
         // 各ユーザーへの通知を並列処理
+        // ユーザー通知処理部分の修正版（関連部分のみ抜粋）
         await Promise.all(
           batch.map(async (uid) => {
             try {
@@ -195,29 +196,42 @@ exports.sendMessageNotification = onDocumentCreated(
                 return null
               }
 
+              // デバッグログ（問題特定後は削除可能）
+              logger.log(`Processing notification for user ${uid}`)
+
               // 送信するトークンのリストを作成（重複を避けるためにSetを使用）
               const uniqueTokens = new Set()
 
-              // 従来の単一トークン（後方互換性のため）
-              if (userData.fcmToken) {
-                uniqueTokens.add(userData.fcmToken)
-              }
-
-              // デバイスごとのトークンマップがある場合
+              // デバイスごとのトークンマップがある場合は優先的に使用
               if (
                 userData.fcmTokensMap &&
                 typeof userData.fcmTokensMap === 'object'
               ) {
-                // 各デバイスのトークンを追加
-                Object.values(userData.fcmTokensMap).forEach((deviceData) => {
-                  if (deviceData && deviceData.token) {
-                    uniqueTokens.add(deviceData.token)
+                Object.entries(userData.fcmTokensMap).forEach(
+                  ([deviceId, deviceData]) => {
+                    if (
+                      deviceData &&
+                      deviceData.token &&
+                      deviceData.active !== false
+                    ) {
+                      uniqueTokens.add(deviceData.token)
+                    }
                   }
-                })
+                )
+              }
+
+              // fcmTokensMapが空の場合のみ従来の単一トークンを使用（後方互換性のため）
+              if (uniqueTokens.size === 0 && userData.fcmToken) {
+                uniqueTokens.add(userData.fcmToken)
               }
 
               // Setから配列に変換
               const tokensToSend = [...uniqueTokens]
+
+              // デバッグログ
+              logger.log(
+                `Sending to ${tokensToSend.length} unique tokens for user ${uid}`
+              )
 
               // 送信するトークンがない場合
               if (tokensToSend.length === 0) {
@@ -227,134 +241,112 @@ exports.sendMessageNotification = onDocumentCreated(
 
               // 通知ペイロード（送信内容）を準備
               const payload = {
-                // 基本通知情報（クロスプラットフォーム共通）
                 notification: {
-                  title: `${messageData.user.displayName} in ${channelName}`, // 通知タイトル
-                  body: messageData.message || 'メッセージを確認してください', // 通知本文
-                  // アイコンは各プラットフォーム固有設定で指定
+                  title: `${messageData.user.displayName} in ${channelName}`,
+                  body: messageData.message || 'メッセージを確認してください',
                 },
-                // 通知に付加するデータ（アプリ内で使用）
                 data: {
-                  serverId, // サーバーID
-                  channelId, // チャンネルID
-                  messageId, // メッセージID
-                  type: 'message', // 通知タイプ
+                  serverId,
+                  channelId,
+                  messageId,
+                  type: 'message',
+                  timestamp: Date.now().toString(), // 通知の一意性を確保するためにタイムスタンプを追加
                 },
-                // Android向け特有の設定
                 android: {
-                  priority: 'high', // 高優先度（すぐに表示）
+                  priority: 'high',
                   notification: {
-                    icon: 'ic_notification', // 通知アイコン
-                    color: '#4285F4', // 通知の色
-                    clickAction: 'FLUTTER_NOTIFICATION_CLICK', // クリック時のアクション
+                    icon: 'ic_notification',
+                    color: '#4285F4',
+                    clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+                    // Android専用の重複回避機能
+                    tag: `message_${messageId}`, // 同じタグの通知は置き換えられる
                   },
                 },
-                // Web向けの設定
                 webpush: {
                   notification: {
-                    icon: messageData.user.photoURL || '/homeicon_512.png', // 通知アイコン
+                    icon: messageData.user.photoURL || '/homeicon_512.png',
+                    tag: `message_${messageId}`, // Web通知でも同じタグを使用して重複を防ぐ
                   },
                   fcmOptions: {
-                    link: `/?serverId=${serverId}&channelId=${channelId}`, // クリック時のリンク先
+                    link: `/?serverId=${serverId}&channelId=${channelId}`,
                   },
                 },
               }
 
-              // 無効なトークンを記録する配列
-              const invalidTokens = []
-              // 有効なトークンを記録する配列
-              const validTokens = []
-
-              // 各トークンに通知を送信
-              for (const token of tokensToSend) {
-                try {
-                  // FCM V1 API形式で通知を送信
-                  await getMessaging().send({
-                    token: token,
-                    ...payload,
-                  })
-                  logger.log(
-                    `Notification sent to ${uid} (token: ${token.substring(0, 10)}...)`
-                  )
-                  validTokens.push(token)
-                } catch (err) {
-                  logger.error(
-                    `Error sending notification to ${uid} (token: ${token.substring(0, 10)}...):`,
-                    err
-                  )
-
-                  // トークンが無効な場合
-                  if (
-                    err.code === 'messaging/invalid-registration-token' ||
-                    err.code ===
-                      'messaging/registration-token-not-registered' ||
-                    err.message.includes('404') ||
-                    err.message.includes('Not Found')
-                  ) {
-                    invalidTokens.push(token)
-                    logger.error(
-                      `[FCMError] 無効なトークンを検出 - ユーザー: ${uid}, トークン: ${token.substring(0, 10)}...`
-                    )
-                  }
+              // マルチキャスト送信を使用（個別送信よりも効率的）
+              try {
+                const multicastMessage = {
+                  tokens: tokensToSend,
+                  ...payload,
                 }
-              }
 
-              // 無効なトークンがある場合、ユーザードキュメントを更新
-              if (invalidTokens.length > 0) {
-                // 更新するデータを準備
-                const updateData = {}
+                const batchResponse =
+                  await getMessaging().sendMulticast(multicastMessage)
 
-                // fcmTokensMapから無効なトークンを削除
-                if (userData.fcmTokensMap) {
-                  const updatedTokensMap = { ...userData.fcmTokensMap }
-                  let mapUpdated = false
+                logger.log(
+                  `Notification batch sent to ${uid}: ${batchResponse.successCount} successful, ${batchResponse.failureCount} failed`
+                )
 
-                  // 各デバイスのトークンをチェック
-                  Object.entries(updatedTokensMap).forEach(
-                    ([deviceId, deviceData]) => {
-                      if (
-                        deviceData &&
-                        deviceData.token &&
-                        invalidTokens.includes(deviceData.token)
-                      ) {
-                        // このデバイスのトークンが無効なので削除
-                        delete updatedTokensMap[deviceId]
-                        mapUpdated = true
+                // 無効なトークンの処理
+                if (batchResponse.failureCount > 0) {
+                  const invalidTokens = []
+                  batchResponse.responses.forEach((resp, idx) => {
+                    if (!resp.success) {
+                      invalidTokens.push(tokensToSend[idx])
+                    }
+                  })
+
+                  // 無効なトークンがある場合、ユーザードキュメントを更新
+                  if (invalidTokens.length > 0) {
+                    // 更新するデータを準備
+                    const updateData = {}
+
+                    // fcmTokensMapから無効なトークンを削除
+                    if (userData.fcmTokensMap) {
+                      const updatedTokensMap = { ...userData.fcmTokensMap }
+                      let mapUpdated = false
+
+                      // 各デバイスのトークンをチェック
+                      Object.entries(updatedTokensMap).forEach(
+                        ([deviceId, deviceData]) => {
+                          if (
+                            deviceData &&
+                            deviceData.token &&
+                            invalidTokens.includes(deviceData.token)
+                          ) {
+                            // このデバイスのトークンが無効なので削除
+                            delete updatedTokensMap[deviceId]
+                            mapUpdated = true
+                          }
+                        }
+                      )
+
+                      if (mapUpdated) {
+                        updateData.fcmTokensMap = updatedTokensMap
                       }
                     }
-                  )
 
-                  if (mapUpdated) {
-                    updateData.fcmTokensMap = updatedTokensMap
+                    // メインのfcmTokenが無効な場合
+                    if (
+                      userData.fcmToken &&
+                      invalidTokens.includes(userData.fcmToken)
+                    ) {
+                      updateData.fcmToken = null
+                      updateData.lastTokenError = new Date()
+                    }
+
+                    // ユーザードキュメントを更新
+                    if (Object.keys(updateData).length > 0) {
+                      await firestore
+                        .collection('users')
+                        .doc(uid)
+                        .update(updateData)
+                      logger.log(`Updated invalid tokens for user ${uid}`)
+                    }
                   }
                 }
-
-                // メインのfcmTokenが無効な場合
-                if (
-                  userData.fcmToken &&
-                  invalidTokens.includes(userData.fcmToken)
-                ) {
-                  // 有効なトークンがあれば、それをメインのトークンに設定
-                  if (validTokens.length > 0) {
-                    updateData.fcmToken = validTokens[0]
-                  } else {
-                    updateData.fcmToken = null
-                    updateData.lastTokenError = new Date()
-                    updateData.tokenErrorCode = 'all_tokens_invalid'
-                    updateData.tokenErrorMessage = '全てのトークンが無効です'
-                  }
-                }
-
-                // ユーザードキュメントを更新
-                if (Object.keys(updateData).length > 0) {
-                  await firestore
-                    .collection('users')
-                    .doc(uid)
-                    .update(updateData)
-                  logger.error(
-                    `[FCMError] ユーザーのトークン情報を更新しました - ${uid}`
-                  )
-                }
+              } catch (err) {
+                logger.error(`Error sending batch notification to ${uid}:`, err)
               }
             } catch (err) {
               // ユーザー処理中のエラーをログに記録
