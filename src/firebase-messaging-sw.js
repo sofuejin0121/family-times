@@ -42,6 +42,20 @@ messaging.onBackgroundMessage((payload) => {
     payload
   )
 
+  // バッジカウントを更新
+  if ('setAppBadge' in self.navigator) {
+    // データからバッジカウントを取得(存在する場合)
+    const badgeCount = payload.data?.badgeCount
+    if (badgeCount) {
+      try {
+        self.navigator.setAppBadge(parseInt(badgeCount, 10))
+        console.log(`バッジを${badgeCount}に設定しました`)
+      } catch (error) {
+        console.error('バッジの設定に失敗しました:', error)
+      }
+    }
+  }
+
   // 通知はFirebaseが自動的に表示するため、ここでは何もしない
   // 以下のコードはコメントアウトしたままにする
   // const notificationTitle = payload.notification.title || 'メッセージ通知'
@@ -64,63 +78,71 @@ messaging.onBackgroundMessage((payload) => {
 // ユーザーが通知をクリックした時の動作を定義します
 self.addEventListener('notificationclick', (event) => {
   console.log('[firebase-messaging-sw.js] 通知がクリックされました', event)
-  
+
   // 通知を閉じます
   event.notification.close()
+
+  // 通知をクリックしたらバッジをクリア
+  if ('clearAppBadge' in self.navigator) {
+    self.navigator
+      .clearAppBadge()
+      .then(() => console.log('[SW] バッジをクリアしました'))
+      .catch((err) => console.error('[SW] バッジクリアエラー:', err))
+  }
 
   // event.waitUntilはService Workerのライフサイクルを延長し、
   // 非同期処理が完了するまでService Workerを終了させません
   event.waitUntil(
     // clientsはService Workerに関連付けられたウィンドウ/タブのリストを取得します
-    clients
-      .matchAll({ type: 'window' })
-      .then((clientList) => {
-        // 通知データからチャンネルIDとサーバーIDを取得
-        const data = event.notification.data || {}
-        const channelId = data.channelId
-        const serverId = data.serverId
-        const messageId = data.messageId
+    clients.matchAll({ type: 'window' }).then((clientList) => {
+      // 通知データからチャンネルIDとサーバーIDを取得
+      const data = event.notification.data || {}
+      const channelId = data.channelId
+      const serverId = data.serverId
+      const messageId = data.messageId
 
-        // リダイレクト先URLを設定
-        let url = '/'
-        if (serverId && channelId) {
-          // サーバーIDとチャンネルIDがある場合は、それらをクエリパラメータとして追加
-          url = `/?serverId=${serverId}&channelId=${channelId}`
-          // メッセージIDがある場合は、特定のメッセージにフォーカスするためのパラメータを追加
-          if(messageId) {
-            url += `?messageId=${messageId}`
-          }
+      // リダイレクト先URLを設定
+      let url = '/'
+      if (serverId && channelId) {
+        // サーバーIDとチャンネルIDがある場合は、それらをクエリパラメータとして追加
+        url = `/?serverId=${serverId}&channelId=${channelId}`
+        // メッセージIDがある場合は、特定のメッセージにフォーカスするためのパラメータを追加
+        if (messageId) {
+          url += `?messageId=${messageId}`
         }
+      }
 
-        // すでに開いているウィンドウがあるか確認
-        for (const client of clientList) {
-          // 同じオリジンのウィンドウがあり、focusメソッドが利用可能な場合
-          if (client.url.includes(self.registration.scope) && 'focus' in client) {
-            // そのウィンドウにフォーカスを当てる
-            client.postMessage({
-              type: 'NOTIFICATION_CLICK',
-              data: data
-            })
-            return
-          }
+      // すでに開いているウィンドウがあるか確認
+      for (const client of clientList) {
+        // 同じオリジンのウィンドウがあり、focusメソッドが利用可能な場合
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          // そのウィンドウにフォーカスを当てる
+          client.postMessage({
+            type: 'NOTIFICATION_CLICK',
+            data: data,
+          })
+          return
         }
+      }
 
-        // 開いているウィンドウがない場合は新しいウィンドウを開く
-        if (clients.openWindow) {
-          return clients.openWindow(url)
-        }
-      })
+      // 開いているウィンドウがない場合は新しいウィンドウを開く
+      if (clients.openWindow) {
+        return clients.openWindow(url)
+      }
+    })
   )
 })
 
 // Service Workerのインストール時
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function (event) {
   console.log('[firebase-messaging-sw.js] Service Workerをインストールしました')
   self.skipWaiting() // 即座にアクティブ化
 })
 
 // Service Workerのアクティベーション時
-self.addEventListener('activate', function(event) {
-  console.log('[firebase-messaging-sw.js] Service Workerがアクティブになりました')
+self.addEventListener('activate', function (event) {
+  console.log(
+    '[firebase-messaging-sw.js] Service Workerがアクティブになりました'
+  )
   event.waitUntil(clients.claim()) // クライアントの制御を取得
 })

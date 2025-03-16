@@ -241,6 +241,7 @@ exports.sendMessageNotification = onDocumentCreated(
                   messageId,
                   type: 'message',
                   notificationId: `message_${messageId}`, // 識別用のIDを追加
+                  badgeCount: String(userData.unreadCount || 1), //バッジカウント追加(文字列として)
                 },
                 // Android向け特有の設定
                 android: {
@@ -257,6 +258,7 @@ exports.sendMessageNotification = onDocumentCreated(
                   notification: {
                     icon: messageData.user.photoURL || '/homeicon_512.png',
                     tag: `message_${messageId}`, // Webのtagはここだけに設定
+                    badge: '/notification_badge.png', // 通知のバッジアイコン
                   },
                   fcmOptions: {
                     link: `/?serverId=${serverId}&channelId=${channelId}`,

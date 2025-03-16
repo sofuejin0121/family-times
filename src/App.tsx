@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import Login from './components/login/Login'
-import { auth, setupFCMListener } from './firebase'
+import { auth, clearAppBadge, setupFCMListener } from './firebase'
 import { useUserStore } from './stores/userSlice'
 import {
   BrowserRouter,
@@ -81,12 +81,17 @@ const DeepLinkChecker = () => {
 }
 
 function App() {
-  useEffect(() => {
-    // FCMのリスナーのみ初期化
-    setupFCMListener()
-  }, [])
   const isAuthChecking = useUserStore((state) => state.isAuthChecking)
   const user = useUserStore((state) => state.user)
+
+  // userの宣言後にuseEffectを配置
+  useEffect(() => {
+    setupFCMListener()
+    if (user) {
+      clearAppBadge()
+    }
+  }, [user])
+
   const [isInitialized, setIsInitialized] = useState(false)
   // モバイルでは初期状態で非表示に設定
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -243,84 +248,84 @@ function App() {
   }
 
   return (
-      <MapProvider>
-        <BrowserRouter>
-          <DeepLinkChecker />
-          
-          {/* モバイルデバッグ用のメッセージを追加 */}
-          {process.env.NODE_ENV !== 'production' && (
-            <div className="fixed top-0 left-0 z-50 bg-black/50 p-1 text-xs text-white">
-              {`Mobile: ${window.innerWidth}x${window.innerHeight}`}
-            </div>
-          )}
-          {!user ? (
-            // 未ログイン状態
-            <>
+    <MapProvider>
+      <BrowserRouter>
+        <DeepLinkChecker />
+
+        {/* モバイルデバッグ用のメッセージを追加 */}
+        {process.env.NODE_ENV !== 'production' && (
+          <div className="fixed top-0 left-0 z-50 bg-black/50 p-1 text-xs text-white">
+            {`Mobile: ${window.innerWidth}x${window.innerHeight}`}
+          </div>
+        )}
+        {!user ? (
+          // 未ログイン状態
+          <>
+            <Routes>
+              <Route path="*" element={<Login />} />
+            </Routes>
+            <Toaster />
+          </>
+        ) : (
+          // ログイン済み状態（プロフィール設定チェックを含む）
+          <SidebarProvider>
+            <div
+              className="flex w-full items-center justify-center overflow-hidden"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
               <Routes>
-                <Route path="*" element={<Login />} />
-              </Routes>
-              <Toaster />
-            </>
-          ) : (
-            // ログイン済み状態（プロフィール設定チェックを含む）
-            <SidebarProvider>
-              <div
-                className="flex w-full items-center justify-center overflow-hidden"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
-                <Routes>
-                  {needsProfileSetup ? (
-                    <>
-                      <Route path="/profile" element={<NewUserProfile />} />
-                      <Route
-                        path="*"
-                        element={<Navigate to="/profile" replace />}
-                      />
-                    </>
-                  ) : (
-                    <>
-                      <Route
-                        path="/"
-                        element={
-                          <div className="flex h-screen w-full overflow-hidden">
-                            <AppSidebar
+                {needsProfileSetup ? (
+                  <>
+                    <Route path="/profile" element={<NewUserProfile />} />
+                    <Route
+                      path="*"
+                      element={<Navigate to="/profile" replace />}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Route
+                      path="/"
+                      element={
+                        <div className="flex h-screen w-full overflow-hidden">
+                          <AppSidebar
+                            isMobileMenuOpen={isMobileMenuOpen}
+                            setIsMobileMenuOpen={setIsMobileMenuOpen}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <Chat
+                              isMemberSidebarOpen={isMemberSidebarOpen}
+                              setIsMemberSidebarOpen={setIsMemberSidebarOpen}
                               isMobileMenuOpen={isMobileMenuOpen}
                               setIsMobileMenuOpen={setIsMobileMenuOpen}
+                              isMapMode={isMapMode}
+                              setIsMapMode={setIsMapMode}
+                              setIsImageDialogOpen={setIsImageDialogOpen}
                             />
-                            <div className="min-w-0 flex-1">
-                              <Chat
-                                isMemberSidebarOpen={isMemberSidebarOpen}
-                                setIsMemberSidebarOpen={setIsMemberSidebarOpen}
-                                isMobileMenuOpen={isMobileMenuOpen}
-                                setIsMobileMenuOpen={setIsMobileMenuOpen}
-                                isMapMode={isMapMode}
-                                setIsMapMode={setIsMapMode}
-                                setIsImageDialogOpen={setIsImageDialogOpen}
-                              />
-                            </div>
                           </div>
-                        }
-                      />
-                      <Route path="/invite" element={<InvitePage />} />
-                      <Route
-                        path="/invite/:inviteCode"
-                        element={<InviteRedirect />}
-                      />
-                      <Route path="/profile" element={<NewUserProfile />} />
+                        </div>
+                      }
+                    />
+                    <Route path="/invite" element={<InvitePage />} />
+                    <Route
+                      path="/invite/:inviteCode"
+                      element={<InviteRedirect />}
+                    />
+                    <Route path="/profile" element={<NewUserProfile />} />
 
-                      {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
-                      <Route path="/invite/*" element={<InvalidInvitePath />} />
-                    </>
-                  )}
-                </Routes>
-                <Toaster />
-              </div>
-            </SidebarProvider>
-          )}
-        </BrowserRouter>
-      </MapProvider>
+                    {/* URLエンコードされていない複雑なパスに対応するためのキャッチオールルート */}
+                    <Route path="/invite/*" element={<InvalidInvitePath />} />
+                  </>
+                )}
+              </Routes>
+              <Toaster />
+            </div>
+          </SidebarProvider>
+        )}
+      </BrowserRouter>
+    </MapProvider>
   )
 }
 

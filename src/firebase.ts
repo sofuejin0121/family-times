@@ -430,24 +430,80 @@ export const setupFCMListener = () => {
     // 通知をブラウザに表示（ユーザーが許可している場合）
     if (payload.notification && Notification.permission === 'granted') {
       // 既存の通知を閉じる（同じタグの通知がある場合）
-      const notificationTag = (payload.notification as { tag?: string }).tag;
+      const notificationTag = (payload.notification as { tag?: string }).tag
       if (notificationTag) {
-        navigator.serviceWorker.ready.then(registration => {
-          registration.getNotifications({ tag: notificationTag })
-            .then(notifications => {
-              notifications.forEach(notification => notification.close());
-            });
-        });
+        navigator.serviceWorker.ready.then((registration) => {
+          registration
+            .getNotifications({ tag: notificationTag })
+            .then((notifications) => {
+              notifications.forEach((notification) => notification.close())
+            })
+        })
       }
-      
-      const { title, body, icon } = payload.notification;
+
+      const { title, body, icon } = payload.notification
       new Notification(title || 'メッセージ通知', {
         body: body || '',
         icon: icon || '/homeicon.png',
         tag: notificationTag, // タグを設定して重複を防止
-      });
+      })
     }
   })
+}
+
+export const setAppBadge = async (count: number): Promise<void> => {
+  try {
+    // バッジAPIが利用可能化チェック
+    if ('setAppBadge' in navigator) {
+      await navigator.setAppBadge(count)
+      console.log(`バッジを${count}に設定しました`)
+    } else {
+      console.log('バッジAPIがサポートされていません')
+    }
+  } catch (error) {
+    console.error('バッジの設定に失敗しました:', error)
+  }
+}
+
+// バッジをクリアする関数
+export const clearAppBadge = async (): Promise<void> => {
+  try {
+    // バッジAPIが利用可能化チェック
+    if ('clearAppBadge' in navigator) {
+      await navigator.clearAppBadge()
+      console.log('アプリバッジをクリアしました')
+    } else {
+      console.log('バッジAPIがサポートされていません')
+    }
+  } catch (error) {
+    console.error('バッジのクリアに失敗しました:', error)
+  }
+}
+
+// 未読メッセージに基づいてバッジを更新する関数
+export const updateAppBadge = async (user: User): Promise<void> => {
+  try {
+    // バッジAPIが利用可能化チェック
+    if (!('setAppBadge' in navigator)) {
+      return
+    }
+
+    // ユーザーの未読メッセージ数を取得
+    const userDoc = await getDoc(doc(db, 'users', user.uid))
+    const userData = userDoc.data() || {}
+
+    if (userData && userData.unreadCount) {
+      // 未読カウントがある場合はバッジを設定
+      await setAppBadge(userData.unreadCount)
+    } else {
+      // 未読カウントがない場合はバッジクリア
+      await clearAppBadge()
+    }
+  } catch (error) {
+    console.error('バッジの更新に失敗しました:', error)
+  }
+
+  // バッジを更新
 }
 
 // 他のモジュールで使用するためにFirebaseサービスをエクスポート
