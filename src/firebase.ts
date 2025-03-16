@@ -519,5 +519,25 @@ export const updateAppBadge = async (user: User): Promise<void> => {
   // バッジを更新
 }
 
+// Service Workerの登録状態をデバッグ
+const checkServiceWorkerStatus = async () => {
+  if ('serviceWorker' in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    console.log('登録済みService Worker:', registrations);
+    
+    registrations.forEach(reg => {
+      console.log('SW スコープ:', reg.scope);
+      console.log('SW 状態:', {
+        installing: !!reg.installing,
+        waiting: !!reg.waiting,
+        active: !!reg.active
+      });
+    });
+  }
+};
+
+// アプリ起動時に確認
+checkServiceWorkerStatus();
+
 // 他のモジュールで使用するためにFirebaseサービスをエクスポート
 export { auth, provider, db, storage, app, messaging }

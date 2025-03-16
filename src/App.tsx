@@ -251,6 +251,20 @@ function App() {
     return () => unsubscribe()
   }, [])
 
+  // バッジAPIのサポート状況を確認
+  useEffect(() => {
+    console.log('バッジAPIサポート状況:', {
+      setAppBadge: 'setAppBadge' in navigator,
+      clearAppBadge: 'clearAppBadge' in navigator
+    });
+    
+    // PWAとしてインストールされているか確認
+    console.log('PWA状態:', {
+      standalone: window.matchMedia('(display-mode: standalone)').matches,
+      fullscreen: window.matchMedia('(display-mode: fullscreen)').matches
+    });
+  }, []);
+
   // 初期化とサーバーデータのロードが完了するまでローディング画面を表示
   if (!isInitialized || isAuthChecking) {
     return (

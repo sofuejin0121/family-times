@@ -143,12 +143,12 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate', // Service Workerの自動更新を有効化
         injectRegister: 'auto', // Service Worker登録スクリプトを自動挿入
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg}'], // キャッシュするファイルパターン
-          // firebase-messaging-sw.jsは独自に処理するため、Workboxの処理から除外
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           globIgnores: ['**/firebase-messaging-sw.js'],
         },
         manifest: {
-          // PWAのマニフェスト設定（アプリのアイコンなど）
+          name: "Family Times",
+          short_name: "Family Times",
           icons: [
             {
               src: '/homeicon_512.png',
@@ -163,9 +163,13 @@ export default defineConfig(({ mode }) => {
               purpose: 'any maskable',
             },
           ],
+          start_url: "/",
+          display: "standalone",
+          background_color: "#ffffff",
+          theme_color: "#4285F4"
         },
         devOptions: {
-          enabled: true, // 開発モードでもPWA機能を有効化
+          enabled: true,
         },
       }),
       firebaseMessagingSwPlugin(env), // 環境変数をFirebase Messaging SWプラグインに渡す
