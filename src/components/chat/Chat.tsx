@@ -210,17 +210,6 @@ const Chat = ({
     setIsMemberSidebarOpen(!isMemberSidebarOpen)
   }, [isMemberSidebarOpen, setIsMemberSidebarOpen])
 
-  // メッセージ送信後にバッジをテスト設定
-  const handleTestBadge = () => {
-    if ('setAppBadge' in navigator) {
-      navigator.setAppBadge(5)
-        .then(() => console.log('バッジを設定しました'))
-        .catch(err => console.error('バッジ設定エラー:', err));
-    } else {
-      console.log('このブラウザはバッジAPIをサポートしていません');
-    }
-  };
-
   return (
     <>
       {/* サーバーを選択していない場合はNoServerViewを表示 */}
@@ -309,7 +298,7 @@ const Chat = ({
                     fileInputRef={fileInputRef}
                     handleFileChange={handleFileChange}
                     clearSelectedFile={clearSelectedFile}
-                    sendMessage={() => { sendMessage(); handleTestBadge(); }}
+                    sendMessage={sendMessage}
                     channelName={channelName || ''}
                     replyingTo={replyingTo}
                     cancelReply={cancelReply}
