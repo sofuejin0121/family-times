@@ -36,65 +36,44 @@ const messaging = firebase.messaging()
 // バックグラウンドメッセージの処理
 // アプリがバックグラウンド（閉じている状態や最小化されている状態）の時に
 // Firebaseから送信されたメッセージを処理するためのリスナーを設定します
+// firebase-messaging-sw.js 内の変更
 messaging.onBackgroundMessage((payload) => {
   console.log(
     '[firebase-messaging-sw.js] バックグラウンドメッセージを受信しました ',
     payload
   )
-  
-  // ペイロードの詳細をログ出力
-  console.log('[SW] ペイロード詳細:', {
-    hasData: !!payload.data,
-    dataKeys: payload.data ? Object.keys(payload.data) : [],
-    badgeCount: payload.data?.badgeCount,
-    badgeCountType: payload.data?.badgeCount ? typeof payload.data.badgeCount : 'undefined'
-  });
 
   // バッジカウントを更新
   if ('setAppBadge' in self.navigator) {
-    // データからバッジカウントを取得(存在する場合)
     const badgeCount = payload.data?.badgeCount
     if (badgeCount) {
       try {
-        // デバッグログを追加
-        console.log(`[SW] バッジカウント設定試行: ${badgeCount}, 型: ${typeof badgeCount}`);
-        
-        const count = parseInt(badgeCount, 10);
+        const count = parseInt(badgeCount, 10)
+        console.log(
+          `[SW] パース後のバッジカウント: ${count}, 型: ${typeof count}`
+        )
+
         if (!isNaN(count)) {
-          self.navigator.setAppBadge(count)
+          self.navigator
+            .setAppBadge(count)
             .then(() => console.log(`[SW] バッジを${count}に設定しました`))
-            .catch(err => console.error('[SW] バッジ設定エラー:', err));
-        } else {
-          console.error(`[SW] 無効なバッジカウント: ${badgeCount}`);
+            .catch((err) => {
+              console.error('[SW] バッジ設定エラー:', err)
+              // 失敗時のフォールバック
+              self.registration.showNotification('新着メッセージ', {
+                body: 'バッジを設定できませんでした',
+                icon: '/homeicon.png',
+              })
+            })
         }
       } catch (error) {
         console.error('[SW] バッジの設定に失敗しました:', error)
       }
-    } else {
-      console.log('[SW] バッジカウントがペイロードに含まれていません', payload);
     }
   } else {
-    console.log('[SW] このブラウザはバッジAPIをサポートしていません');
+    console.log('[SW] このブラウザはバッジAPIをサポートしていません')
   }
-
-  // 通知はFirebaseが自動的に表示するため、ここでは何もしない
-  // 以下のコードはコメントアウトしたままにする
-  // const notificationTitle = payload.notification.title || 'メッセージ通知'
-  // const notificationOptions = {
-  //   body: payload.notification.body || '',
-  //   icon: payload.notification.icon || '/homeicon.png',
-  //   badge: '/notification-badge.png',
-  //   data: payload.data,
-  //   actions: [
-  //     {
-  //       action: 'view',
-  //       title: '表示',
-  //     }
-  //   ]
-  // }
-  // self.registration.showNotification(notificationTitle, notificationOptions)
 })
-
 // 通知クリックイベントの処理
 // ユーザーが通知をクリックした時の動作を定義します
 self.addEventListener('notificationclick', (event) => {
@@ -156,8 +135,16 @@ self.addEventListener('notificationclick', (event) => {
 
 // Service Workerのインストール時
 self.addEventListener('install', function (event) {
-  console.log('[firebase-messaging-sw.js] Service Workerをインストールしました')
-  self.skipWaiting() // 即座にアクティブ化
+  console.log('[SW] Service Workerをインストールしました')
+  // デバッグ情報を出力
+  console.log('[SW] 環境情報:', {
+    scope: self.registration.scope,
+    apiSupport: {
+      setAppBadge: 'setAppBadge' in self.navigator,
+      clearAppBadge: 'clearAppBadge' in self.navigator,
+    },
+  })
+  self.skipWaiting()
 })
 
 // Service Workerのアクティベーション時
@@ -167,19 +154,3 @@ self.addEventListener('activate', function (event) {
   )
   event.waitUntil(clients.claim()) // クライアントの制御を取得
 })
-
-// デバッグ用コード
-console.log('バッジAPIサポート状況:', {
-  setAppBadge: 'setAppBadge' in navigator,
-  clearAppBadge: 'clearAppBadge' in navigator
-});
-
-console.log('Service Worker環境情報:', {
-  scope: self.registration.scope,
-  badgeAPISupport: {
-    setAppBadge: 'setAppBadge' in self.navigator,
-    clearAppBadge: 'clearAppBadge' in self.navigator
-  }
-});
-
-

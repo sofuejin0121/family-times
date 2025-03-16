@@ -147,9 +147,9 @@ export default defineConfig(({ mode }) => {
           globIgnores: ['**/firebase-messaging-sw.js'],
         },
         manifest: {
-          name: "Family Times",
-          short_name: "Family Times",
-          display: "standalone",
+          name: 'Family Times',
+          short_name: 'Family Times',
+          display: 'standalone',
           icons: [
             {
               src: '/homeicon_512.png',
@@ -164,12 +164,13 @@ export default defineConfig(({ mode }) => {
               purpose: 'any maskable',
             },
           ],
-          start_url: "/",
-          background_color: "#ffffff",
-          theme_color: "#4285F4"
+          start_url: '/',
+          background_color: '#ffffff',
+          theme_color: '#4285F4',
         },
         devOptions: {
           enabled: true,
+          navigateFallback: 'index.html',
         },
       }),
       firebaseMessagingSwPlugin(env), // 環境変数をFirebase Messaging SWプラグインに渡す

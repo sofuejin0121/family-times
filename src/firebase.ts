@@ -341,10 +341,7 @@ const getServiceWorkerRegistration = async () => {
 
     // 既存のServiceWorkerがない場合、新しいServiceWorkerを登録
     const registration = await navigator.serviceWorker.register(
-      '/firebase-messaging-sw.js', // ServiceWorkerファイルのパス
-      {
-        scope: '/firebase-cloud-messaging-push-scope', // ServiceWorkerのスコープ
-      }
+      '/firebase-messaging-sw.js' // ServiceWorkerファイルのパス
     )
 
     // ServiceWorkerが確実にアクティブになるまで待機
@@ -425,18 +422,18 @@ export const requestNotificationPermission = async () => {
  */
 export const setupFCMListener = () => {
   onMessage(messaging, async (payload: MessagePayload) => {
-    console.log('フォアグラウンドでメッセージを受信しました', payload);
+    console.log('フォアグラウンドでメッセージを受信しました', payload)
 
     // バッジカウントを更新
     if (payload.data?.badgeCount && 'setAppBadge' in navigator) {
       try {
-        const count = parseInt(payload.data.badgeCount as string, 10);
+        const count = parseInt(payload.data.badgeCount as string, 10)
         if (!isNaN(count)) {
-          await navigator.setAppBadge(count);
-          console.log(`バッジを${count}に設定しました`);
+          await navigator.setAppBadge(count)
+          console.log(`バッジを${count}に設定しました`)
         }
       } catch (error) {
-        console.error('バッジの設定に失敗しました:', error);
+        console.error('バッジの設定に失敗しました:', error)
       }
     }
 
@@ -522,22 +519,22 @@ export const updateAppBadge = async (user: User): Promise<void> => {
 // Service Workerの登録状態をデバッグ
 const checkServiceWorkerStatus = async () => {
   if ('serviceWorker' in navigator) {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    console.log('登録済みService Worker:', registrations);
-    
-    registrations.forEach(reg => {
-      console.log('SW スコープ:', reg.scope);
+    const registrations = await navigator.serviceWorker.getRegistrations()
+    console.log('登録済みService Worker:', registrations)
+
+    registrations.forEach((reg) => {
+      console.log('SW スコープ:', reg.scope)
       console.log('SW 状態:', {
         installing: !!reg.installing,
         waiting: !!reg.waiting,
-        active: !!reg.active
-      });
-    });
+        active: !!reg.active,
+      })
+    })
   }
-};
+}
 
 // アプリ起動時に確認
-checkServiceWorkerStatus();
+checkServiceWorkerStatus()
 
 // 他のモジュールで使用するためにFirebaseサービスをエクスポート
 export { auth, provider, db, storage, app, messaging }
