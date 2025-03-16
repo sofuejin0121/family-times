@@ -42,16 +42,14 @@ messaging.onBackgroundMessage((payload) => {
     payload
   )
 
-  // // 通知のタイトルを設定（ペイロードにタイトルがない場合はデフォルト値を使用）
+  // 通知はFirebaseが自動的に表示するため、ここでは何もしない
+  // 以下のコードはコメントアウトしたままにする
   // const notificationTitle = payload.notification.title || 'メッセージ通知'
-
-  // // 通知の詳細オプションを設定
   // const notificationOptions = {
-  //   body: payload.notification.body || '', // 通知の本文
-  //   icon: payload.notification.icon || '/homeicon.png', // 通知に表示するアイコン
-  //   badge: '/notification-badge.png', // モバイルデバイスの通知バッジに表示するアイコン
-  //   data: payload.data, // 通知に関連するデータ（後でクリックイベントで使用）
-  //   // クリック時のアクション
+  //   body: payload.notification.body || '',
+  //   icon: payload.notification.icon || '/homeicon.png',
+  //   badge: '/notification-badge.png',
+  //   data: payload.data,
   //   actions: [
   //     {
   //       action: 'view',
@@ -59,9 +57,6 @@ messaging.onBackgroundMessage((payload) => {
   //     }
   //   ]
   // }
-
-  // // 実際に通知を表示します
-  // // self.registrationはService Workerの登録情報を参照します
   // self.registration.showNotification(notificationTitle, notificationOptions)
 })
 
