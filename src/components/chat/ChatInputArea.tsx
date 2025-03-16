@@ -48,7 +48,18 @@ const ChatInputArea = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInputText(e.target.value)
   }
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enterキーが押されていて、Shiftキーが押されていない場合のみ処理
+    const isEnterWithoutShift = e.key === 'Enter' && !e.shiftKey
 
+    // 送信条件を満たしている場合のみ送信
+    const canSend = (inputText.trim() || selectedFile) && isEnterWithoutShift
+
+    if (canSend) {
+      e.preventDefault()
+      sendMessage(e)
+    }
+  }
   return (
     <div className="mx-4 mb-4 flex flex-col rounded-lg text-gray-400">
       {/* リプライ情報 */}
@@ -131,6 +142,7 @@ const ChatInputArea = ({
                 : 'メッセージを送信'
             }
             onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             value={inputText}
             disabled={isUploading}
             rows={1}

@@ -32,7 +32,6 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/components/ui/dialog'
-import { Input } from '../ui/input'
 import { Avatar, AvatarImage } from '../ui/avatar'
 import useUsers from '../../hooks/useUsers'
 import { Ellipsis, Reply } from 'lucide-react'
@@ -44,6 +43,8 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu'
 import { getCachedImageUrl } from '../../utils/imageUtils'
+import { X } from 'lucide-react' // Xアイコンをインポート
+import { Textarea } from '../ui/textarea'
 // 固定の絵文字リアクションを定義
 const PRESET_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏']
 
@@ -193,26 +194,26 @@ const ChatMessage = ({
   // サーバーIDまたはチャンネルIDが変わったときに画像URLをリセット
   useEffect(() => {
     // サーバーまたはチャンネルが変わったら画像URLをクリア
-    setFileURL(undefined);
-  }, [serverId, channelId]);
+    setFileURL(undefined)
+  }, [serverId, channelId])
 
   // 画像URL取得処理（既存のuseEffect）
   useEffect(() => {
-    if (!photoId) return;
-    
+    if (!photoId) return
+
     const fetchURL = async () => {
       try {
-        const url = await getCachedImageUrl(photoId, photoExtension, 'messages');
+        const url = await getCachedImageUrl(photoId, photoExtension, 'messages')
         if (url) {
-          setFileURL(url);
+          setFileURL(url)
         }
       } catch (error) {
-        console.error('画像URLの取得に失敗しました:', error);
+        console.error('画像URLの取得に失敗しました:', error)
       }
-    };
+    }
 
-    fetchURL();
-  }, [photoId, photoExtension]);
+    fetchURL()
+  }, [photoId, photoExtension])
 
   const deleteMessage = async () => {
     if (serverId !== null && channelId !== null && id !== null) {
@@ -450,7 +451,7 @@ const ChatMessage = ({
 
           {/* メッセージ本文と右端の操作ボタン */}
           <div className="relative flex items-center justify-between gap-2">
-            <p className="m-0">{message}</p>
+            <p className="m-0 break-words whitespace-pre-wrap">{message}</p>
 
             {/* 右端のボタン領域 - 編集/削除と返信ボタン */}
             <div className="ml-auto flex gap-1">
@@ -508,10 +509,10 @@ const ChatMessage = ({
                 <DialogTitle>メッセージを編集</DialogTitle>
               </DialogHeader>
 
-              <Input
+              <Textarea
                 value={editedMessage || ''}
                 onChange={(e) => setEditedMessage(e.target.value)}
-                className="w-full rounded border border-[#dcddde] bg-white p-2 text-sm focus:border-[#7983f5] focus:outline-none"
+                className="box-border max-h-[150px] min-h-[38px] w-full resize-none overflow-hidden border border-gray-300 bg-white break-words whitespace-pre-wrap text-black disabled:opacity-50"
               />
               <DialogFooter>
                 <Button
@@ -611,6 +612,12 @@ const ChatMessage = ({
                 hideCloseButton
                 data-no-swipe="true"
               >
+                <button
+                  onClick={() => setIsImagePreviewOpen(false)}
+                  className="absolute top-2 right-2 cursor-pointer rounded-full bg-black/40 p-1.5 text-white hover:bg-black/60 focus:outline-none"
+                >
+                  <X className="h-5 w-5" />
+                </button>
                 <img
                   src={fileURL}
                   alt="メッセージ画像（拡大表示）"
