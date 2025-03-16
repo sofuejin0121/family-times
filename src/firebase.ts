@@ -427,14 +427,14 @@ export const setupFCMListener = () => {
   onMessage(messaging, (payload: MessagePayload) => {
     console.log('フォアグラウンドでメッセージを受信しました', payload)
 
-    // 通知をブラウザに表示（ユーザーが許可している場合）
-    if (payload.notification && Notification.permission === 'granted') {
-      const { title, body, icon } = payload.notification
-      new Notification(title || 'メッセージ通知', {
-        body: body || '', // 通知の本文
-        icon: icon || '/homeicon.png', // 通知のアイコン
-      })
-    }
+    // // 通知をブラウザに表示（ユーザーが許可している場合）
+    // if (payload.notification && Notification.permission === 'granted') {
+    //   const { title, body, icon } = payload.notification
+    //   new Notification(title || 'メッセージ通知', {
+    //     body: body || '', // 通知の本文
+    //     icon: icon || '/homeicon.png', // 通知のアイコン
+    //   })
+    // }
   })
 }
 
